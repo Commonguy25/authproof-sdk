@@ -1,6 +1,6 @@
 {
   "name": "authproof-sdk",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Cryptographically signed delegation receipts for AI agents. Define exactly what an AI can and can't do — signed, verifiable, tamper-proof.",
   "main": "src/authproof.js",
   "module": "src/authproof.js",
