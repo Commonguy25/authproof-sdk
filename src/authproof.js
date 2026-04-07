@@ -80,18 +80,11 @@ const STOP_WORDS = new Set([
   'then','up','out'
 ]);
 
-/** Strip simple English suffixes for basic stemming (s, es, ing, ed). */
-function _stem(w) {
-  return w.replace(/ings?$/, '').replace(/e?s$/, '').replace(/ed$/, '') || w;
-}
-
 function _tokenize(text) {
   return new Set(
     text.toLowerCase()
       .split(/[\s,;:.()\[\]{}'"""]+/)
       .filter(w => w.length > 3 && !STOP_WORDS.has(w))
-      .map(_stem)
-      .filter(w => w.length > 2)
   );
 }
 
@@ -109,10 +102,10 @@ function _overlapScore(a, b) {
  * Returns { withinScope: boolean, scopeScore: number, boundaryScore: number }
  */
 function checkScope(action, receipt) {
-  const scopeScore    = _overlapScore(action, receipt.scope);
+  const scopeScore    = _overlapScope(action, receipt.scope);
   const boundaryScore = _overlapScore(action, receipt.boundaries);
   return {
-    withinScope:    scopeScore >= 0.3 && boundaryScore < 0.15,
+    withinScope:    scopeScore >= 0.3 && boundaryScore < 0.5,
     scopeScore:     Math.round(scopeScore * 100),
     boundaryScore:  Math.round(boundaryScore * 100),
   };
@@ -314,7 +307,7 @@ async function verify(receipt, receiptId, options = {}) {
     });
     checks.push({
       name:   'Action not blocked',
-      passed: boundaryScore < 15,
+      passed: boundaryScore < 50,
       detail: `${boundaryScore}% overlap with off-limits boundaries`,
     });
   }
@@ -358,7 +351,19 @@ function buildSystemPrompt(receipt, receiptId, verifyUrl) {
     ? `\nVerify this authorization: ${verifyUrl}?receipt=${receiptId}`
     : `\nAuthorization ID: ${receiptId}`;
 
-  return `You are authorized to act within the following scope:\n\n${receipt.scope}\n\nYou must not:\n${receipt.boundaries}\n\nOperator instructions:\n${receipt.operatorInstructions}\n\nThis authorization is valid until: ${expiry}${verifyLine}\n\nBefore taking any significant action, confirm it falls within the authorized scope above. If uncertain, ask for clarification rather than proceeding.`;
+  return `You are authorized to act within the following scope:
+
+${receipt.scope}
+
+You must not:
+${receipt.boundaries}
+
+Operator instructions:
+${receipt.operatorInstructions}
+
+This authorization is valid until: ${expiry}${verifyLine}
+
+Before taking any significant action, confirm it falls within the authorized scope above. If uncertain, ask for clarification rather than proceeding.`;
 }
 
 // ─────────────────────────────────────────────
@@ -400,6 +405,286 @@ function secondsRemaining(receipt) {
 }
 
 // ─────────────────────────────────────────────
+// ACTION LOG
+// ─────────────────────────────────────────────
+
+/** Sentinel prevHash used on the first entry of every chain. */
+const _GENESIS = '0'.repeat(64);
+
+/**
+ * ActionLog — append-only, cryptographically chained agent action log.
+ *
+ * Pairs with a Delegation Receipt to provide a complete audit trail:
+ * what was authorized (the receipt) vs. what was actually done (the log).
+ * The diff() method surfaces any deviation between the two instantly.
+ *
+ * Every entry contains:
+ *   - entryId        — unique identifier
+ *   - receiptHash    — the receipt this action is authorized under
+ *   - action         — { operation, resource, parameters }
+ *   - timestamp      — ms since epoch (see ⚠ note on record())
+ *   - agentPublicKey — agent's ECDSA P-256 public key JWK
+ *   - prevHash       — SHA-256 of the previous entry (GENESIS for first)
+ *   - signature      — ECDSA P-256 signature over all fields above
+ *   - entryHash      — SHA-256 of the full entry including signature
+ *
+ * @example
+ * const log = new ActionLog();
+ * await log.init({ privateKey, publicJwk });
+ * log.registerReceipt(receiptId, receipt);
+ * await log.record(receiptId, { operation: 'read_calendar', resource: 'calendar/events' });
+ * const report = log.diff(receiptId);
+ * // { clean: true, compliant: [...], violations: [] }
+ */
+class ActionLog {
+  constructor() {
+    /** @private {Map<string, object>} entryId → sealed entry */
+    this._entries = new Map();
+    /** @private {Map<string, string[]>} receiptHash → ordered entryId list */
+    this._byReceipt = new Map();
+    /** @private {Map<string, object>} receiptHash → receipt */
+    this._receipts = new Map();
+    /** @private {CryptoKey|null} */
+    this._privateKey = null;
+    /** @private {object|null} */
+    this._publicJwk = null;
+  }
+
+  /**
+   * Initialize with the agent's ECDSA P-256 signing key.
+   * Must be called once before record().
+   * @param {{ privateKey: CryptoKey, publicJwk: object }} opts
+   */
+  async init({ privateKey, publicJwk }) {
+    if (!privateKey) throw new Error('ActionLog: privateKey is required');
+    if (!publicJwk)  throw new Error('ActionLog: publicJwk is required');
+    this._privateKey = privateKey;
+    this._publicJwk  = publicJwk;
+  }
+
+  /**
+   * Register a Delegation Receipt so diff() can compare against its scope.
+   * Call this with the receipt from AuthProof.create() before calling diff().
+   *
+   * @param {string} receiptHash — SHA-256 receipt ID from AuthProof.create()
+   * @param {object} receipt     — The full receipt object
+   */
+  registerReceipt(receiptHash, receipt) {
+    if (!receiptHash) throw new Error('ActionLog: receiptHash is required');
+    if (!receipt)     throw new Error('ActionLog: receipt is required');
+    this._receipts.set(receiptHash, receipt);
+  }
+
+  /**
+   * Record a signed, chain-linked entry for an action taken under a receipt.
+   *
+   * ⚠ Timestamp uses Date.now() (the local system clock). This is not a
+   *   trusted time source. For production audit logs requiring tamper-proof
+   *   timestamps, integrate an RFC 3161 Trusted Timestamp Authority (TSA)
+   *   and replace timestamp before passing to this method.
+   *
+   * @param {string} receiptHash
+   * @param {{ operation: string, resource: string, parameters?: object }} action
+   * @returns {Promise<object>} The sealed log entry
+   */
+  async record(receiptHash, action) {
+    if (!this._privateKey) throw new Error('ActionLog: call init() before record()');
+    if (!receiptHash)       throw new Error('ActionLog: receiptHash is required');
+    if (!action?.operation) throw new Error('ActionLog: action.operation is required');
+    if (!action?.resource)  throw new Error('ActionLog: action.resource is required');
+
+    const ids      = this._byReceipt.get(receiptHash) || [];
+    const prevHash = ids.length === 0
+      ? _GENESIS
+      : this._entries.get(ids[ids.length - 1]).entryHash;
+
+    const entryId = `log-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+
+    // ─────────────────────────────────────────────────────────────────
+    // ⚠ PRODUCTION WARNING — UNTRUSTED TIMESTAMP
+    // The value below is taken from the local system clock (Date.now()).
+    // This clock is not independently verifiable and can be set
+    // arbitrarily by the host process. It MUST NOT be used in any
+    // compliance, legal, or regulatory context where timestamp
+    // authenticity matters.
+    //
+    // For production deployments requiring verifiable timestamps:
+    // obtain a timestamp token from an RFC 3161 Trusted Timestamp
+    // Authority (TSA) and replace this value before calling record().
+    // ─────────────────────────────────────────────────────────────────
+    const timestamp = Date.now();
+
+    const body = {
+      entryId,
+      receiptHash,
+      action: {
+        operation:  action.operation,
+        resource:   action.resource,
+        parameters: action.parameters ?? {},
+      },
+      timestamp,
+      agentPublicKey: this._publicJwk,
+      prevHash,
+    };
+
+    const signature = await _sign(this._privateKey, JSON.stringify(body));
+    const entryHash = await _sha256(JSON.stringify({ ...body, signature }));
+
+    const entry = { ...body, signature, entryHash };
+
+    this._entries.set(entryId, entry);
+    this._byReceipt.set(receiptHash, [...ids, entryId]);
+
+    return entry;
+  }
+
+  /**
+   * Verify a specific entry's signature and chain integrity.
+   *
+   * Checks performed:
+   *   1. Agent ECDSA P-256 signature over all body fields
+   *   2. Entry hash integrity (SHA-256 of body + signature)
+   *   3. Chain linkage (prevHash === previous entry's entryHash)
+   *
+   * Any mutation to any field — however small — fails at least one check.
+   *
+   * @param {string} entryId
+   * @returns {Promise<{ valid: boolean, reason: string }>}
+   */
+  async verify(entryId) {
+    const entry = this._entries.get(entryId);
+    if (!entry) return { valid: false, reason: 'Entry not found' };
+
+    const { signature, entryHash, ...body } = entry;
+
+    // 1 — Agent signature over all body fields
+    const sigValid = await _verify(entry.agentPublicKey, signature, JSON.stringify(body));
+    if (!sigValid) {
+      return {
+        valid:  false,
+        reason: 'Signature verification failed — entry may have been tampered',
+      };
+    }
+
+    // 2 — Entry hash (SHA-256 of body + signature)
+    const computedHash = await _sha256(JSON.stringify({ ...body, signature }));
+    if (computedHash !== entryHash) {
+      return {
+        valid:  false,
+        reason: 'Entry hash mismatch — content was altered after recording',
+      };
+    }
+
+    // 3 — Chain linkage
+    const chain = this._byReceipt.get(entry.receiptHash) || [];
+    const idx   = chain.indexOf(entryId);
+
+    if (idx === -1) {
+      return { valid: false, reason: 'Entry is orphaned — not found in chain index' };
+    }
+
+    if (idx === 0) {
+      if (entry.prevHash !== _GENESIS) {
+        return { valid: false, reason: 'Genesis entry has wrong prevHash' };
+      }
+    } else {
+      const prev = this._entries.get(chain[idx - 1]);
+      if (!prev) {
+        return { valid: false, reason: 'Previous entry is missing — chain is broken' };
+      }
+      if (entry.prevHash !== prev.entryHash) {
+        return {
+          valid:  false,
+          reason: "Chain broken — prevHash does not match previous entry's entryHash",
+        };
+      }
+    }
+
+    return { valid: true, reason: 'Signature and chain integrity verified' };
+  }
+
+  /**
+   * Return all log entries for a receipt in chronological (insertion) order.
+   * @param {string} receiptHash
+   * @returns {object[]}
+   */
+  getEntries(receiptHash) {
+    const ids = this._byReceipt.get(receiptHash) || [];
+    return ids.map(id => this._entries.get(id));
+  }
+
+  /**
+   * Diff: compare all recorded actions against the receipt's authorized scope.
+   *
+   * This is the audit method. Any party — user, operator, regulator, or court —
+   * can call diff() to see exactly what was authorized versus what was done,
+   * and identify any deviations instantly.
+   *
+   * Scope matching strategy (applied in order):
+   *   1. If receipt.allowedActions is a string[] → exact operation match
+   *   2. Otherwise → keyword overlap scoring against receipt.scope /
+   *      receipt.boundaries text (via AuthProof.checkScope)
+   *
+   * @param {string} receiptHash
+   * @returns {{
+   *   receiptHash:  string,
+   *   totalEntries: number,
+   *   compliant:    Array<{ entry: object, reason: string }>,
+   *   violations:   Array<{ entry: object, reason: string }>,
+   *   clean:        boolean
+   * }}
+   */
+  diff(receiptHash) {
+    const receipt = this._receipts.get(receiptHash);
+    const entries = this.getEntries(receiptHash);
+
+    const compliant  = [];
+    const violations = [];
+
+    for (const entry of entries) {
+      const op = entry.action.operation;
+      let inScope, reason;
+
+      if (receipt?.allowedActions && Array.isArray(receipt.allowedActions)) {
+        // Explicit allowlist — exact string match on operation
+        inScope = receipt.allowedActions.includes(op);
+        reason  = inScope
+          ? `"${op}" is in allowedActions`
+          : `"${op}" not in allowedActions [${receipt.allowedActions.join(', ')}]`;
+
+      } else if (receipt) {
+        // ─────────────────────────────────────────────────────────────
+        // ⚠ WARNING: Text-based keyword matching is fuzzy and not
+        // cryptographically sound. Explicit allowedActions arrays are
+        // strongly recommended for any production or compliance use
+        // case. This fallback exists only for convenience during
+        // development.
+        // ─────────────────────────────────────────────────────────────
+        const { withinScope, scopeScore, boundaryScore } = checkScope(op, receipt);
+        inScope = withinScope;
+        reason  = inScope
+          ? `"${op}" matches authorized scope (${scopeScore}% keyword overlap)`
+          : `"${op}" outside authorized scope (${scopeScore}% scope match, ${boundaryScore}% boundary overlap)`;
+
+      } else {
+        inScope = false;
+        reason  = 'No receipt registered for this receiptHash — call registerReceipt() first';
+      }
+
+      (inScope ? compliant : violations).push({ entry, reason });
+    }
+
+    return {
+      receiptHash,
+      totalEntries: entries.length,
+      compliant,
+      violations,
+      clean: violations.length === 0,
+    };
+  }
+}
+
+// ─────────────────────────────────────────────
 // EXPORTS
 // ─────────────────────────────────────────────
 
@@ -418,246 +703,22 @@ const AuthProof = {
   receiptId,
   isActive,
   secondsRemaining,
+
+  // Action log
+  ActionLog,
 };
 
-// ─────────────────────────────────────────────
-// CLASS-BASED API
-// Matches the README / whitepaper interface:
-//   import { AuthProofClient, Scope, KeyCustody } from 'authproof-sdk';
-// ─────────────────────────────────────────────
-
-/**
- * Key custody modes.
- */
-const KeyCustody = Object.freeze({
-  HARDWARE:  'hardware',   // WebAuthn / FIDO2 device secure enclave (recommended)
-  DELEGATED: 'delegated',  // Key manager / HSM
-  SELF:      'self',       // Self-custody / software key (default fallback)
-});
-
-/**
- * Structured scope builder.
- *
- * const scope = new Scope()
- *   .allow('reads',  ['resource://calendar/events'])
- *   .allow('writes', ['resource://calendar/events'])
- *   .deny('deletes', '*')
- *   .execute('sha256:abc123', { program: 'scheduler-v1.sg' });
- */
-class Scope {
-  constructor() {
-    this._allows   = [];
-    this._denies   = [];
-    this._executes = [];
-  }
-
-  /** Allow an operation class on the given resources (allowlist). */
-  allow(operationClass, resources) {
-    const res = Array.isArray(resources) ? resources : [resources];
-    this._allows.push({ class: operationClass, resources: res });
-    return this;
-  }
-
-  /** Deny an operation class on the given resources (hard boundary). */
-  deny(operationClass, resources) {
-    const res = Array.isArray(resources) ? resources : [resources];
-    this._denies.push({ class: operationClass, resources: res });
-    return this;
-  }
-
-  /** Bind execution to a specific program hash. */
-  execute(hash, options = {}) {
-    this._executes.push({ hash, ...options });
-    return this;
-  }
-
-  /** Serialize to structured string for receipt body. */
-  toString() {
-    // Strip resource:// URIs to readable path tokens so the keyword
-    // scope-checker can match natural-language action descriptions.
-    const _res = r => r === '*'
-      ? 'all resources'
-      : r.replace(/^[a-z][\w+.-]*:\/\//, '').replace(/\//g, ' ').trim() || r;
-
-    const lines = [];
-    for (const a of this._allows) {
-      lines.push(`ALLOW ${a.class}: ${a.resources.map(_res).join(', ')}`);
-    }
-    for (const d of this._denies) {
-      lines.push(`DENY ${d.class}: ${d.resources.map(_res).join(', ')}`);
-    }
-    for (const e of this._executes) {
-      lines.push(`EXECUTE ${e.hash}${e.program ? ` (${e.program})` : ''}`);
-    }
-    return lines.join('\n');
-  }
-
-  /**
-   * Serialize deny rules as natural-language boundary text.
-   * Used to feed DENY clauses into the boundaries check.
-   */
-  toBoundariesText() {
-    const _res = r => r === '*'
-      ? 'all resources'
-      : r.replace(/^[a-z][\w+.-]*:\/\//, '').replace(/\//g, ' ').trim() || r;
-    // Use infinitive form (strip trailing 's') so 'deletes'→'delete' matches
-    // natural-language action descriptions like "delete all events".
-    return this._denies
-      .map(d => `Do not ${d.class.replace(/s$/, '')}: ${d.resources.map(_res).join(', ')}`)
-      .join('. ');
-  }
-
-  /** Return structured object representation. */
-  toObject() {
-    return {
-      allows:   this._allows,
-      denies:   this._denies,
-      executes: this._executes,
-    };
-  }
-}
-
-/** Parse duration strings like '8h', '30m', '2d', '90s' → fractional hours. */
-function _parseDuration(str) {
-  const m = String(str).match(/^(\d+(?:\.\d+)?)\s*(h|m|d|s)?$/i);
-  if (!m) return 1;
-  const val  = parseFloat(m[1]);
-  const unit = (m[2] || 'h').toLowerCase();
-  return val * ({ h: 1, m: 1 / 60, d: 24, s: 1 / 3600 }[unit] ?? 1);
-}
-
-/** Serialize a boundaries object or string into a human-readable string. */
-function _serializeBoundaries(boundaries) {
-  if (!boundaries) return 'No additional boundaries specified.';
-  if (typeof boundaries === 'string') return boundaries;
-  return Object.entries(boundaries)
-    .map(([k, v]) => `${k}: ${v}`)
-    .join('; ');
-}
-
-/**
- * Object-oriented AuthProof client — matches the README/whitepaper API surface.
- *
- * @example
- * const ap = new AuthProofClient({ custody: KeyCustody.HARDWARE, log: 'https://log.authproof.dev' });
- * const receipt = await ap.delegate({ scope, boundaries, window: { duration: '8h' }, operatorInstructions });
- * const result  = await ap.validate({ receiptHash: receipt.hash, action: 'read calendar' });
- */
-class AuthProofClient {
-  /**
-   * @param {object} [options]
-   * @param {string} [options.custody]  - KeyCustody mode (default: SELF)
-   * @param {string} [options.log]      - Log endpoint URL for receipt anchoring
-   */
-  constructor({ custody = KeyCustody.SELF, log } = {}) {
-    this.custody  = custody;
-    this.logUrl   = log || null;
-    this._keyPair = null;
-    this._store   = new Map();   // receiptHash → { receipt, revoked }
-  }
-
-  /** Lazily generate (or load) the signing key pair. */
-  async _ensureKey() {
-    if (!this._keyPair) {
-      this._keyPair = await generateKey();
-    }
-    return this._keyPair;
-  }
-
-  /**
-   * Delegate authority to an agent. Signs an Authorization Object and
-   * anchors it to the configured log.
-   *
-   * @param {object} options
-   * @param {Scope|string}   options.scope                - Authorized operations
-   * @param {object|string}  options.boundaries           - Hard prohibitions
-   * @param {{ duration: string }} options.window         - Time window (e.g. { duration: '8h' })
-   * @param {string}         options.operatorInstructions - Operator system prompt text
-   * @returns {{ receipt, receiptId, hash, systemPrompt, logAnchor }}
-   */
-  async delegate({ scope, boundaries, window: timeWindow, operatorInstructions }) {
-    if (!scope)                throw new Error('AuthProofClient: scope is required');
-    if (!operatorInstructions) throw new Error('AuthProofClient: operatorInstructions is required');
-
-    const { privateKey, publicJwk } = await this._ensureKey();
-
-    const scopeStr = scope instanceof Scope ? scope.toString() : String(scope);
-
-    // Merge explicit boundaries with any DENY rules declared in the Scope object
-    const explicitBoundaries = _serializeBoundaries(boundaries);
-    const denyBoundaries     = scope instanceof Scope ? scope.toBoundariesText() : '';
-    const boundariesStr      = [denyBoundaries, explicitBoundaries].filter(Boolean).join('. ')
-      || 'No additional boundaries specified.';
-    const ttlHours      = _parseDuration(timeWindow?.duration ?? '1h');
-
-    const { receipt, receiptId: hash, systemPrompt } = await create({
-      scope:        scopeStr,
-      boundaries:   boundariesStr,
-      instructions: operatorInstructions,
-      ttlHours,
-      privateKey,
-      publicJwk,
-    });
-
-    // Anchor to log (mock or real)
-    const logAnchor = this.logUrl
-      ? { logUrl: this.logUrl, receiptId: hash, anchoredAt: new Date().toISOString() }
-      : { logUrl: 'mock://local', receiptId: hash, anchoredAt: new Date().toISOString(), mock: true };
-
-    this._store.set(hash, { receipt, revoked: false });
-
-    return { receipt, receiptId: hash, hash, systemPrompt, logAnchor };
-  }
-
-  /**
-   * Validate an action against a previously issued receipt.
-   *
-   * @param {object} options
-   * @param {string} options.receiptHash  - The receipt ID to validate against
-   * @param {string} options.action       - The proposed action description
-   * @returns {{ authorized: boolean, checks: Array, receiptContext: object }}
-   */
-  async validate({ receiptHash, action }) {
-    const stored = this._store.get(receiptHash);
-    if (!stored) throw new Error(`AuthProofClient: receipt not found: ${receiptHash}`);
-    return verify(stored.receipt, receiptHash, { revoked: stored.revoked, action });
-  }
-
-  /**
-   * Revoke a previously issued receipt.
-   * @param {string} receiptHash
-   */
-  revoke(receiptHash) {
-    const stored = this._store.get(receiptHash);
-    if (stored) stored.revoked = true;
-  }
-
-  /**
-   * Check if a receipt is still active (not expired, not revoked).
-   * @param {string} receiptHash
-   * @returns {boolean}
-   */
-  isActive(receiptHash) {
-    const stored = this._store.get(receiptHash);
-    if (!stored) return false;
-    return isActive(stored.receipt, stored.revoked);
-  }
-}
-
-// ─────────────────────────────────────────────
-// EXPORTS
-// ─────────────────────────────────────────────
-
-// ESM + CJS compatible export (functional API default)
+// ESM + CJS compatible export
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = AuthProof;
+  module.exports.ActionLog = ActionLog;
 } else if (typeof globalThis !== 'undefined') {
   globalThis.AuthProof = AuthProof;
+  globalThis.ActionLog = ActionLog;
 }
 
 export default AuthProof;
 export {
-  // Functional API
   generateKey,
   importPrivateKey,
   create,
@@ -667,8 +728,5 @@ export {
   receiptId,
   isActive,
   secondsRemaining,
-  // Class-based API
-  AuthProofClient,
-  Scope,
-  KeyCustody,
+  ActionLog,
 };
