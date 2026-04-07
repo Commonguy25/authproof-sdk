@@ -1,0 +1,16 @@
+{
+  "name": "drp-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP server for the Delegation Receipt Protocol",
+  "main": "mcp-server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node mcp-server.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

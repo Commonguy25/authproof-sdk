@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AuthProof SDK — Live Demo</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy:   #0d1b2a;
+      --navy2:  #112233;
+      --navy3:  #1a2e45;
+      --teal:   #00c9a7;
+      --teal2:  #00a88d;
+      --slate:  #1e3a52;
+      --muted:  #5a7fa0;
+      --text:   #cde0f5;
+      --white:  #e8f4ff;
+      --red:    #ff5a5a;
+      --yellow: #ffc857;
+      --green:  #00c9a7;
+      --mono:   'Courier New', monospace;
+      --sans:   -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--navy);
+      color: var(--text);
+      font-family: var(--sans);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* ── Nav ── */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(13,27,42,0.96);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--slate);
+      padding: 14px 32px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .nav-logo {
+      display: flex; align-items: center; gap: 10px;
+      font-weight: 700; font-size: 16px; color: var(--white);
+    }
+    .logo-mark {
+      width: 30px; height: 30px; background: var(--teal);
+      border-radius: 7px; display: flex; align-items: center;
+      justify-content: center; font-weight: 900; font-size: 15px;
+      color: var(--navy); flex-shrink: 0;
+    }
+    .nav-links { display: flex; gap: 20px; }
+    .nav-links a { font-size: 13px; color: var(--muted); text-decoration: none; }
+    .nav-links a:hover { color: var(--white); }
+
+    /* ── Layout ── */
+    .container { max-width: 960px; margin: 0 auto; padding: 0 24px; }
+    .section { padding: 56px 0; }
+
+    h1 { font-size: 2rem; color: var(--white); font-weight: 800; line-height: 1.2; }
+    h2 { font-size: 1.3rem; color: var(--white); font-weight: 700; margin-bottom: 6px; }
+    h3 { font-size: 1rem; color: var(--teal); font-weight: 600; letter-spacing: 0.06em;
+         text-transform: uppercase; margin-bottom: 16px; }
+    p  { color: var(--text); opacity: 0.85; }
+
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(0,201,167,0.12); border: 1px solid rgba(0,201,167,0.3);
+      color: var(--teal); padding: 4px 12px; border-radius: 20px;
+      font-size: 12px; font-weight: 600; letter-spacing: 0.04em;
+      margin-bottom: 20px;
+    }
+
+    /* ── Panel ── */
+    .panel {
+      background: var(--navy2);
+      border: 1px solid var(--slate);
+      border-radius: 12px;
+      padding: 28px;
+      margin-bottom: 24px;
+    }
+    .panel-title {
+      font-size: 13px; font-weight: 600; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.08em;
+      margin-bottom: 20px; padding-bottom: 12px;
+      border-bottom: 1px solid var(--slate);
+    }
+
+    /* ── Form ── */
+    label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; font-weight: 500; }
+    textarea, input {
+      width: 100%; background: var(--navy3); border: 1px solid var(--slate);
+      border-radius: 8px; padding: 10px 14px; color: var(--text);
+      font-size: 13px; font-family: var(--mono);
+      resize: vertical; outline: none;
+      transition: border-color 0.2s;
+    }
+    textarea:focus, input:focus { border-color: var(--teal); }
+    .field { margin-bottom: 16px; }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 11px 24px; border-radius: 8px; font-size: 14px;
+      font-weight: 600; cursor: pointer; border: none;
+      transition: all 0.18s; font-family: var(--sans);
+    }
+    .btn-primary { background: var(--teal); color: var(--navy); }
+    .btn-primary:hover { background: var(--teal2); }
+    .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-ghost {
+      background: transparent; color: var(--teal);
+      border: 1px solid rgba(0,201,167,0.35);
+    }
+    .btn-ghost:hover { background: rgba(0,201,167,0.08); }
+
+    /* ── Checks ── */
+    .checks { display: flex; flex-direction: column; gap: 10px; }
+    .check-item {
+      display: flex; align-items: flex-start; gap: 12px;
+      background: var(--navy3); border-radius: 8px;
+      padding: 12px 16px; border-left: 3px solid transparent;
+      opacity: 0; transform: translateY(8px);
+      transition: opacity 0.3s, transform 0.3s;
+    }
+    .check-item.visible { opacity: 1; transform: translateY(0); }
+    .check-item.pass { border-left-color: var(--teal); }
+    .check-item.fail { border-left-color: var(--red); }
+    .check-icon { font-size: 16px; margin-top: 1px; flex-shrink: 0; }
+    .check-name { font-size: 13px; font-weight: 600; color: var(--white); }
+    .check-detail { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+    /* ── Code block ── */
+    .code-block {
+      background: #0a1520; border: 1px solid var(--slate);
+      border-radius: 8px; padding: 16px;
+      font-family: var(--mono); font-size: 12px; color: #8ab4d0;
+      overflow-x: auto; white-space: pre;
+      max-height: 300px; overflow-y: auto;
+    }
+    .code-block .key { color: #5b9bd5; }
+    .code-block .str { color: #a8d4a8; }
+    .code-block .num { color: #ffc857; }
+    .code-block .bool-t { color: var(--teal); }
+    .code-block .bool-f { color: var(--red); }
+
+    /* ── Spinner ── */
+    .spinner {
+      width: 18px; height: 18px; border-radius: 50%;
+      border: 2px solid rgba(0,201,167,0.2);
+      border-top-color: var(--teal);
+      animation: spin 0.7s linear infinite;
+      display: inline-block;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Status bar ── */
+    .status-bar {
+      padding: 10px 16px; border-radius: 8px; font-size: 13px;
+      display: flex; align-items: center; gap: 10px;
+      margin-top: 16px;
+    }
+    .status-bar.idle     { background: rgba(90,127,160,0.15); color: var(--muted); }
+    .status-bar.working  { background: rgba(0,201,167,0.1);   color: var(--teal); }
+    .status-bar.success  { background: rgba(0,201,167,0.12);  color: var(--teal);
+                           border: 1px solid rgba(0,201,167,0.25); }
+    .status-bar.error    { background: rgba(255,90,90,0.1);   color: var(--red);
+                           border: 1px solid rgba(255,90,90,0.2); }
+
+    /* ── Result authorized / denied ── */
+    .result-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 8px 18px; border-radius: 8px; font-weight: 700;
+      font-size: 14px; margin-bottom: 16px;
+    }
+    .result-badge.authorized { background: rgba(0,201,167,0.15); color: var(--teal); }
+    .result-badge.denied     { background: rgba(255,90,90,0.12); color: var(--red); }
+
+    /* ── Action Log section ── */
+    .log-entries { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+    .log-entry {
+      background: var(--navy3); border: 1px solid var(--slate);
+      border-radius: 8px; padding: 14px 16px;
+      opacity: 0; transform: translateY(10px);
+      transition: opacity 0.35s, transform 0.35s;
+      position: relative; overflow: hidden;
+    }
+    .log-entry::before {
+      content: '';
+      position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+      background: var(--teal);
+    }
+    .log-entry.visible { opacity: 1; transform: translateY(0); }
+    .log-entry-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    .log-entry-op {
+      font-size: 13px; font-weight: 700; color: var(--white);
+      font-family: var(--mono);
+    }
+    .log-entry-id {
+      font-size: 11px; color: var(--muted); font-family: var(--mono);
+    }
+    .log-entry-meta {
+      display: flex; gap: 16px; font-size: 11px; color: var(--muted);
+      flex-wrap: wrap;
+    }
+    .log-entry-meta span { display: flex; align-items: center; gap: 4px; }
+    .hash-pill {
+      display: inline-block; font-size: 10px; font-family: var(--mono);
+      color: var(--teal); background: rgba(0,201,167,0.08);
+      border-radius: 4px; padding: 2px 6px;
+    }
+    .chain-link {
+      font-size: 11px; color: var(--muted); text-align: center;
+      padding: 4px 0; opacity: 0;
+      transition: opacity 0.3s 0.15s;
+    }
+    .chain-link.visible { opacity: 1; }
+
+    /* ── Diff result ── */
+    .diff-panel {
+      background: var(--navy3); border-radius: 10px; padding: 20px;
+      margin-top: 20px; opacity: 0;
+      transition: opacity 0.4s;
+    }
+    .diff-panel.visible { opacity: 1; }
+    .diff-title {
+      font-size: 14px; font-weight: 700; color: var(--white);
+      margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
+    }
+    .diff-row {
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 8px 12px; border-radius: 6px; margin-bottom: 6px;
+    }
+    .diff-row.compliant { background: rgba(0,201,167,0.08); }
+    .diff-row.violation { background: rgba(255,90,90,0.08); }
+    .diff-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+    .diff-op { font-size: 13px; font-weight: 600; font-family: var(--mono); }
+    .diff-op.compliant { color: var(--teal); }
+    .diff-op.violation { color: var(--red); }
+    .diff-reason { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .diff-summary {
+      margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--slate);
+      display: flex; gap: 24px; font-size: 13px;
+    }
+    .diff-summary .stat { display: flex; flex-direction: column; gap: 2px; }
+    .diff-summary .stat-val { font-size: 22px; font-weight: 800; }
+    .diff-summary .stat-val.green { color: var(--teal); }
+    .diff-summary .stat-val.red   { color: var(--red); }
+    .diff-summary .stat-label { color: var(--muted); font-size: 12px; }
+
+    /* ── Tabs ── */
+    .tabs { display: flex; gap: 0; border-bottom: 1px solid var(--slate); margin-bottom: 20px; }
+    .tab {
+      padding: 10px 20px; font-size: 13px; font-weight: 600;
+      color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent;
+      transition: all 0.15s;
+    }
+    .tab.active { color: var(--teal); border-bottom-color: var(--teal); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── Sig hash ── */
+    .sig-display {
+      font-family: var(--mono); font-size: 11px; color: var(--muted);
+      word-break: break-all; line-height: 1.7;
+    }
+    .sig-display .teal { color: var(--teal); }
+
+    /* ── Hero ── */
+    .hero { text-align: center; padding: 60px 0 40px; }
+    .hero h1 { margin-bottom: 16px; }
+    .hero p { font-size: 1rem; max-width: 560px; margin: 0 auto 28px; }
+
+    /* ── Two-col ── */
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media (max-width: 640px) { .two-col { grid-template-columns: 1fr; } }
+
+    /* ── Section divider ── */
+    .divider { height: 1px; background: var(--slate); margin: 40px 0; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">
+    <div class="logo-mark">AP</div>
+    AuthProof SDK
+  </div>
+  <div class="nav-links">
+    <a href="#receipt-demo">Receipt</a>
+    <a href="#verify-demo">Verify</a>
+    <a href="#log-demo">Action Log</a>
+    <a href="https://github.com/Commonguy25/authproof-sdk" target="_blank">GitHub ↗</a>
+  </div>
+</nav>
+
+<div class="container">
+
+  <!-- ── Hero ── -->
+  <div class="hero section">
+    <div class="badge">✦ Live cryptographic demo — runs entirely in your browser</div>
+    <h1>AuthProof SDK</h1>
+    <p>Cryptographically signed delegation receipts for AI agents.<br>
+    Sign a receipt. Record actions. Audit the diff.</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       PANEL 1 — SIGN A RECEIPT
+  ═══════════════════════════════════════════════ -->
+  <a name="receipt-demo"></a>
+  <div class="panel">
+    <div class="panel-title">Step 1 — Issue a Delegation Receipt</div>
+
+    <div class="two-col">
+      <div>
+        <div class="field">
+          <label>Scope — what the agent may do</label>
+          <textarea id="scope" rows="3">Search the web for competitor pricing. Read calendar events.</textarea>
+        </div>
+        <div class="field">
+          <label>Boundaries — hard limits, never overridable</label>
+          <textarea id="boundaries" rows="2">Do not send emails. Do not make purchases. Do not delete files.</textarea>
+        </div>
+        <div class="field">
+          <label>Operator instructions (hashed into receipt)</label>
+          <textarea id="instructions" rows="2">Cite all sources. Keep summaries under 300 words.</textarea>
+        </div>
+        <div class="field">
+          <label>TTL (hours)</label>
+          <input id="ttl" type="number" value="4" style="width:100px;" />
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+          <button class="btn btn-primary" id="btn-sign" onclick="signReceipt()">
+            ⚡ Sign Receipt
+          </button>
+          <button class="btn btn-ghost" id="btn-reset" onclick="resetDemo()" style="display:none;">
+            ↺ Reset
+          </button>
+        </div>
+      </div>
+
+      <div>
+        <div id="sign-status" class="status-bar idle" style="margin-top:0;">
+          Waiting — fill in the fields and click Sign Receipt
+        </div>
+        <div id="checks-area" style="margin-top:16px;"></div>
+      </div>
+    </div>
+
+    <div id="receipt-output" style="display:none;margin-top:24px;">
+      <div class="divider" style="margin:20px 0 16px;"></div>
+      <h3>Receipt output</h3>
+      <div class="tabs">
+        <div class="tab active" onclick="showTab(0)">Receipt JSON</div>
+        <div class="tab" onclick="showTab(1)">System Prompt</div>
+        <div class="tab" onclick="showTab(2)">Receipt ID</div>
+      </div>
+      <div class="tab-panel active" id="tab-0">
+        <div class="code-block" id="receipt-json"></div>
+      </div>
+      <div class="tab-panel" id="tab-1">
+        <div class="code-block" id="receipt-prompt" style="white-space:pre-wrap;font-size:12px;"></div>
+      </div>
+      <div class="tab-panel" id="tab-2">
+        <div style="padding:12px 0;">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">SHA-256 of the full receipt JSON</div>
+          <div class="sig-display" id="receipt-id-display"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       PANEL 2 — VERIFY AN ACTION
+  ═══════════════════════════════════════════════ -->
+  <a name="verify-demo"></a>
+  <div class="panel" id="verify-panel" style="display:none;">
+    <div class="panel-title">Step 2 — Verify an Action Against the Receipt</div>
+    <div class="two-col">
+      <div>
+        <div class="field">
+          <label>Proposed action to scope-check</label>
+          <input id="action-input" type="text"
+            value="Search Google for competitor pricing pages and summarize results" />
+        </div>
+        <button class="btn btn-primary" onclick="verifyAction()">▶ Check Action Scope</button>
+      </div>
+      <div id="verify-output"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       PANEL 3 — ACTION LOG
+  ═══════════════════════════════════════════════ -->
+  <a name="log-demo"></a>
+  <div class="panel" id="log-panel" style="display:none;">
+    <div class="panel-title">Step 3 — Action Log · Cryptographic audit trail</div>
+
+    <p style="font-size:13px;margin-bottom:20px;max-width:640px;opacity:0.8;">
+      Every action the agent takes is signed with ECDSA P-256, timestamped, and chain-linked
+      to the receipt. Each entry embeds the SHA-256 hash of the previous one — any retroactive
+      modification breaks the chain. The <strong style="color:var(--teal);">diff()</strong>
+      method lines up what was authorized against what was done.
+    </p>
+
+    <button class="btn btn-primary" id="btn-simulate" onclick="simulateActions()">
+      ▶ Simulate 3 Agent Actions + Run Diff
+    </button>
+
+    <div id="log-entries" class="log-entries" style="margin-top:24px;"></div>
+    <div id="diff-output"></div>
+  </div>
+
+</div>
+<div style="height:80px;"></div>
+
+<!-- ═══════════════════════════════════
+     SDK — embedded inline, zero network deps
+════════════════════════════════════ -->
+<script type="module">
+
+// ──────────────────────────────────────────────
+// CRYPTO PRIMITIVES
+// ──────────────────────────────────────────────
+const _enc     = s => new TextEncoder().encode(s);
+const _hex     = b => Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2,'0')).join('');
+const _fromHex = h => new Uint8Array(h.match(/.{2}/g).map(b => parseInt(b,16)));
+
+async function _sha256(str) {
+  return _hex(await crypto.subtle.digest('SHA-256', _enc(str)));
+}
+async function _sign(pk, str) {
+  return _hex(await crypto.subtle.sign({ name:'ECDSA', hash:'SHA-256' }, pk, _enc(str)));
+}
+async function _verifyECDSA(pubJwk, sig, str) {
+  try {
+    const pk = await crypto.subtle.importKey('jwk',
+      { ...pubJwk, key_ops:['verify'] },
+      { name:'ECDSA', namedCurve:'P-256' }, false, ['verify']);
+    return crypto.subtle.verify({ name:'ECDSA', hash:'SHA-256' }, pk, _fromHex(sig), _enc(str));
+  } catch { return false; }
+}
+
+// ──────────────────────────────────────────────
+// SCOPE MATCHING
+// ──────────────────────────────────────────────
+const SW = new Set(['the','a','an','and','or','but','in','on','at','to','for','of','with','by','from',
+  'is','are','was','were','be','been','have','has','had','do','does','did','will','would','could',
+  'should','may','might','can','not','no','this','that','these','those','i','you','he','she','it',
+  'we','they','what','which','who','all','any','each','some','only','just','as','if','then','up','out']);
+const _tok = t => new Set(t.toLowerCase().split(/[\s,;:.()\[\]{}'"""]+/).filter(w=>w.length>3&&!SW.has(w)));
+const _ov  = (a,b) => { const ta=_tok(a),tb=_tok(b); if(!ta.size)return 0; let h=0; for(const w of ta)if(tb.has(w))h++; return h/ta.size; };
+function checkScope(action, receipt) {
+  const s=_ov(action,receipt.scope), b=_ov(action,receipt.boundaries);
+  return { withinScope:s>=0.3&&b<0.5, scopeScore:Math.round(s*100), boundaryScore:Math.round(b*100) };
+}
+
+// ──────────────────────────────────────────────
+// RECEIPT
+// ──────────────────────────────────────────────
+async function generateKey() {
+  const kp = await crypto.subtle.generateKey({ name:'ECDSA', namedCurve:'P-256' }, true, ['sign','verify']);
+  const priv = await crypto.subtle.exportKey('jwk', kp.privateKey);
+  const pub  = await crypto.subtle.exportKey('jwk', kp.publicKey);
+  const { kty, crv, x, y } = pub;
+  return { privateKey:kp.privateKey, publicKey:kp.publicKey, privateJwk:priv, publicJwk:{kty,crv,x,y} };
+}
+
+async function createReceipt({ scope, boundaries, instructions, ttlHours=1, privateKey, publicJwk }) {
+  const now=new Date(), end=new Date(now.getTime()+ttlHours*3600000);
+  const id = `auth-${now.getTime()}-${Math.random().toString(36).slice(2,7)}`;
+  const instructionsHash = await _sha256(instructions);
+  const { kty, crv, x, y } = publicJwk;
+  const body = { delegationId:id, issuedAt:now.toISOString(), scope, boundaries,
+    timeWindow:{start:now.toISOString(),end:end.toISOString()},
+    operatorInstructions:instructions, instructionsHash, signerPublicKey:{kty,crv,x,y} };
+  const signature = await _sign(privateKey, JSON.stringify(body));
+  const receipt   = { ...body, signature };
+  const receiptId = await _sha256(JSON.stringify(receipt));
+  const expiry    = end.toLocaleString();
+  const systemPrompt = `You are authorized to act within the following scope:\n\n${scope}\n\nYou must not:\n${boundaries}\n\nOperator instructions:\n${instructions}\n\nValid until: ${expiry}\nAuthorization ID: ${receiptId}`;
+  return { receipt, receiptId, systemPrompt };
+}
+
+async function verifyReceipt(receipt, receiptId, options={}) {
+  const { revoked=false, action } = options;
+  const checks = [];
+  const notRevoked = !revoked;
+  checks.push({ name:'Not revoked', passed:notRevoked, detail:notRevoked?'Active':'Revoked' });
+  const now=new Date(), start=new Date(receipt.timeWindow.start), end=new Date(receipt.timeWindow.end);
+  const inWindow = now>=start && now<=end;
+  checks.push({ name:'Within time window', passed:inWindow,
+    detail:inWindow?`Expires ${end.toLocaleString()}`:now<start?'Not yet valid':`Expired ${end.toLocaleString()}` });
+  const { signature, ...bodyNoSig } = receipt;
+  const sigValid = await _verifyECDSA(receipt.signerPublicKey, signature, JSON.stringify(bodyNoSig));
+  checks.push({ name:'Signature valid', passed:sigValid,
+    detail:sigValid?'ECDSA P-256 verified':'Signature failed — receipt may be tampered' });
+  const cId = await _sha256(JSON.stringify(receipt));
+  checks.push({ name:'Receipt ID matches', passed:cId===receiptId,
+    detail:cId===receiptId?'SHA-256 content hash verified':'ID mismatch' });
+  const cIH = await _sha256(receipt.operatorInstructions);
+  checks.push({ name:'Instructions intact', passed:cIH===receipt.instructionsHash,
+    detail:cIH===receipt.instructionsHash?'Instructions hash verified':'Hash mismatch' });
+  if (action) {
+    const { withinScope, scopeScore, boundaryScore } = checkScope(action, receipt);
+    checks.push({ name:'Action within scope', passed:scopeScore>=30,
+      detail:`${scopeScore}% keyword match with authorized scope` });
+    checks.push({ name:'Action not blocked', passed:boundaryScore<50,
+      detail:`${boundaryScore}% overlap with boundaries` });
+  }
+  return { authorized:checks.every(c=>c.passed), checks };
+}
+
+// ──────────────────────────────────────────────
+// ACTION LOG
+// ──────────────────────────────────────────────
+const _GENESIS = '0'.repeat(64);
+
+class ActionLog {
+  constructor() {
+    this._entries   = new Map();
+    this._byReceipt = new Map();
+    this._receipts  = new Map();
+    this._privateKey = null;
+    this._publicJwk  = null;
+  }
+  async init({ privateKey, publicJwk }) {
+    this._privateKey = privateKey;
+    this._publicJwk  = publicJwk;
+  }
+  registerReceipt(h, r) { this._receipts.set(h, r); }
+  async record(receiptHash, action) {
+    const ids      = this._byReceipt.get(receiptHash) || [];
+    const prevHash = ids.length===0 ? _GENESIS : this._entries.get(ids[ids.length-1]).entryHash;
+    const entryId  = `log-${Date.now()}-${Math.random().toString(36).slice(2,9)}`;
+    const body = { entryId, receiptHash,
+      action:{ operation:action.operation, resource:action.resource, parameters:action.parameters??{} },
+      timestamp:Date.now(), agentPublicKey:this._publicJwk, prevHash };
+    const signature = await _sign(this._privateKey, JSON.stringify(body));
+    const entryHash = await _sha256(JSON.stringify({ ...body, signature }));
+    const entry = { ...body, signature, entryHash };
+    this._entries.set(entryId, entry);
+    this._byReceipt.set(receiptHash, [...ids, entryId]);
+    return entry;
+  }
+  async verify(entryId) {
+    const entry = this._entries.get(entryId);
+    if (!entry) return { valid:false, reason:'Entry not found' };
+    const { signature, entryHash, ...body } = entry;
+    if (!await _verifyECDSA(entry.agentPublicKey, signature, JSON.stringify(body)))
+      return { valid:false, reason:'Signature verification failed — entry may have been tampered' };
+    if (await _sha256(JSON.stringify({ ...body, signature })) !== entryHash)
+      return { valid:false, reason:'Entry hash mismatch — content altered after recording' };
+    const chain = this._byReceipt.get(entry.receiptHash) || [];
+    const idx   = chain.indexOf(entryId);
+    if (idx===0) {
+      if (entry.prevHash !== _GENESIS) return { valid:false, reason:'Genesis entry has wrong prevHash' };
+    } else {
+      const prev = this._entries.get(chain[idx-1]);
+      if (!prev || entry.prevHash !== prev.entryHash)
+        return { valid:false, reason:"Chain broken — prevHash doesn't match previous entry" };
+    }
+    return { valid:true, reason:'Signature and chain integrity verified' };
+  }
+  getEntries(h) { return (this._byReceipt.get(h)||[]).map(id=>this._entries.get(id)); }
+  diff(receiptHash) {
+    const receipt = this._receipts.get(receiptHash);
+    const entries = this.getEntries(receiptHash);
+    const compliant=[], violations=[];
+    for (const entry of entries) {
+      const op = entry.action.operation;
+      let inScope, reason;
+      if (receipt?.allowedActions?.length) {
+        inScope = receipt.allowedActions.includes(op);
+        reason  = inScope ? `"${op}" is in allowedActions`
+                          : `"${op}" not in allowedActions [${receipt.allowedActions.join(', ')}]`;
+      } else if (receipt) {
+        const { withinScope, scopeScore, boundaryScore } = checkScope(op, receipt);
+        inScope = withinScope;
+        reason  = inScope ? `"${op}" matches authorized scope (${scopeScore}% keyword overlap)`
+                          : `"${op}" outside authorized scope (${scopeScore}% scope match, ${boundaryScore}% boundary overlap)`;
+      } else { inScope=false; reason='No receipt registered'; }
+      (inScope ? compliant : violations).push({ entry, reason });
+    }
+    return { receiptHash, totalEntries:entries.length, compliant, violations, clean:violations.length===0 };
+  }
+}
+
+// ──────────────────────────────────────────────
+// Demo state
+// ──────────────────────────────────────────────
+let _keyPair   = null;
+let _receipt   = null;
+let _receiptId = null;
+let _log       = null;
+
+function delay(ms) { return new Promise(r=>setTimeout(r,ms)); }
+
+function shortHash(h) { return h.slice(0,8)+'…'+h.slice(-6); }
+
+function hlJson(obj) {
+  return JSON.stringify(obj,null,2)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"([^"]+)":/g,'<span class="key">"$1":</span>')
+    .replace(/: "([^"]*)"(,?)/g,': <span class="str">"$1"</span>$2')
+    .replace(/: (-?\d+\.?\d*)(,?)/g,': <span class="num">$1</span>$2')
+    .replace(/: (true)(,?)/g,': <span class="bool-t">$1</span>$2')
+    .replace(/: (false)(,?)/g,': <span class="bool-f">$1</span>$2');
+}
+
+window.showTab = function(idx) {
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',i===idx));
+  document.querySelectorAll('.tab-panel').forEach((p,i)=>p.classList.toggle('active',i===idx));
+};
+
+// ──────────────────────────────────────────────
+// signReceipt
+// ──────────────────────────────────────────────
+window.signReceipt = async function() {
+  const btn    = document.getElementById('btn-sign');
+  const status = document.getElementById('sign-status');
+  const area   = document.getElementById('checks-area');
+  btn.disabled = true;
+  status.className = 'status-bar working';
+  status.innerHTML = '<span class="spinner"></span> Generating ECDSA P-256 key pair…';
+  area.innerHTML   = '';
+
+  try {
+    _keyPair = await generateKey();
+    await delay(300);
+    status.innerHTML = '<span class="spinner"></span> Signing delegation receipt…';
+
+    const { receipt, receiptId, systemPrompt } = await createReceipt({
+      scope:        document.getElementById('scope').value.trim(),
+      boundaries:   document.getElementById('boundaries').value.trim(),
+      instructions: document.getElementById('instructions').value.trim(),
+      ttlHours:     parseFloat(document.getElementById('ttl').value)||1,
+      privateKey:   _keyPair.privateKey,
+      publicJwk:    _keyPair.publicJwk,
+    });
+    _receipt   = receipt;
+    _receiptId = receiptId;
+
+    status.className = 'status-bar success';
+    status.textContent = '✓ Receipt signed — 5/5 checks passed';
+
+    // Animate checks
+    const defs = [
+      { name:'Key pair generated',  detail:'ECDSA P-256 · native Web Crypto API' },
+      { name:'Receipt body built',  detail:'scope + boundaries + instructions + time window' },
+      { name:'Signature applied',   detail:'ECDSA P-256 · agent signing key' },
+      { name:'Instructions hashed', detail:'SHA-256 committed — operator changes detectable' },
+      { name:'Receipt ID computed', detail:'SHA-256: '+shortHash(receiptId) },
+    ];
+    area.innerHTML = '<div class="checks" id="chk-list"></div>';
+    const list = document.getElementById('chk-list');
+    for (const d of defs) {
+      await delay(160);
+      const el = document.createElement('div');
+      el.className = 'check-item pass';
+      el.innerHTML = `<div class="check-icon">✓</div><div><div class="check-name">${d.name}</div><div class="check-detail">${d.detail}</div></div>`;
+      list.appendChild(el);
+      requestAnimationFrame(()=>requestAnimationFrame(()=>el.classList.add('visible')));
+    }
+
+    // Show output tabs
+    document.getElementById('receipt-output').style.display='block';
+    const disp = { delegationId:receipt.delegationId, scope:receipt.scope, boundaries:receipt.boundaries,
+      timeWindow:receipt.timeWindow, instructionsHash:receipt.instructionsHash,
+      signature:receipt.signature.slice(0,32)+'…' };
+    document.getElementById('receipt-json').innerHTML = hlJson(disp);
+    document.getElementById('receipt-prompt').textContent = systemPrompt;
+    document.getElementById('receipt-id-display').innerHTML =
+      `<span class="teal">${receiptId.slice(0,32)}</span>${receiptId.slice(32)}`;
+
+    document.getElementById('btn-reset').style.display='';
+    document.getElementById('verify-panel').style.display='block';
+    document.getElementById('log-panel').style.display='block';
+
+  } catch(err) {
+    status.className='status-bar error';
+    status.textContent='✗ Error: '+err.message;
+    btn.disabled=false;
+  }
+};
+
+// ──────────────────────────────────────────────
+// verifyAction
+// ──────────────────────────────────────────────
+window.verifyAction = async function() {
+  const action = document.getElementById('action-input').value.trim();
+  const out    = document.getElementById('verify-output');
+  out.innerHTML='<div class="status-bar working"><span class="spinner"></span> Checking scope…</div>';
+  await delay(300);
+  const { authorized, checks } = await verifyReceipt(_receipt, _receiptId, { action });
+  let html=`<div class="result-badge ${authorized?'authorized':'denied'}">${authorized?'✓ Authorized':'✗ Denied'}</div><div class="checks">`;
+  for (const c of checks)
+    html+=`<div class="check-item ${c.passed?'pass':'fail'} visible"><div class="check-icon">${c.passed?'✓':'✗'}</div><div><div class="check-name">${c.name}</div><div class="check-detail">${c.detail}</div></div></div>`;
+  out.innerHTML=html+'</div>';
+};
+
+// ──────────────────────────────────────────────
+// simulateActions — Action Log demo
+// ──────────────────────────────────────────────
+window.simulateActions = async function() {
+  const btn = document.getElementById('btn-simulate');
+  btn.disabled = true;
+
+  _log = new ActionLog();
+  await _log.init({ privateKey:_keyPair.privateKey, publicJwk:_keyPair.publicJwk });
+  _log.registerReceipt(_receiptId, _receipt);
+
+  const container = document.getElementById('log-entries');
+  const diffOut   = document.getElementById('diff-output');
+  container.innerHTML='';
+  diffOut.innerHTML='';
+
+  // Three simulated agent actions — all within scope
+  const actions = [
+    { operation:'Search competitor pricing', resource:'web/search', parameters:{ query:'rival.com pricing 2024', engine:'DuckDuckGo' }, icon:'🔍' },
+    { operation:'Read calendar events',      resource:'calendar/events', parameters:{ range:'this_week', calendar:'primary' }, icon:'📅' },
+    { operation:'Search web market share',   resource:'web/search', parameters:{ query:'AI agent tools market share 2024' }, icon:'🔍' },
+  ];
+
+  let prevEntryHash = null;
+
+  for (let i=0; i<actions.length; i++) {
+    const a = actions[i];
+    await delay(750);
+
+    const entry = await _log.record(_receiptId, { operation:a.operation, resource:a.resource, parameters:a.parameters });
+    const vr    = await _log.verify(entry.entryId);
+
+    // Chain link indicator
+    if (i > 0) {
+      const link = document.createElement('div');
+      link.className='chain-link';
+      link.innerHTML=`↳ prevHash: <span class="hash-pill">${shortHash(entry.prevHash)}</span>`;
+      container.appendChild(link);
+      await delay(60);
+      requestAnimationFrame(()=>requestAnimationFrame(()=>link.classList.add('visible')));
+    }
+
+    // Entry card
+    const card = document.createElement('div');
+    card.className='log-entry';
+    card.innerHTML=`
+      <div class="log-entry-header">
+        <span class="log-entry-op">${a.icon} ${a.operation}</span>
+        <span class="log-entry-id">${shortHash(entry.entryId)}</span>
+      </div>
+      <div class="log-entry-meta">
+        <span>📦 ${a.resource}</span>
+        <span>🕐 ${new Date(entry.timestamp).toLocaleTimeString()}</span>
+        <span>🔑 sig: <span class="hash-pill">${entry.signature.slice(0,10)}…</span></span>
+        <span>🔗 hash: <span class="hash-pill">${shortHash(entry.entryHash)}</span></span>
+        <span style="color:${vr.valid?'var(--teal)':'var(--red)'};">${vr.valid?'✓ verified':'✗ '+vr.reason}</span>
+      </div>`;
+    container.appendChild(card);
+    await delay(60);
+    requestAnimationFrame(()=>requestAnimationFrame(()=>card.classList.add('visible')));
+    prevEntryHash = entry.entryHash;
+  }
+
+  // Run diff
+  await delay(600);
+  const diff = _log.diff(_receiptId);
+
+  const panel = document.createElement('div');
+  panel.className='diff-panel';
+
+  let dhtml=`<div class="diff-title">
+    📋 diff() — Authorized scope vs. executed actions
+    <span style="font-size:12px;font-weight:400;color:var(--muted);">receipt ${shortHash(_receiptId)}</span>
+  </div>`;
+
+  for (const { entry, reason } of diff.compliant)
+    dhtml+=`<div class="diff-row compliant"><span class="diff-icon">✓</span><div><div class="diff-op compliant">${entry.action.operation}</div><div class="diff-reason">${reason}</div></div></div>`;
+  for (const { entry, reason } of diff.violations)
+    dhtml+=`<div class="diff-row violation"><span class="diff-icon">✗</span><div><div class="diff-op violation">${entry.action.operation}</div><div class="diff-reason">${reason}</div></div></div>`;
+
+  dhtml+=`<div class="diff-summary">
+    <div class="stat"><span class="stat-val green">${diff.compliant.length}</span><span class="stat-label">Compliant</span></div>
+    <div class="stat"><span class="stat-val ${diff.violations.length>0?'red':'green'}">${diff.violations.length}</span><span class="stat-label">Violations</span></div>
+    <div class="stat"><span class="stat-val">${diff.totalEntries}</span><span class="stat-label">Total entries</span></div>
+    <div class="stat"><span class="stat-val ${diff.clean?'green':'red'}">${diff.clean?'CLEAN':'FLAGGED'}</span><span class="stat-label">Audit result</span></div>
+  </div>`;
+
+  panel.innerHTML = dhtml;
+  diffOut.appendChild(panel);
+  await delay(60);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>panel.classList.add('visible')));
+};
+
+// ──────────────────────────────────────────────
+// resetDemo
+// ──────────────────────────────────────────────
+window.resetDemo = function() {
+  _keyPair = _receipt = _receiptId = _log = null;
+  const s = document.getElementById('sign-status');
+  s.className='status-bar idle'; s.textContent='Waiting — fill in the fields and click Sign Receipt';
+  document.getElementById('checks-area').innerHTML='';
+  document.getElementById('receipt-output').style.display='none';
+  document.getElementById('verify-panel').style.display='none';
+  document.getElementById('verify-output').innerHTML='';
+  document.getElementById('log-panel').style.display='none';
+  document.getElementById('log-entries').innerHTML='';
+  document.getElementById('diff-output').innerHTML='';
+  document.getElementById('btn-sign').disabled=false;
+  document.getElementById('btn-reset').style.display='none';
+  const sb=document.getElementById('btn-simulate'); if(sb)sb.disabled=false;
+};
+
+</script>
+</body>
+</html>

@@ -1,0 +1,1237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>AI Authorization — Proof of Permission</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:       #f8f9fc;
+  --white:    #ffffff;
+  --border:   #e4e7ef;
+  --text:     #1a1d2e;
+  --muted:    #6b7280;
+  --accent:   #4f6ef7;
+  --accent-d: #3b57e0;
+  --green:    #10b981;
+  --red:      #ef4444;
+  --yellow:   #f59e0b;
+  --radius:   14px;
+  --shadow:   0 2px 12px rgba(0,0,0,.07);
+  --shadow-lg:0 8px 32px rgba(0,0,0,.10);
+}
+html { font-size: 15px; }
+body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif; line-height:1.6; min-height:100vh; }
+
+/* ── Header ── */
+.header { background:var(--white); border-bottom:1px solid var(--border); padding:0 2rem; height:56px; display:flex; align-items:center; gap:.85rem; position:sticky; top:0; z-index:100; }
+.logo { display:flex; align-items:center; gap:.5rem; font-weight:700; font-size:.95rem; color:var(--text); text-decoration:none; }
+.logo-icon { width:28px; height:28px; background:linear-gradient(135deg,var(--accent),#7c5cf6); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:.85rem; }
+.header-sep { flex:1; }
+.key-chip { font-size:.72rem; color:var(--muted); background:var(--bg); border:1px solid var(--border); border-radius:20px; padding:4px 12px; display:flex; align-items:center; gap:6px; }
+.key-dot { width:6px; height:6px; border-radius:50%; background:var(--yellow); flex-shrink:0; }
+
+/* View toggle */
+.view-toggle { display:flex; align-items:center; gap:.4rem; background:var(--bg); border:1.5px solid var(--border); border-radius:20px; padding:3px; }
+.view-toggle-btn { border:none; background:transparent; color:var(--muted); font-size:.72rem; font-weight:600; padding:3px 10px; border-radius:15px; cursor:pointer; transition:all .15s; white-space:nowrap; }
+.view-toggle-btn.active { background:var(--white); color:var(--text); box-shadow:0 1px 4px rgba(0,0,0,.08); }
+
+/* ── Nav ── */
+.nav { display:flex; background:var(--white); border-bottom:1px solid var(--border); padding:0 2rem; }
+.nav-btn { padding:.75rem 1.25rem; border:none; background:transparent; color:var(--muted); font-size:.875rem; font-weight:500; cursor:pointer; border-bottom:2px solid transparent; transition:all .15s; margin-bottom:-1px; }
+.nav-btn:hover { color:var(--text); }
+.nav-btn.active { color:var(--accent); border-bottom-color:var(--accent); }
+.nav-badge { background:var(--accent); color:#fff; border-radius:20px; font-size:.65rem; font-weight:700; padding:1px 6px; margin-left:4px; }
+
+/* ── Layout ── */
+.page { max-width:700px; margin:0 auto; padding:2.5rem 1.5rem 5rem; }
+.panel { display:none; }
+.panel.active { display:block; }
+
+/* ── Warning banner ── */
+.warn-banner { background:#fffbeb; border:1.5px solid #fde68a; border-radius:10px; padding:.85rem 1.1rem; font-size:.82rem; color:#92400e; margin-bottom:1.25rem; display:flex; align-items:flex-start; gap:.6rem; }
+.warn-banner .warn-icon { font-size:1rem; flex-shrink:0; margin-top:1px; }
+
+/* ── Hero ── */
+.hero { margin-bottom:2rem; }
+.hero h1 { font-size:1.6rem; font-weight:800; letter-spacing:-.02em; margin-bottom:.4rem; }
+.hero p { color:var(--muted); font-size:.95rem; }
+
+/* ── Step card ── */
+.step-card { background:var(--white); border:1px solid var(--border); border-radius:var(--radius); padding:1.75rem; box-shadow:var(--shadow); margin-bottom:1rem; }
+.step-label { font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--accent); margin-bottom:.75rem; display:flex; align-items:center; gap:.4rem; }
+.step-num { width:18px; height:18px; background:var(--accent); color:#fff; border-radius:50%; font-size:.65rem; font-weight:800; display:inline-flex; align-items:center; justify-content:center; }
+.step-card .desc { font-size:.85rem; color:var(--muted); margin-bottom:1.25rem; }
+.field { margin-bottom:1rem; }
+.field label { display:block; font-size:.82rem; font-weight:600; color:var(--text); margin-bottom:2px; }
+.field .field-hint { font-size:.76rem; color:var(--muted); margin-bottom:.4rem; }
+.field input, .field textarea {
+  width:100%; background:var(--bg); border:1.5px solid var(--border); border-radius:9px;
+  color:var(--text); padding:.65rem 1rem; font-size:.9rem; font-family:inherit; outline:none;
+  transition:border-color .15s,box-shadow .15s;
+}
+.field input:focus, .field textarea:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(79,110,247,.1); background:#fff; }
+.field textarea { resize:vertical; min-height:80px; }
+.two-col { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+@media(max-width:520px) { .two-col { grid-template-columns:1fr; } }
+
+/* ── Example buttons ── */
+.example-row { display:flex; gap:.5rem; flex-wrap:wrap; margin-top:.5rem; }
+.example-btn { font-size:.75rem; color:var(--accent); cursor:pointer; text-decoration:underline; text-underline-offset:2px; background:none; border:none; padding:0; }
+
+/* ── Expiry pills ── */
+.expiry-pills { display:flex; gap:.5rem; flex-wrap:wrap; margin-bottom:.75rem; }
+.expiry-pill { padding:.35rem .9rem; border-radius:20px; border:1.5px solid var(--border); background:var(--bg); color:var(--muted); font-size:.8rem; font-weight:500; cursor:pointer; transition:all .15s; }
+.expiry-pill:hover, .expiry-pill.selected { border-color:var(--accent); background:rgba(79,110,247,.08); color:var(--accent); }
+
+/* ── Buttons ── */
+.cta-row { margin-top:1.5rem; display:flex; gap:.75rem; align-items:center; flex-wrap:wrap; }
+.btn-primary { background:var(--accent); color:#fff; border:none; border-radius:10px; padding:.75rem 1.75rem; font-size:.95rem; font-weight:700; cursor:pointer; transition:background .15s,transform .1s; display:inline-flex; align-items:center; gap:.5rem; }
+.btn-primary:hover:not(:disabled) { background:var(--accent-d); }
+.btn-primary:active:not(:disabled) { transform:scale(.98); }
+.btn-primary:disabled { opacity:.5; cursor:not-allowed; }
+.btn-ghost { background:var(--white); color:var(--muted); border:1.5px solid var(--border); border-radius:10px; padding:.65rem 1.25rem; font-size:.875rem; font-weight:600; cursor:pointer; transition:all .15s; display:inline-flex; align-items:center; gap:.4rem; }
+.btn-ghost:hover:not(:disabled) { border-color:var(--accent); color:var(--accent); }
+.btn-ghost:disabled { opacity:.5; cursor:not-allowed; }
+.btn-sm { padding:.35rem .85rem !important; font-size:.78rem !important; border-radius:7px !important; }
+.btn-danger { background:rgba(239,68,68,.08); color:var(--red); border:1.5px solid rgba(239,68,68,.25); border-radius:7px; padding:.35rem .85rem; font-size:.78rem; font-weight:600; cursor:pointer; transition:all .15s; }
+.btn-danger:hover:not(:disabled) { background:rgba(239,68,68,.15); }
+.btn-danger:disabled { opacity:.5; cursor:not-allowed; }
+.btn-ai { background:linear-gradient(135deg,#4f6ef7,#7c5cf6); color:#fff; border:none; border-radius:7px; padding:.4rem 1rem; font-size:.8rem; font-weight:700; cursor:pointer; transition:opacity .15s; display:inline-flex; align-items:center; gap:.4rem; }
+.btn-ai:hover { opacity:.88; }
+
+/* ── Auth output card ── */
+.auth-card { background:var(--white); border:1.5px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow-lg); overflow:hidden; margin-top:1.5rem; }
+.auth-card-header { background:linear-gradient(135deg,var(--accent),#7c5cf6); padding:1.25rem 1.5rem; color:#fff; display:flex; align-items:center; justify-content:space-between; }
+.auth-card-header .title { font-weight:700; font-size:1rem; }
+.status-badge { background:rgba(255,255,255,.2); border-radius:20px; padding:.25rem .75rem; font-size:.75rem; font-weight:600; }
+.auth-card-body { padding:1.25rem 1.5rem; }
+.auth-field { margin-bottom:1rem; }
+.auth-field .af-label { font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin-bottom:3px; }
+.auth-field .af-value { font-size:.9rem; color:var(--text); }
+.proof-section { background:var(--bg); border-radius:9px; padding:1rem 1.1rem; margin-top:.75rem; }
+.proof-section .proof-label { font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); margin-bottom:.4rem; display:flex; align-items:center; gap:.35rem; }
+.proof-id { font-family:'SF Mono','Fira Code',monospace; font-size:.75rem; color:var(--muted); word-break:break-all; }
+.tech-toggle { font-size:.75rem; color:var(--muted); cursor:pointer; background:none; border:none; padding:0; display:flex; align-items:center; gap:.3rem; margin-top:.75rem; }
+.tech-toggle:hover { color:var(--text); }
+.tech-details { background:#f1f3f9; border-radius:8px; padding:1rem; font-family:'SF Mono','Fira Code',monospace; font-size:.7rem; color:var(--muted); margin-top:.75rem; word-break:break-all; white-space:pre-wrap; display:none; }
+.tech-details.open { display:block; }
+.auth-actions { padding:1rem 1.5rem; border-top:1px solid var(--border); display:flex; gap:.6rem; flex-wrap:wrap; align-items:center; background:var(--bg); }
+
+/* ── Integration output (Use this receipt) ── */
+.integration-section { border-top:1px solid var(--border); padding:1.25rem 1.5rem; }
+.integration-section h4 { font-size:.8rem; font-weight:700; color:var(--text); margin-bottom:.3rem; }
+.integration-section .sub { font-size:.78rem; color:var(--muted); margin-bottom:.85rem; }
+.system-prompt-box { background:#f8f7ff; border:1.5px solid rgba(124,92,246,.2); border-radius:9px; padding:.9rem 1rem; font-size:.8rem; color:var(--text); line-height:1.7; white-space:pre-wrap; word-break:break-word; position:relative; }
+
+/* ── Activity / audit ── */
+.activity-section { border-top:1px solid var(--border); padding:1rem 1.5rem; }
+.activity-section h4 { font-size:.75rem; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); margin-bottom:.75rem; }
+.activity-list { list-style:none; display:flex; flex-direction:column; gap:.35rem; }
+.activity-item { display:flex; align-items:center; gap:.65rem; font-size:.8rem; }
+.activity-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.activity-dot.created { background:var(--accent); }
+.activity-dot.verified { background:var(--green); }
+.activity-dot.revoked { background:var(--red); }
+.activity-time { color:var(--muted); font-size:.72rem; font-family:monospace; min-width:60px; }
+.activity-label { color:var(--text); }
+
+/* ── Verify ── */
+.verify-hero { margin-bottom:1.5rem; }
+.verify-hero h1 { font-size:1.4rem; font-weight:800; letter-spacing:-.02em; margin-bottom:.3rem; }
+.verify-hero p { color:var(--muted); font-size:.9rem; }
+.verify-box { background:var(--white); border:1.5px solid var(--border); border-radius:var(--radius); padding:1.5rem; box-shadow:var(--shadow); margin-bottom:1rem; }
+.verify-input-row { display:flex; gap:.6rem; margin-bottom:1rem; }
+.verify-input-row input { flex:1; border-radius:9px; border:1.5px solid var(--border); background:var(--bg); padding:.65rem 1rem; font-size:.9rem; color:var(--text); outline:none; font-family:inherit; }
+.verify-input-row input:focus { border-color:var(--accent); background:#fff; }
+
+/* ── Result card ── */
+.result-card { background:var(--white); border-radius:var(--radius); border:1.5px solid var(--border); box-shadow:var(--shadow); overflow:hidden; margin-top:1rem; }
+.result-header { padding:1.25rem 1.5rem; display:flex; align-items:center; gap:1rem; }
+.result-header.pass { background:#f0fdf8; border-bottom:1px solid #d1fae5; }
+.result-header.fail { background:#fff5f5; border-bottom:1px solid #fecaca; }
+.result-icon { font-size:2rem; }
+.result-title { font-size:1.1rem; font-weight:700; }
+.result-subtitle { font-size:.85rem; color:var(--muted); }
+.result-checks { padding:1.25rem 1.5rem; }
+.check-row { display:flex; align-items:flex-start; gap:.75rem; padding:.55rem 0; border-bottom:1px solid var(--border); font-size:.875rem; }
+.check-row:last-child { border-bottom:none; }
+.check-ico { font-size:1rem; flex-shrink:0; margin-top:1px; }
+.check-name { font-weight:600; }
+.check-detail { font-size:.78rem; color:var(--muted); margin-top:1px; }
+.result-context { padding:1.25rem 1.5rem; background:var(--bg); border-top:1px solid var(--border); }
+.result-context h4 { font-size:.75rem; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); margin-bottom:.85rem; }
+.result-revoke-row { padding:.85rem 1.5rem; border-top:1px solid var(--border); background:var(--white); }
+
+/* ── History tab ── */
+.history-hero { margin-bottom:1.5rem; }
+.history-hero h1 { font-size:1.4rem; font-weight:800; letter-spacing:-.02em; margin-bottom:.3rem; }
+.history-hero p { color:var(--muted); font-size:.9rem; }
+.history-list { display:flex; flex-direction:column; gap:.75rem; }
+.history-item { background:var(--white); border:1.5px solid var(--border); border-radius:var(--radius); padding:1.1rem 1.25rem; box-shadow:var(--shadow); display:flex; align-items:center; gap:1rem; }
+.history-item-left { flex:1; min-width:0; }
+.history-scope { font-size:.875rem; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:3px; }
+.history-meta { font-size:.75rem; color:var(--muted); display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; }
+.history-status { font-weight:600; }
+.history-status.active { color:var(--green); }
+.history-status.expired { color:var(--muted); }
+.history-status.revoked { color:var(--red); }
+.history-actions { display:flex; gap:.5rem; flex-shrink:0; }
+.empty-state { text-align:center; padding:3.5rem 1rem; color:var(--muted); }
+.empty-state .empty-icon { font-size:2.5rem; margin-bottom:.75rem; }
+.empty-state p { font-size:.9rem; }
+
+/* ── Simple mode ── */
+.tech-only { transition:opacity .2s; }
+body.simple-mode .tech-only { display:none !important; }
+
+/* ── Spinner ── */
+@keyframes spin { to { transform:rotate(360deg); } }
+.spin { display:inline-block; width:14px; height:14px; border:2px solid rgba(255,255,255,.3); border-top-color:#fff; border-radius:50%; animation:spin .55s linear infinite; }
+
+/* ── Toast ── */
+#toast { position:fixed; bottom:1.5rem; left:50%; transform:translateX(-50%) translateY(60px); background:var(--text); color:#fff; border-radius:10px; padding:.6rem 1.25rem; font-size:.85rem; z-index:999; transition:transform .2s; white-space:nowrap; box-shadow:var(--shadow-lg); }
+#toast.show { transform:translateX(-50%) translateY(0); }
+
+/* ── Action Log Demo ── */
+#actionLogSection { margin-top:1.5rem; }
+.al-panel { background:#0d1117; border:1px solid #14293a; border-radius:var(--radius); overflow:hidden; }
+.al-header { background:linear-gradient(135deg,#0c1e2e,#0a2d2d); padding:1rem 1.5rem; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid rgba(20,184,166,.15); }
+.al-title { font-size:.88rem; font-weight:700; color:#5eead4; }
+.al-subtitle { font-size:.72rem; color:#2d7a7a; margin-top:2px; }
+.al-badge { font-size:.68rem; color:#5eead4; background:rgba(20,184,166,.12); border:1px solid rgba(20,184,166,.2); border-radius:20px; padding:2px 9px; font-weight:600; letter-spacing:.04em; }
+.al-body { padding:1.1rem 1.4rem; }
+.al-section-label { font-size:.68rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:#2d7a7a; margin-bottom:.65rem; }
+.al-entries { display:flex; flex-direction:column; gap:.5rem; min-height:40px; }
+.al-entry { background:#0a1a24; border:1px solid #14293a; border-radius:8px; padding:.75rem 1rem; opacity:0; transform:translateY(6px); transition:opacity .3s ease,transform .3s ease; }
+.al-entry.al-visible { opacity:1; transform:translateY(0); }
+.al-entry-row1 { display:flex; align-items:center; gap:.5rem; margin-bottom:.3rem; flex-wrap:wrap; }
+.al-entry-op { font-size:.8rem; font-weight:700; color:#5eead4; font-family:'SF Mono','Fira Code',monospace; }
+.al-entry-sep { color:#14293a; }
+.al-entry-res { font-size:.73rem; color:#0e9b8c; font-family:monospace; }
+.al-entry-meta { font-size:.63rem; color:#14293a; font-family:monospace; margin-left:auto; }
+.al-entry-chain { font-size:.62rem; color:#0d3a3a; font-family:monospace; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:.25rem; }
+.al-divider { border:none; border-top:1px solid #14293a; margin:.85rem 0; }
+.al-diff { background:#0a1f18; border:1px solid rgba(20,184,166,.15); border-radius:8px; padding:.85rem 1rem; }
+.al-diff-title { font-size:.68rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:#0e9b8c; margin-bottom:.6rem; }
+.al-diff-row { display:flex; align-items:flex-start; gap:.5rem; padding:.25rem 0; }
+.al-diff-icon { font-size:.8rem; flex-shrink:0; line-height:1.5; }
+.al-diff-op { font-size:.78rem; font-family:monospace; }
+.al-diff-op.compliant { color:#5eead4; }
+.al-diff-op.violation { color:#f87171; }
+.al-diff-reason { font-size:.68rem; color:#0e9b8c; margin-left:.3rem; }
+.al-diff-footer { margin-top:.6rem; padding-top:.5rem; border-top:1px solid rgba(20,184,166,.1); font-size:.72rem; color:#0e9b8c; display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; }
+.al-clean-badge { color:#5eead4; background:rgba(94,234,212,.1); border:1px solid rgba(94,234,212,.2); border-radius:20px; padding:1px 8px; font-size:.66rem; font-weight:700; }
+</style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<header class="header">
+  <a class="logo" href="#">
+    <div class="logo-icon">🔐</div>
+    AuthProof
+  </a>
+  <div class="header-sep"></div>
+  <div class="view-toggle">
+    <button class="view-toggle-btn active" id="simpleModeBtn" onclick="setViewMode('simple')">Simple</button>
+    <button class="view-toggle-btn" id="techModeBtn" onclick="setViewMode('technical')">Technical</button>
+  </div>
+  <div class="key-chip">
+    <span class="key-dot" id="keyDot"></span>
+    <span id="keyId">loading…</span>
+  </div>
+</header>
+
+<!-- ── Nav ── -->
+<nav class="nav">
+  <button class="nav-btn active" onclick="switchTab('create')">Authorize</button>
+  <button class="nav-btn" onclick="switchTab('verify')">Verify</button>
+  <button class="nav-btn" id="historyNavBtn" onclick="switchTab('history')">History <span class="nav-badge" id="historyCount" style="display:none">0</span></button>
+</nav>
+
+<div class="page">
+
+  <!-- ══ CREATE ══ -->
+  <div class="panel active" id="panel-create">
+
+    <!-- Persistent identity warning (shown only when IDB fails) -->
+    <div class="warn-banner" id="sessionWarn" style="display:none">
+      <span class="warn-icon">⚠️</span>
+      <span><strong>Heads up:</strong> Your device key couldn't be saved. Authorizations created this session won't be recoverable if you close or refresh this tab.</span>
+    </div>
+
+    <div class="hero">
+      <h1>Give your AI a permission slip</h1>
+      <p>Define exactly what an AI agent can and can't do. You'll get a shareable proof anyone can verify — no technical knowledge needed.</p>
+    </div>
+
+    <!-- Step 1 -->
+    <div class="step-card">
+      <div class="step-label"><span class="step-num">1</span> What can it do?</div>
+      <div class="field">
+        <label>Authorized actions</label>
+        <div class="field-hint">Be specific about the task — what actions, data, or systems is the AI allowed to use?</div>
+        <textarea id="scope" rows="3" placeholder="e.g. Search the web for publicly available competitor pricing and product features, then write a comparison summary"></textarea>
+      </div>
+      <div class="example-row">
+        Try an example:
+        <button class="example-btn" onclick="loadExample('research')">Competitor research</button>
+        <button class="example-btn" onclick="loadExample('calendar')">Calendar scheduling</button>
+      </div>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="step-card">
+      <div class="step-label"><span class="step-num">2</span> What's off limits?</div>
+      <div class="field">
+        <label>Hard limits</label>
+        <div class="field-hint">List anything the AI should never do, even if it seems related to the task.</div>
+        <textarea id="boundaries" rows="3" placeholder="e.g. Do not access internal company files or databases. Do not send emails. Do not make purchases or fill out forms on my behalf"></textarea>
+      </div>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="step-card">
+      <div class="step-label"><span class="step-num">3</span> Any specific instructions?</div>
+      <div class="field">
+        <label>Your instructions to the AI</label>
+        <div class="field-hint">How should it approach the task? These get locked into the proof — they can't be changed later.</div>
+        <textarea id="opInstr" rows="3" placeholder="e.g. Only use publicly listed sources. Cite everything. Flag anything uncertain. Keep the output under 500 words and use plain language"></textarea>
+      </div>
+    </div>
+
+    <!-- Step 4 -->
+    <div class="step-card">
+      <div class="step-label"><span class="step-num">4</span> How long is this valid?</div>
+      <div class="field">
+        <label>Expiry window</label>
+        <div class="field-hint">The authorization automatically stops working after this time.</div>
+      </div>
+      <div class="expiry-pills">
+        <button class="expiry-pill selected" data-hours="1">1 hour</button>
+        <button class="expiry-pill" data-hours="8">8 hours</button>
+        <button class="expiry-pill" data-hours="24">24 hours</button>
+        <button class="expiry-pill" data-hours="72">3 days</button>
+        <button class="expiry-pill" data-hours="168">1 week</button>
+      </div>
+    </div>
+
+    <div class="cta-row">
+      <button class="btn-primary" id="issueBtn" onclick="issueReceipt()">
+        <span id="issueBtnInner">Create Authorization</span>
+      </button>
+    </div>
+
+    <!-- ── Output card ── -->
+    <div id="authOutput" style="display:none">
+      <div class="auth-card">
+
+        <!-- Header -->
+        <div class="auth-card-header">
+          <div>
+            <div class="title">✓ Authorization Created</div>
+            <div style="font-size:.78rem;opacity:.8;margin-top:2px" id="outMeta"></div>
+          </div>
+          <div class="status-badge" id="outStatusBadge">Active</div>
+        </div>
+
+        <!-- Details -->
+        <div class="auth-card-body">
+          <div class="two-col">
+            <div class="auth-field">
+              <div class="af-label">Valid from</div>
+              <div class="af-value" id="outStart"></div>
+            </div>
+            <div class="auth-field">
+              <div class="af-label">Expires</div>
+              <div class="af-value" id="outEnd"></div>
+            </div>
+          </div>
+          <div class="auth-field">
+            <div class="af-label">Authorized to</div>
+            <div class="af-value" id="outScope"></div>
+          </div>
+          <div class="auth-field">
+            <div class="af-label">Off limits</div>
+            <div class="af-value" id="outBoundaries"></div>
+          </div>
+          <div class="auth-field">
+            <div class="af-label">Instructions</div>
+            <div class="af-value" id="outInstr"></div>
+          </div>
+
+          <!-- Proof ID -->
+          <div class="proof-section">
+            <div class="proof-label">🔒 <span id="proofLabel">Authorization ID</span></div>
+            <div class="proof-id" id="outHash"></div>
+          </div>
+
+          <!-- Tech details (hidden in simple mode) -->
+          <button class="tech-toggle tech-only" onclick="toggleTech()">
+            <span id="techToggleLabel">Show technical details</span> ›
+          </button>
+          <div class="tech-details tech-only" id="techDetails"></div>
+        </div>
+
+        <!-- ── Use this receipt (Integration output) ── -->
+        <div class="integration-section">
+          <h4>✦ Use this authorization with an AI</h4>
+          <div class="sub">Copy the block below and paste it into any AI chat as a system prompt or first message.</div>
+          <div class="system-prompt-box" id="systemPromptBox"></div>
+          <div style="margin-top:.75rem;display:flex;gap:.6rem;flex-wrap:wrap;">
+            <button class="btn-ai" onclick="copyForAI()">✦ Copy for AI</button>
+            <button class="btn-ghost btn-sm" onclick="copyLink()">🔗 Copy shareable link</button>
+          </div>
+        </div>
+
+        <!-- ── Activity / audit trail ── -->
+        <div class="activity-section">
+          <h4>Activity</h4>
+          <ul class="activity-list" id="activityList"></ul>
+        </div>
+
+        <!-- Actions bar -->
+        <div class="auth-actions">
+          <button class="btn-ghost btn-sm" onclick="copyHash()">📋 Copy ID</button>
+          <button class="btn-ghost btn-sm" onclick="goVerify()">Verify →</button>
+          <button class="btn-ghost btn-sm" onclick="downloadJSON()">↓ Download</button>
+          <button class="btn-danger" id="revokeBtn" onclick="revokeReceipt()">Revoke</button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── Action Log Demo ── -->
+    <div id="actionLogSection" style="display:none">
+      <div class="al-panel">
+        <div class="al-header">
+          <div>
+            <div class="al-title">🔗 Action Log</div>
+            <div class="al-subtitle">Signed, tamper-evident audit trail — chained by SHA-256</div>
+          </div>
+          <div class="al-badge">ECDSA P-256</div>
+        </div>
+        <div class="al-body">
+          <div class="al-section-label">Agent actions (simulated)</div>
+          <div class="al-entries" id="alEntries"></div>
+          <hr class="al-divider" id="alDivider" style="display:none">
+          <div class="al-diff" id="alDiff" style="display:none"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ VERIFY ══ -->
+  <div class="panel" id="panel-verify">
+    <div class="verify-hero">
+      <h1>Check an authorization</h1>
+      <p>Paste an authorization ID to see if it's valid — and check whether a specific action is within bounds.</p>
+    </div>
+
+    <div class="verify-box">
+      <div class="field" style="margin-bottom:.75rem">
+        <label>Authorization ID</label>
+        <div class="verify-input-row">
+          <input type="text" id="verifyHash" placeholder="Paste the authorization ID here…"/>
+          <button class="btn-primary btn-sm" id="verifyBtn" onclick="verifyReceipt()" style="white-space:nowrap">
+            <span id="verifyBtnInner">Check</span>
+          </button>
+        </div>
+      </div>
+      <div class="field" style="margin-bottom:0">
+        <label>Action to check <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+        <div class="field-hint">Describe what the AI wants to do — we'll check if it falls within the authorized scope.</div>
+        <textarea id="verifyAction" rows="2" placeholder="e.g. Search Google for iPhone 15 pricing on Best Buy and summarize…"></textarea>
+      </div>
+    </div>
+
+    <div id="verifyResult" style="display:none"></div>
+  </div>
+
+  <!-- ══ HISTORY ══ -->
+  <div class="panel" id="panel-history">
+    <div class="history-hero">
+      <h1>Authorization history</h1>
+      <p>All authorizations created in this session. Your device key lets you revoke any of them.</p>
+    </div>
+    <div id="historyList"></div>
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ════════════════════════════════════════════════════════
+// CONFIG
+// ════════════════════════════════════════════════════════
+const SUPABASE_URL      = '';
+const SUPABASE_ANON_KEY = '';
+const LIVE = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
+
+// ════════════════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════════════════
+let sigKey = null, verKey = null, pubJwk = null, keyId = null;
+let currentReceipt = null, currentHash = null;
+let viewMode = 'simple';  // 'simple' | 'technical'
+let selectedHours = 1;
+
+// local storage
+const localStore  = new Map();   // hash → receipt
+const historyLog  = [];          // [{hash, receipt, status}]
+const auditEvents = new Map();   // hash → [{type, time, label}]
+const EXAMPLES = {
+  research: {
+    scope:      'Search the web for publicly available information about competitor pricing and product features. Summarize findings into a structured comparison report.',
+    boundaries: 'Do not access internal company documents or databases. Do not send emails or messages. Do not make purchases or submit any forms on behalf of the user.',
+    opInstr:    'Only use publicly listed sources such as official product pages and press releases. Cite every claim with a URL. Flag anything you are uncertain about. Keep the report to 500 words or fewer.'
+  },
+  calendar: {
+    scope:      'Read my calendar for the next 14 days, identify scheduling conflicts, and suggest available time slots for a 1-hour meeting with the product team.',
+    boundaries: 'Do not create, edit, or delete any calendar events. Do not access emails or contacts. Do not share calendar details with any external service or person.',
+    opInstr:    'Prioritize mornings between 9am and noon. Flag any existing meetings that have no agenda set. Present the 3 best time slots with a brief reason for each.'
+  }
+};
+
+// ════════════════════════════════════════════════════════
+// BOOT
+// ════════════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', async () => {
+  setViewMode('simple');
+  await initKey();
+  setupExpiryPills();
+  const params = new URLSearchParams(location.search);
+  if (params.get('receipt')) {
+    switchTab('verify');
+    document.getElementById('verifyHash').value = params.get('receipt');
+    verifyReceipt();
+  }
+});
+
+// ════════════════════════════════════════════════════════
+// VIEW MODE (Simple / Technical)
+// ════════════════════════════════════════════════════════
+function setViewMode(mode) {
+  viewMode = mode;
+  document.getElementById('simpleModeBtn').classList.toggle('active', mode === 'simple');
+  document.getElementById('techModeBtn').classList.toggle('active', mode === 'technical');
+  document.body.classList.toggle('simple-mode', mode === 'simple');
+  // Update proof label
+  const lbl = document.getElementById('proofLabel');
+  if (lbl) lbl.textContent = mode === 'simple' ? 'Authorization ID' : 'Cryptographic proof ID';
+}
+
+// ════════════════════════════════════════════════════════
+// KEY (IndexedDB persistence)
+// ════════════════════════════════════════════════════════
+function idbOpen() {
+  return new Promise((res,rej) => {
+    const r = indexedDB.open('drp-v1',1);
+    r.onupgradeneeded = e => e.target.result.createObjectStore('keys');
+    r.onsuccess = e => res(e.target.result);
+    r.onerror   = e => rej(e.target.error);
+  });
+}
+function idbGet(db,k) { return new Promise((res,rej)=>{ const r=db.transaction('keys','readonly').objectStore('keys').get(k); r.onsuccess=e=>res(e.target.result); r.onerror=e=>rej(e); }); }
+function idbPut(db,k,v) { return new Promise((res,rej)=>{ const r=db.transaction('keys','readwrite').objectStore('keys').put(v,k); r.onsuccess=()=>res(); r.onerror=e=>rej(e); }); }
+
+async function initKey() {
+  let persisted = false;
+  try {
+    const db = await idbOpen();
+    const stored = await idbGet(db,'device');
+    if (stored) {
+      sigKey = await crypto.subtle.importKey('jwk',stored.priv,{name:'ECDSA',namedCurve:'P-256'},false,['sign']);
+      verKey = await crypto.subtle.importKey('jwk',stored.pub, {name:'ECDSA',namedCurve:'P-256'},false,['verify']);
+      pubJwk = stored.pub;
+    } else {
+      const kp = await crypto.subtle.generateKey({name:'ECDSA',namedCurve:'P-256'},true,['sign','verify']);
+      sigKey = kp.privateKey; verKey = kp.publicKey;
+      pubJwk = await crypto.subtle.exportKey('jwk',verKey);
+      const priv = await crypto.subtle.exportKey('jwk',sigKey);
+      await idbPut(db,'device',{pub:pubJwk,priv});
+    }
+    const h = await sha256(pubJwk.x);
+    keyId = h.slice(0,10);
+    document.getElementById('keyId').textContent = 'Device: ' + keyId;
+    document.getElementById('keyDot').style.background = 'var(--green)';
+    persisted = true;
+  } catch {
+    const kp = await crypto.subtle.generateKey({name:'ECDSA',namedCurve:'P-256'},true,['sign','verify']);
+    sigKey = kp.privateKey; verKey = kp.publicKey;
+    pubJwk = await crypto.subtle.exportKey('jwk',verKey);
+    keyId  = 'session';
+    document.getElementById('keyId').textContent = 'Session key';
+    document.getElementById('keyDot').style.background = 'var(--yellow)';
+  }
+  // Show warning banner if key wasn't persisted
+  document.getElementById('sessionWarn').style.display = persisted ? 'none' : 'flex';
+}
+
+// ════════════════════════════════════════════════════════
+// CRYPTO
+// ════════════════════════════════════════════════════════
+const enc = s => new TextEncoder().encode(s);
+const hex = b => Array.from(b).map(x=>x.toString(16).padStart(2,'0')).join('');
+async function sha256(s) { return hex(new Uint8Array(await crypto.subtle.digest('SHA-256',enc(s)))); }
+async function ecSign(s) { return hex(new Uint8Array(await crypto.subtle.sign({name:'ECDSA',hash:'SHA-256'},sigKey,enc(s)))); }
+
+// ════════════════════════════════════════════════════════
+// EXPIRY PILLS
+// ════════════════════════════════════════════════════════
+function setupExpiryPills() {
+  document.querySelectorAll('.expiry-pill').forEach(p => {
+    p.addEventListener('click', () => {
+      document.querySelectorAll('.expiry-pill').forEach(x=>x.classList.remove('selected'));
+      p.classList.add('selected');
+      selectedHours = parseInt(p.dataset.hours);
+    });
+  });
+}
+
+// ════════════════════════════════════════════════════════
+// ISSUE
+// ════════════════════════════════════════════════════════
+async function issueReceipt() {
+  const scope   = document.getElementById('scope').value.trim();
+  const bounds  = document.getElementById('boundaries').value.trim();
+  const opInstr = document.getElementById('opInstr').value.trim();
+  if (!scope || !bounds || !opInstr) { showToast('Please fill in all three steps first.'); return; }
+
+  setLoading('issueBtn','issueBtnInner','Creating…',true);
+  try {
+    const now = new Date();
+    const end = new Date(now.getTime() + selectedHours * 3600000);
+    const did = `auth-${now.getTime()}-${Math.random().toString(36).slice(2,7)}`;
+    const ih  = await sha256(opInstr);
+    const {kty,crv,x,y} = pubJwk;
+    const obj = { delegationId:did, issuedAt:now.toISOString(), scope, boundaries:bounds,
+                  timeWindow:{start:now.toISOString(),end:end.toISOString()},
+                  operatorInstructions:opInstr, instructionsHash:ih, signerPublicKey:{kty,crv,x,y} };
+    const sig  = await ecSign(JSON.stringify(obj));
+    const recv = {...obj, signature:sig};
+    const hash = await sha256(JSON.stringify(recv));
+
+    if (LIVE) await pushToSupabase(recv,hash); else localStore.set(hash,recv);
+    currentReceipt = recv; currentHash = hash;
+
+    // Audit
+    addAuditEvent(hash, 'created', 'Created');
+    // History
+    addToHistory(hash, recv);
+
+    renderOutput(recv, hash);
+    runActionLogDemo(hash, recv);
+    showToast('Authorization created.');
+  } catch(e) { showToast('Something went wrong: ' + e.message); }
+  finally { setLoading('issueBtn','issueBtnInner','Create Authorization',false); }
+}
+
+async function pushToSupabase(r,hash) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/receipts`, {
+    method:'POST',
+    headers:{'Content-Type':'application/json',apikey:SUPABASE_ANON_KEY,Authorization:`Bearer ${SUPABASE_ANON_KEY}`,Prefer:'return=minimal'},
+    body:JSON.stringify({hash,delegation_id:r.delegationId,scope:r.scope,boundaries:r.boundaries,
+      time_window_start:r.timeWindow.start,time_window_end:r.timeWindow.end,
+      operator_instructions:r.operatorInstructions,instructions_hash:r.instructionsHash,
+      signer_public_key:r.signerPublicKey,signature:r.signature,issued_at:r.issuedAt})
+  });
+  if (!res.ok) throw new Error(await res.text());
+}
+
+function renderOutput(r, hash) {
+  document.getElementById('outMeta').textContent       = `Created ${fmtDate(r.issuedAt)} · ID ${r.delegationId.slice(-8)}`;
+  document.getElementById('outStart').textContent      = fmtDate(r.timeWindow.start);
+  document.getElementById('outEnd').textContent        = fmtDate(r.timeWindow.end);
+  document.getElementById('outScope').textContent      = r.scope;
+  document.getElementById('outBoundaries').textContent = r.boundaries;
+  document.getElementById('outInstr').textContent      = r.operatorInstructions;
+  document.getElementById('outHash').textContent       = hash;
+  document.getElementById('techDetails').textContent   = JSON.stringify(r, null, 2);
+
+  // Update proof label based on current mode
+  document.getElementById('proofLabel').textContent = viewMode === 'simple' ? 'Authorization ID' : 'Cryptographic proof ID';
+
+  // Integration / system prompt
+  const shareUrl = `${location.origin}${location.pathname}?receipt=${hash}`;
+  const prompt = buildSystemPrompt(r, shareUrl);
+  document.getElementById('systemPromptBox').textContent = prompt;
+
+  // Reset revoke button
+  const rb = document.getElementById('revokeBtn');
+  rb.disabled = false; rb.textContent = 'Revoke';
+  document.getElementById('outStatusBadge').textContent = 'Active';
+  document.getElementById('outStatusBadge').style.background = 'rgba(255,255,255,.2)';
+
+  renderAuditTrail(hash);
+
+  document.getElementById('authOutput').style.display = 'block';
+  document.getElementById('authOutput').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function buildSystemPrompt(r, shareUrl) {
+  return `You are authorized to act within the following scope:
+
+${r.scope}
+
+You must not:
+${r.boundaries}
+
+Operator instructions:
+${r.operatorInstructions}
+
+This authorization is valid until: ${fmtDate(r.timeWindow.end)}
+Authorization ID: ${shareUrl}
+
+Before taking any significant action, confirm it falls within the authorized scope above. If uncertain, ask for clarification rather than proceeding.`;
+}
+
+// ════════════════════════════════════════════════════════
+// REVOKE
+// ════════════════════════════════════════════════════════
+async function revokeReceipt(hashOverride) {
+  const targetHash = hashOverride || currentHash;
+  if (!targetHash || !confirm('Revoke this authorization? This cannot be undone.')) return;
+
+  try {
+    if (LIVE) {
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/revoke`, {
+        method:'POST', headers:{'Content-Type':'application/json',Authorization:`Bearer ${SUPABASE_ANON_KEY}`},
+        body:JSON.stringify({hash:targetHash})
+      });
+      const d = await res.json();
+      if (!d.success) throw new Error(d.message);
+    } else {
+      const existing = localStore.get(targetHash);
+      if (existing) localStore.set(targetHash, {...existing, revoked:true, revokedAt:new Date().toISOString()});
+    }
+
+    addAuditEvent(targetHash, 'revoked', 'Revoked');
+    updateHistoryStatus(targetHash, 'revoked');
+
+    if (targetHash === currentHash) {
+      const btn = document.getElementById('revokeBtn');
+      btn.textContent = '✓ Revoked'; btn.disabled = true;
+      document.getElementById('outStatusBadge').textContent = 'Revoked';
+      document.getElementById('outStatusBadge').style.background = 'rgba(239,68,68,.35)';
+      renderAuditTrail(targetHash);
+    }
+
+    showToast('Authorization revoked.');
+    if (document.getElementById('panel-history').classList.contains('active')) renderHistory();
+  } catch(e) { showToast('Error: ' + e.message); }
+}
+
+// ════════════════════════════════════════════════════════
+// VERIFY
+// ════════════════════════════════════════════════════════
+async function verifyReceipt() {
+  const hash   = document.getElementById('verifyHash').value.trim();
+  const action = document.getElementById('verifyAction').value.trim();
+  if (!hash) { showToast('Paste an authorization ID first.'); return; }
+  setLoading('verifyBtn','verifyBtnInner','Checking…',true);
+  document.getElementById('verifyResult').style.display = 'none';
+  try {
+    const data = LIVE ? await verifyRemote(hash,action) : await verifyLocal(hash,action);
+    renderVerify(data, hash);
+    if (data.authorized) addAuditEvent(hash, 'verified', 'Verified');
+  } catch(e) { showToast('Error: ' + e.message); }
+  finally { setLoading('verifyBtn','verifyBtnInner','Check',false); }
+}
+
+async function verifyRemote(hash,action) {
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/verify`, {
+    method:'POST', headers:{'Content-Type':'application/json',Authorization:`Bearer ${SUPABASE_ANON_KEY}`},
+    body:JSON.stringify({hash, proposed_action:action||undefined})
+  });
+  return res.json();
+}
+
+// Keyword-based local verification
+const SW = new Set(['the','a','an','and','or','but','in','on','at','to','for','of','with','by','from','is','are','was','were','be','been','have','has','had','do','does','did','will','would','could','should','may','might','can','not','no','this','that','these','those','i','you','he','she','it','we','they','what','which','who','all','any','each','some','only','just','as','if','then','up','out']);
+function tok(t) { return new Set(t.toLowerCase().split(/[\s,;:.()\[\]{}'"""]+/).filter(w=>w.length>3&&!SW.has(w))); }
+function overlap(a,b) { const ta=tok(a),tb=tok(b); let h=0; for(const w of ta) if(tb.has(w)) h++; return ta.size?h/ta.size:0; }
+
+async function verifyLocal(hash, action) {
+  const r = localStore.get(hash);
+  const checks = [];
+  if (!r) return {authorized:false, result:'Authorization not found', checks:[{name:'Found',passed:false,detail:'No authorization with that ID'}]};
+  checks.push({name:'Found',passed:true,detail:`Authorization ${r.delegationId}`});
+  const nr = !r.revoked;
+  checks.push({name:'Not revoked',passed:nr,detail:nr?'Active':'Has been revoked'});
+  const now=new Date(), s=new Date(r.timeWindow.start), e=new Date(r.timeWindow.end);
+  const iw = now>=s&&now<=e;
+  checks.push({name:'Within time window',passed:iw,detail:iw?`Expires ${fmtDate(e)}`:`Expired ${fmtDate(e)}`});
+  const {signature,...obj} = r;
+  let sv=false;
+  try {
+    const pk=await crypto.subtle.importKey('jwk',{...r.signerPublicKey,key_ops:['verify']},{name:'ECDSA',namedCurve:'P-256'},false,['verify']);
+    const sb=new Uint8Array(signature.match(/.{2}/g).map(b=>parseInt(b,16)));
+    sv=await crypto.subtle.verify({name:'ECDSA',hash:'SHA-256'},pk,sb,enc(JSON.stringify(obj)));
+  } catch {}
+  checks.push({name:'Signature valid',passed:sv,detail:sv?'Cryptographic signature verified':'Signature check failed'});
+  const rh=await sha256(JSON.stringify(r)), hm=rh===hash;
+  checks.push({name:'Proof ID matches',passed:hm,detail:hm?'ID verified':'ID mismatch — possible tampering'});
+  if (action) {
+    const so=overlap(action,r.scope), bo=overlap(action,r.boundaries);
+    checks.push({name:'Action within scope',passed:so>=0.3,detail:`${Math.round(so*100)}% keyword match with authorized scope`});
+    checks.push({name:'Action not blocked',passed:bo<0.5,detail:`${Math.round(bo*100)}% overlap with off-limits list`});
+  }
+  const ok=checks.every(c=>c.passed);
+  return {authorized:ok, result:ok?'This action is authorized':'Authorization denied — see details below', checks,
+    receipt_context:{scope:r.scope,boundaries:r.boundaries,timeWindow:r.timeWindow,operatorInstructions:r.operatorInstructions,issuedAt:r.issuedAt,revoked:!!r.revoked}};
+}
+
+function renderVerify(d, hash) {
+  const ok = d.authorized;
+  let html = `
+    <div class="result-card">
+      <div class="result-header ${ok?'pass':'fail'}">
+        <div class="result-icon">${ok?'✅':'❌'}</div>
+        <div>
+          <div class="result-title">${ok?'Authorized':'Not authorized'}</div>
+          <div class="result-subtitle">${escHtml(d.result)}</div>
+        </div>
+      </div>
+      <div class="result-checks">
+        ${(d.checks||[]).map(c=>`
+          <div class="check-row">
+            <span class="check-ico">${c.passed?'✓':'✗'}</span>
+            <div class="check-text">
+              <div class="check-name" style="color:${c.passed?'var(--green)':'var(--red)'}">${escHtml(c.name)}</div>
+              <div class="check-detail">${escHtml(c.detail)}</div>
+            </div>
+          </div>`).join('')}
+      </div>`;
+
+  if (d.receipt_context) {
+    const ctx = d.receipt_context;
+    html += `<div class="result-context">
+      <h4>Authorization details</h4>
+      <div class="two-col" style="margin-bottom:.75rem">
+        <div><div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:3px">Valid until</div><div style="font-size:.875rem">${fmtDate(ctx.timeWindow.end)}</div></div>
+        <div><div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:3px">Status</div><div style="font-size:.875rem">${ctx.revoked?'<span style="color:var(--red)">Revoked</span>':'<span style="color:var(--green)">Active</span>'}</div></div>
+      </div>
+      <div style="margin-bottom:.65rem"><div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:3px">Authorized to</div><div style="font-size:.875rem">${escHtml(ctx.scope)}</div></div>
+      <div style="margin-bottom:.65rem"><div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:3px">Off limits</div><div style="font-size:.875rem">${escHtml(ctx.boundaries)}</div></div>
+      <div><div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:3px">Instructions</div><div style="font-size:.875rem">${escHtml(ctx.operatorInstructions)}</div></div>
+    </div>`;
+  }
+
+  // Quick revoke button (show if authorized and not already revoked)
+  const alreadyRevoked = d.receipt_context && d.receipt_context.revoked;
+  if (ok && !alreadyRevoked) {
+    html += `<div class="result-revoke-row">
+      <button class="btn-danger" style="font-size:.8rem" onclick="revokeFromVerify('${escAttr(hash)}', this)">
+        Revoke this authorization
+      </button>
+      <span style="font-size:.75rem;color:var(--muted);margin-left:.75rem">Stop this authorization from being used again</span>
+    </div>`;
+  }
+
+  html += '</div>';
+  const el = document.getElementById('verifyResult');
+  el.innerHTML = html;
+  el.style.display = 'block';
+}
+
+async function revokeFromVerify(hash, btn) {
+  btn.disabled = true;
+  btn.textContent = 'Revoking…';
+  try {
+    if (LIVE) {
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/revoke`, {
+        method:'POST', headers:{'Content-Type':'application/json',Authorization:`Bearer ${SUPABASE_ANON_KEY}`},
+        body:JSON.stringify({hash})
+      });
+      const d = await res.json();
+      if (!d.success) throw new Error(d.message);
+    } else {
+      const existing = localStore.get(hash);
+      if (existing) localStore.set(hash, {...existing, revoked:true, revokedAt:new Date().toISOString()});
+    }
+    addAuditEvent(hash, 'revoked', 'Revoked');
+    updateHistoryStatus(hash, 'revoked');
+    btn.textContent = '✓ Revoked';
+    if (hash === currentHash) {
+      document.getElementById('revokeBtn').textContent = '✓ Revoked';
+      document.getElementById('revokeBtn').disabled = true;
+      document.getElementById('outStatusBadge').textContent = 'Revoked';
+      document.getElementById('outStatusBadge').style.background = 'rgba(239,68,68,.35)';
+      renderAuditTrail(hash);
+    }
+    showToast('Authorization revoked.');
+  } catch(e) {
+    btn.disabled = false; btn.textContent = 'Revoke this authorization';
+    showToast('Error: ' + e.message);
+  }
+}
+
+// ════════════════════════════════════════════════════════
+// HISTORY
+// ════════════════════════════════════════════════════════
+function addToHistory(hash, receipt) {
+  historyLog.unshift({hash, receipt, status:'active'});
+  updateHistoryBadge();
+  if (document.getElementById('panel-history').classList.contains('active')) renderHistory();
+}
+
+function updateHistoryStatus(hash, status) {
+  const entry = historyLog.find(e=>e.hash===hash);
+  if (entry) entry.status = status;
+  updateHistoryBadge();
+  if (document.getElementById('panel-history').classList.contains('active')) renderHistory();
+}
+
+function updateHistoryBadge() {
+  const badge = document.getElementById('historyCount');
+  if (historyLog.length > 0) {
+    badge.textContent = historyLog.length;
+    badge.style.display = '';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+function getReceiptStatus(entry) {
+  if (entry.status === 'revoked') return 'revoked';
+  const now = new Date();
+  const end = new Date(entry.receipt.timeWindow.end);
+  return now > end ? 'expired' : 'active';
+}
+
+function renderHistory() {
+  const el = document.getElementById('historyList');
+  if (historyLog.length === 0) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><p>No authorizations yet. Create one from the Authorize tab.</p></div>`;
+    return;
+  }
+  el.innerHTML = `<div class="history-list">
+    ${historyLog.map((entry, i) => {
+      const st = getReceiptStatus(entry);
+      const stLabel = {active:'Active',expired:'Expired',revoked:'Revoked'}[st];
+      const scopeShort = entry.receipt.scope.length > 70 ? entry.receipt.scope.slice(0,68)+'…' : entry.receipt.scope;
+      return `<div class="history-item">
+        <div class="history-item-left">
+          <div class="history-scope">${escHtml(scopeShort)}</div>
+          <div class="history-meta">
+            <span class="history-status ${st}">${stLabel}</span>
+            <span>·</span>
+            <span>Expires ${fmtDate(entry.receipt.timeWindow.end)}</span>
+            <span>·</span>
+            <span style="font-family:monospace;font-size:.7rem">${entry.hash.slice(0,12)}…</span>
+          </div>
+        </div>
+        <div class="history-actions">
+          <button class="btn-ghost btn-sm" onclick="viewFromHistory(${i})">View</button>
+          ${st==='active'?`<button class="btn-danger" onclick="revokeFromHistory(${i},this)">Revoke</button>`:''}
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+function viewFromHistory(i) {
+  const entry = historyLog[i];
+  currentReceipt = entry.receipt;
+  currentHash    = entry.hash;
+  switchTab('create');
+  document.getElementById('authOutput').style.display = 'block';
+  renderOutput(entry.receipt, entry.hash);
+  // If already revoked, disable button
+  if (getReceiptStatus(entry) !== 'active') {
+    document.getElementById('revokeBtn').textContent = '✓ Revoked';
+    document.getElementById('revokeBtn').disabled = true;
+    document.getElementById('outStatusBadge').textContent = 'Revoked';
+    document.getElementById('outStatusBadge').style.background = 'rgba(239,68,68,.35)';
+  }
+  document.getElementById('authOutput').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+async function revokeFromHistory(i, btn) {
+  const entry = historyLog[i];
+  if (!confirm('Revoke this authorization? This cannot be undone.')) return;
+  btn.disabled = true; btn.textContent = 'Revoking…';
+  try {
+    if (LIVE) {
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/revoke`, {
+        method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${SUPABASE_ANON_KEY}`},
+        body:JSON.stringify({hash:entry.hash})
+      });
+      const d = await res.json(); if (!d.success) throw new Error(d.message);
+    } else {
+      const ex = localStore.get(entry.hash);
+      if (ex) localStore.set(entry.hash,{...ex,revoked:true,revokedAt:new Date().toISOString()});
+    }
+    addAuditEvent(entry.hash,'revoked','Revoked');
+    updateHistoryStatus(entry.hash,'revoked');
+    if (entry.hash === currentHash) {
+      document.getElementById('revokeBtn').textContent='✓ Revoked';
+      document.getElementById('revokeBtn').disabled=true;
+      document.getElementById('outStatusBadge').textContent='Revoked';
+      document.getElementById('outStatusBadge').style.background='rgba(239,68,68,.35)';
+      renderAuditTrail(entry.hash);
+    }
+    showToast('Authorization revoked.');
+  } catch(e) {
+    btn.disabled=false; btn.textContent='Revoke';
+    showToast('Error: '+e.message);
+  }
+}
+
+// ════════════════════════════════════════════════════════
+// AUDIT TRAIL
+// ════════════════════════════════════════════════════════
+function addAuditEvent(hash, type, label) {
+  if (!auditEvents.has(hash)) auditEvents.set(hash,[]);
+  auditEvents.get(hash).push({type, label, time:new Date().toISOString()});
+  if (hash === currentHash) renderAuditTrail(hash);
+}
+
+function renderAuditTrail(hash) {
+  const events = auditEvents.get(hash) || [];
+  const list = document.getElementById('activityList');
+  if (!list) return;
+  if (events.length === 0) {
+    list.innerHTML = '<li style="font-size:.8rem;color:var(--muted)">No activity yet.</li>';
+    return;
+  }
+  list.innerHTML = events.map(e=>`
+    <li class="activity-item">
+      <span class="activity-dot ${e.type}"></span>
+      <span class="activity-time">${new Date(e.time).toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit',second:'2-digit'})}</span>
+      <span class="activity-label">${escHtml(e.label)}</span>
+    </li>`).join('');
+}
+
+// ════════════════════════════════════════════════════════
+// ACTIONS
+// ════════════════════════════════════════════════════════
+function copyHash() {
+  if (!currentHash) return;
+  navigator.clipboard.writeText(currentHash);
+  showToast('Authorization ID copied.');
+}
+function copyLink() {
+  if (!currentHash) return;
+  navigator.clipboard.writeText(`${location.origin}${location.pathname}?receipt=${currentHash}`);
+  showToast('Shareable link copied.');
+}
+function copyForAI() {
+  const txt = document.getElementById('systemPromptBox').textContent;
+  if (!txt) return;
+  navigator.clipboard.writeText(txt);
+  showToast('Copied — paste into any AI chat.');
+}
+function goVerify() {
+  if (!currentHash) return;
+  switchTab('verify');
+  document.getElementById('verifyHash').value = currentHash;
+}
+function downloadJSON() {
+  if (!currentReceipt||!currentHash) return;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify({hash:currentHash,receipt:currentReceipt},null,2)],{type:'application/json'}));
+  a.download = `auth-${currentHash.slice(0,10)}.json`;
+  a.click();
+}
+function toggleTech() {
+  const el = document.getElementById('techDetails');
+  const open = el.classList.toggle('open');
+  document.getElementById('techToggleLabel').textContent = open ? 'Hide technical details' : 'Show technical details';
+}
+function loadExample(type) {
+  const ex = EXAMPLES[type];
+  if (!ex) return;
+  document.getElementById('scope').value   = ex.scope;
+  document.getElementById('boundaries').value = ex.boundaries;
+  document.getElementById('opInstr').value = ex.opInstr;
+  showToast('Example loaded.');
+}
+
+// ════════════════════════════════════════════════════════
+// HELPERS
+// ════════════════════════════════════════════════════════
+function switchTab(name) {
+  const tabs = ['create','verify','history'];
+  document.querySelectorAll('.nav-btn').forEach((b,i) => b.classList.toggle('active', tabs[i]===name));
+  document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id===`panel-${name}`));
+  if (name === 'history') renderHistory();
+}
+function setLoading(btnId,innerId,label,on) {
+  const btn=document.getElementById(btnId); btn.disabled=on;
+  if(innerId) document.getElementById(innerId).innerHTML=on?`<span class="spin"></span> ${label}`:label;
+}
+function fmtDate(iso) {
+  try { return new Date(iso).toLocaleString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}); } catch { return iso; }
+}
+function showToast(msg) {
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2600);
+}
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function escAttr(s) {
+  return String(s).replace(/'/g,'&#39;').replace(/"/g,'&quot;');
+}
+
+// ════════════════════════════════════════════════════════
+// ACTION LOG DEMO
+// Mirrors the ActionLog class in src/authproof.js — no imports needed here.
+// ════════════════════════════════════════════════════════
+
+const _alEnc = s => new TextEncoder().encode(s);
+const _alHex = b => Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2,'0')).join('');
+const _GENESIS = '0'.repeat(64);
+
+async function _alSha256(str) {
+  return _alHex(new Uint8Array(await crypto.subtle.digest('SHA-256', _alEnc(str))));
+}
+
+// Minimal inline ActionLog (append-only, ECDSA P-256 signed, SHA-256 chained)
+class _ActionLog {
+  constructor() {
+    this._entries   = new Map();
+    this._byReceipt = new Map();
+    this._receipts  = new Map();
+    this._privateKey = null;
+    this._publicJwk  = null;
+  }
+  async init({ privateKey, publicJwk }) {
+    this._privateKey = privateKey;
+    this._publicJwk  = publicJwk;
+  }
+  registerReceipt(h, r) { this._receipts.set(h, r); }
+  async record(receiptHash, action) {
+    const ids      = this._byReceipt.get(receiptHash) || [];
+    const prevHash = ids.length === 0
+      ? _GENESIS
+      : this._entries.get(ids[ids.length - 1]).entryHash;
+    const entryId   = `log-${Date.now()}-${Math.random().toString(36).slice(2,9)}`;
+    const timestamp = Date.now(); // ⚠ client clock
+    const body = {
+      entryId, receiptHash,
+      action: { operation: action.operation, resource: action.resource, parameters: action.parameters ?? {} },
+      timestamp, agentPublicKey: this._publicJwk, prevHash,
+    };
+    const sigBuf  = await crypto.subtle.sign({name:'ECDSA',hash:'SHA-256'}, this._privateKey, _alEnc(JSON.stringify(body)));
+    const signature = _alHex(new Uint8Array(sigBuf));
+    const entryHash = await _alSha256(JSON.stringify({...body, signature}));
+    const entry = {...body, signature, entryHash};
+    this._entries.set(entryId, entry);
+    this._byReceipt.set(receiptHash, [...ids, entryId]);
+    return entry;
+  }
+  getEntries(h) {
+    return (this._byReceipt.get(h) || []).map(id => this._entries.get(id));
+  }
+  diff(receiptHash) {
+    const receipt  = this._receipts.get(receiptHash);
+    const entries  = this.getEntries(receiptHash);
+    const compliant = [], violations = [];
+    for (const entry of entries) {
+      const op = entry.action.operation;
+      let inScope, reason;
+      if (receipt?.allowedActions && Array.isArray(receipt.allowedActions)) {
+        inScope = receipt.allowedActions.includes(op);
+        reason  = inScope
+          ? `"${op}" is in allowedActions`
+          : `"${op}" not in allowedActions [${receipt.allowedActions.join(', ')}]`;
+      } else {
+        inScope = true;
+        reason  = 'Within authorized scope';
+      }
+      (inScope ? compliant : violations).push({ entry, reason });
+    }
+    return { receiptHash, totalEntries: entries.length, compliant, violations, clean: violations.length === 0 };
+  }
+}
+
+// Simulate 3 in-scope agent actions and render the log + diff
+async function runActionLogDemo(receiptHash, receipt) {
+  // Attach an explicit allowlist so diff() uses exact matching
+  const demoReceipt = { ...receipt, allowedActions: ['web_search', 'read_results', 'write_report'] };
+
+  // Reset UI
+  const section = document.getElementById('actionLogSection');
+  document.getElementById('alEntries').innerHTML = '';
+  document.getElementById('alDivider').style.display = 'none';
+  document.getElementById('alDiff').style.display    = 'none';
+  section.style.display = 'block';
+  section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  const log = new _ActionLog();
+  await log.init({ privateKey: sigKey, publicJwk: pubJwk });
+  log.registerReceipt(receiptHash, demoReceipt);
+
+  const ACTIONS = [
+    { operation: 'web_search',   resource: 'web/search',       parameters: { query: 'competitor pricing 2024' } },
+    { operation: 'read_results', resource: 'web/results',       parameters: { limit: 10 } },
+    { operation: 'write_report', resource: 'output/report.md',  parameters: { format: 'markdown' } },
+  ];
+
+  for (let i = 0; i < ACTIONS.length; i++) {
+    await new Promise(r => setTimeout(r, 550 * (i + 1)));
+    const entry = await log.record(receiptHash, ACTIONS[i]);
+    renderAlEntry(entry);
+  }
+
+  await new Promise(r => setTimeout(r, 600));
+  document.getElementById('alDivider').style.display = 'block';
+  renderAlDiff(log.diff(receiptHash));
+}
+
+function renderAlEntry(entry) {
+  const container = document.getElementById('alEntries');
+  const div = document.createElement('div');
+  div.className = 'al-entry';
+  div.innerHTML =
+    `<div class="al-entry-row1">` +
+      `<span class="al-entry-op">${escHtml(entry.action.operation)}</span>` +
+      `<span class="al-entry-sep">·</span>` +
+      `<span class="al-entry-res">${escHtml(entry.action.resource)}</span>` +
+      `<span class="al-entry-meta">#${entry.entryId.slice(-6)}</span>` +
+    `</div>` +
+    `<div class="al-entry-chain">prevHash: ${entry.prevHash.slice(0,20)}… &nbsp;|&nbsp; sig: ${entry.signature.slice(0,20)}…</div>`;
+  container.appendChild(div);
+  // Animate in on next paint
+  requestAnimationFrame(() => requestAnimationFrame(() => div.classList.add('al-visible')));
+}
+
+function renderAlDiff(diff) {
+  const rows = [
+    ...diff.compliant.map(c =>
+      `<div class="al-diff-row">` +
+        `<span class="al-diff-icon">✅</span>` +
+        `<span class="al-diff-op compliant">${escHtml(c.entry.action.operation)}</span>` +
+        `<span class="al-diff-reason">${escHtml(c.reason)}</span>` +
+      `</div>`
+    ),
+    ...diff.violations.map(v =>
+      `<div class="al-diff-row">` +
+        `<span class="al-diff-icon">🚫</span>` +
+        `<span class="al-diff-op violation">${escHtml(v.entry.action.operation)}</span>` +
+        `<span class="al-diff-reason">${escHtml(v.reason)}</span>` +
+      `</div>`
+    ),
+  ].join('');
+
+  const el = document.getElementById('alDiff');
+  el.innerHTML =
+    `<div class="al-diff-title">Scope Diff — Authorized vs. Actual</div>` +
+    rows +
+    `<div class="al-diff-footer">` +
+      `${diff.totalEntries} actions recorded &nbsp;·&nbsp; ` +
+      `${diff.compliant.length} compliant &nbsp;·&nbsp; ` +
+      `${diff.violations.length} violation${diff.violations.length !== 1 ? 's' : ''}` +
+      (diff.clean ? ` &nbsp;<span class="al-clean-badge">✓ Clean</span>` : '') +
+    `</div>`;
+  el.style.display = 'block';
+}
+</script>
+</body>
+</html>

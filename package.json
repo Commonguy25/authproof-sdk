@@ -1,0 +1,51 @@
+{
+  "name": "authproof",
+  "version": "1.0.0",
+  "description": "Cryptographically signed delegation receipts for AI agents. Define exactly what an AI can and can't do \u2014 signed, verifiable, tamper-proof.",
+  "main": "src/authproof.js",
+  "module": "src/authproof.js",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./src/authproof.js",
+      "require": "./src/authproof.cjs.js",
+      "default": "./src/authproof.js"
+    }
+  },
+  "scripts": {
+    "test": "node --experimental-vm-modules tests/authproof.test.js",
+    "build:cjs": "node scripts/build-cjs.js"
+  },
+  "keywords": [
+    "ai",
+    "agents",
+    "authorization",
+    "delegation",
+    "receipt",
+    "cryptography",
+    "ecdsa",
+    "permissions",
+    "ai-safety",
+    "llm",
+    "agent-security"
+  ],
+  "author": "AuthProof",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Commonguy25/authproof-sdk"
+  },
+  "homepage": "https://authproof.dev",
+  "bugs": {
+    "url": "https://github.com/Commonguy25/authproof-sdk/issues"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "src/",
+    "README.md",
+    "LICENSE"
+  ],
+  "devDependencies": {}
+}
