@@ -213,6 +213,198 @@ function checkScope(action, receipt) {
 }
 
 // ─────────────────────────────────────────────
+// SCOPE SCHEMA
+// ─────────────────────────────────────────────
+
+/**
+ * Match an operation pattern against a concrete operation string.
+ * '*' matches any operation; otherwise exact string equality is required.
+ * @param {string} pattern
+ * @param {string} operation
+ * @returns {boolean}
+ */
+function _matchOp(pattern, operation) {
+  return pattern === '*' || pattern === operation;
+}
+
+/**
+ * Match a resource pattern against a concrete resource string.
+ * '*' matches anything. Patterns may contain '*' as a glob wildcard
+ * (e.g. '*.company.com', 'files/*', 'email/*').
+ * @param {string} pattern
+ * @param {string} resource
+ * @returns {boolean}
+ */
+function _matchResource(pattern, resource) {
+  if (pattern === '*') return true;
+  if (!pattern.includes('*')) return pattern === resource;
+  // Escape all regex special chars except *, then replace * with .*
+  const reStr = pattern
+    .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+    .replace(/\*/g, '.*');
+  return new RegExp(`^${reStr}$`).test(resource);
+}
+
+/**
+ * Validate an action's parameters against a constraint map from allowedActions.
+ * Supports:
+ *   - Wildcard string patterns: { sender: "*.company.com" }
+ *   - Numeric max limits: { maxEvents: 10 } — action parameter must not exceed this
+ * @param {object} schemaConstraints
+ * @param {object} actionParams
+ * @returns {{ valid: boolean, reason: string }}
+ */
+function _checkConstraints(schemaConstraints, actionParams) {
+  for (const [key, limit] of Object.entries(schemaConstraints)) {
+    const val = actionParams[key];
+    if (val === undefined) continue; // parameter not provided — no violation
+
+    if (typeof limit === 'number') {
+      // Numeric max constraint
+      if (typeof val === 'number' && val > limit) {
+        return { valid: false, reason: `${key} value ${val} exceeds maximum ${limit}` };
+      }
+    } else if (typeof limit === 'string' && limit.includes('*')) {
+      // Wildcard string pattern constraint
+      if (typeof val === 'string' && !_matchResource(limit, val)) {
+        return { valid: false, reason: `${key} "${val}" does not match required pattern "${limit}"` };
+      }
+    }
+  }
+  return { valid: true, reason: 'all constraints satisfied' };
+}
+
+/**
+ * ScopeSchema — machine-readable, versioned, serializable scope definition.
+ *
+ * Replaces fuzzy text-based scope matching with an explicit, structured schema
+ * that can be validated programmatically, serialized to JSON, and embedded in
+ * delegation receipts.
+ *
+ * @example
+ * const schema = new ScopeSchema({
+ *   version: "1.0",
+ *   allowedActions: [
+ *     { operation: "read",  resource: "email",    constraints: { sender: "*.company.com" } },
+ *     { operation: "write", resource: "calendar", constraints: { maxEvents: 10 } },
+ *   ],
+ *   deniedActions: [
+ *     { operation: "delete",  resource: "*" },
+ *     { operation: "payment", resource: "*" },
+ *   ],
+ *   maxDuration: "4h"
+ * });
+ *
+ * schema.validate({ operation: "read", resource: "email", constraints: { sender: "alice@company.com" } });
+ * // → { valid: true, reason: '...' }
+ *
+ * schema.validate({ operation: "delete", resource: "contacts" });
+ * // → { valid: false, reason: 'operation "delete" on resource "contacts" is explicitly denied' }
+ */
+class ScopeSchema {
+  /**
+   * @param {object} opts
+   * @param {string}   opts.version         — Required. Schema version string (e.g. "1.0").
+   * @param {object[]} [opts.allowedActions] — Actions that are permitted. Default: [].
+   * @param {object[]} [opts.deniedActions]  — Actions that are always denied. Default: [].
+   *   Each action: { operation: string, resource: string, constraints?: object }
+   * @param {string}   [opts.maxDuration]   — Optional maximum delegation duration (e.g. "4h").
+   */
+  constructor({ version, allowedActions = [], deniedActions = [], maxDuration } = {}) {
+    if (!version) throw new Error('ScopeSchema: version is required');
+    if (typeof version !== 'string') throw new Error('ScopeSchema: version must be a string');
+    if (!Array.isArray(allowedActions)) throw new Error('ScopeSchema: allowedActions must be an array');
+    if (!Array.isArray(deniedActions))  throw new Error('ScopeSchema: deniedActions must be an array');
+    if (maxDuration !== undefined && typeof maxDuration !== 'string') {
+      throw new Error('ScopeSchema: maxDuration must be a string (e.g. "4h")');
+    }
+
+    for (const a of [...allowedActions, ...deniedActions]) {
+      if (!a || typeof a.operation !== 'string') {
+        throw new Error('ScopeSchema: each action entry must have an operation string');
+      }
+      if (typeof a.resource !== 'string') {
+        throw new Error('ScopeSchema: each action entry must have a resource string');
+      }
+    }
+
+    this.version        = version;
+    this.allowedActions = allowedActions;
+    this.deniedActions  = deniedActions;
+    this.maxDuration    = maxDuration ?? null;
+  }
+
+  /**
+   * Validate whether an action is permitted by this schema.
+   *
+   * Denial takes precedence over allowance. Wildcards ('*') are supported
+   * on both operation and resource fields. Constraints on allowedActions
+   * entries are checked against action.constraints.
+   *
+   * @param {{ operation: string, resource: string, constraints?: object }} action
+   * @returns {{ valid: boolean, reason: string }}
+   */
+  validate(action) {
+    if (!action?.operation) return { valid: false, reason: 'action.operation is required' };
+    if (!action?.resource)  return { valid: false, reason: 'action.resource is required' };
+
+    const { operation, resource, constraints: actionConstraints = {} } = action;
+
+    // Denial takes precedence — check deniedActions first
+    for (const denied of this.deniedActions) {
+      if (_matchOp(denied.operation, operation) && _matchResource(denied.resource, resource)) {
+        return {
+          valid:  false,
+          reason: `operation "${operation}" on resource "${resource}" is explicitly denied`,
+        };
+      }
+    }
+
+    // Check allowedActions
+    for (const allowed of this.allowedActions) {
+      if (_matchOp(allowed.operation, operation) && _matchResource(allowed.resource, resource)) {
+        if (allowed.constraints) {
+          const cv = _checkConstraints(allowed.constraints, actionConstraints);
+          if (!cv.valid) return { valid: false, reason: `constraint violation: ${cv.reason}` };
+        }
+        return {
+          valid:  true,
+          reason: `operation "${operation}" on resource "${resource}" is allowed`,
+        };
+      }
+    }
+
+    return {
+      valid:  false,
+      reason: `operation "${operation}" on resource "${resource}" is not in allowedActions`,
+    };
+  }
+
+  /**
+   * Serialize to a plain JSON-safe object.
+   * @returns {object}
+   */
+  toJSON() {
+    const obj = {
+      version:        this.version,
+      allowedActions: this.allowedActions,
+      deniedActions:  this.deniedActions,
+    };
+    if (this.maxDuration !== null) obj.maxDuration = this.maxDuration;
+    return obj;
+  }
+
+  /**
+   * Deserialize from a plain object (e.g. JSON.parse output).
+   * @param {object} obj
+   * @returns {ScopeSchema}
+   */
+  static fromJSON(obj) {
+    return new ScopeSchema(obj);
+  }
+}
+
+// ─────────────────────────────────────────────
 // KEY MANAGEMENT
 // ─────────────────────────────────────────────
 
@@ -842,26 +1034,26 @@ class ActionLog {
       const op = entry.action.operation;
       let inScope, reason;
 
-      if (receipt?.allowedActions && Array.isArray(receipt.allowedActions)) {
-        // Explicit allowlist — exact string match on operation
+      if (receipt?.scopeSchema instanceof ScopeSchema) {
+        // Structured schema — machine-readable, wildcard-aware, constraint-checked
+        const result = receipt.scopeSchema.validate({
+          operation:   entry.action.operation,
+          resource:    entry.action.resource,
+          constraints: entry.action.parameters,
+        });
+        inScope = result.valid;
+        reason  = result.reason;
+
+      } else if (receipt?.allowedActions && Array.isArray(receipt.allowedActions)) {
+        // Legacy explicit allowlist — exact string match on operation
         inScope = receipt.allowedActions.includes(op);
         reason  = inScope
           ? `"${op}" is in allowedActions`
           : `"${op}" not in allowedActions [${receipt.allowedActions.join(', ')}]`;
 
       } else if (receipt) {
-        // ─────────────────────────────────────────────────────────────
-        // ⚠ WARNING: Text-based keyword matching is fuzzy and not
-        // cryptographically sound. Explicit allowedActions arrays are
-        // strongly recommended for any production or compliance use
-        // case. This fallback exists only for convenience during
-        // development.
-        // ─────────────────────────────────────────────────────────────
-        const { withinScope, scopeScore, boundaryScore } = checkScope(op, receipt);
-        inScope = withinScope;
-        reason  = inScope
-          ? `"${op}" matches authorized scope (${scopeScore}% keyword overlap)`
-          : `"${op}" outside authorized scope (${scopeScore}% scope match, ${boundaryScore}% boundary overlap)`;
+        inScope = false;
+        reason  = 'No ScopeSchema registered — attach a ScopeSchema via receipt.scopeSchema for compliance checking';
 
       } else {
         inScope = false;
@@ -903,15 +1095,20 @@ const AuthProof = {
 
   // Action log
   ActionLog,
+
+  // Scope schema
+  ScopeSchema,
 };
 
 // ESM + CJS compatible export
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = AuthProof;
-  module.exports.ActionLog = ActionLog;
+  module.exports.ActionLog  = ActionLog;
+  module.exports.ScopeSchema = ScopeSchema;
 } else if (typeof globalThis !== 'undefined') {
-  globalThis.AuthProof = AuthProof;
-  globalThis.ActionLog = ActionLog;
+  globalThis.AuthProof   = AuthProof;
+  globalThis.ActionLog   = ActionLog;
+  globalThis.ScopeSchema = ScopeSchema;
 }
 
 export default AuthProof;
@@ -926,4 +1123,5 @@ export {
   isActive,
   secondsRemaining,
   ActionLog,
+  ScopeSchema,
 };
