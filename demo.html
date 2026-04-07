@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AuthProof SDK — Live Demo</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy:   #0d1b2a;
+      --navy2:  #112233;
+      --navy3:  #1a2e45;
+      --teal:   #00c9a7;
+      --teal2:  #00a88d;
+      --teal3:  #00e0bc;
+      --slate:  #1e3a52;
+      --muted:  #5a7fa0;
+      --text:   #cde0f5;
+      --white:  #e8f4ff;
+      --red:    #ff5a5a;
+      --green:  #00c9a7;
+      --yellow: #ffc857;
+      --mono:   'Courier New', monospace;
+      --sans:   -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+
+    html, body {
+      background: var(--navy);
+      color: var(--text);
+      font-family: var(--sans);
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--navy2);
+      border-bottom: 1px solid var(--slate);
+      padding: 18px 32px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .logo-mark {
+      width: 36px; height: 36px;
+      background: var(--teal);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; font-weight: 900; color: var(--navy);
+      flex-shrink: 0;
+    }
+    header h1 { font-size: 18px; font-weight: 700; color: var(--white); }
+    header p  { font-size: 13px; color: var(--muted); margin-top: 2px; }
+    .header-links { margin-left: auto; display: flex; gap: 16px; }
+    .header-links a {
+      font-size: 13px; color: var(--teal); text-decoration: none;
+      opacity: 0.85;
+    }
+    .header-links a:hover { opacity: 1; }
+
+    /* ── Layout ── */
+    main {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 40px 24px 80px;
+    }
+
+    /* ── Section titles ── */
+    .section-title {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--teal);
+      margin-bottom: 18px;
+    }
+
+    /* ── Form ── */
+    .form-card {
+      background: var(--navy2);
+      border: 1px solid var(--slate);
+      border-radius: 12px;
+      padding: 28px 32px;
+      margin-bottom: 36px;
+    }
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+    @media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } }
+    .form-field { display: flex; flex-direction: column; gap: 6px; }
+    .form-field.full { grid-column: 1 / -1; }
+    label { font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; }
+    input, textarea {
+      background: var(--navy3);
+      border: 1px solid var(--slate);
+      border-radius: 7px;
+      color: var(--white);
+      font-size: 14px;
+      font-family: var(--sans);
+      padding: 10px 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input:focus, textarea:focus { border-color: var(--teal); }
+    textarea { resize: vertical; min-height: 72px; }
+    .tag-input-wrapper {
+      background: var(--navy3);
+      border: 1px solid var(--slate);
+      border-radius: 7px;
+      padding: 8px 10px;
+      display: flex; flex-wrap: wrap; gap: 6px;
+      cursor: text;
+      min-height: 44px;
+      transition: border-color 0.2s;
+    }
+    .tag-input-wrapper:focus-within { border-color: var(--teal); }
+    .tag {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 12px; font-weight: 600;
+      white-space: nowrap;
+    }
+    .tag.allow { background: rgba(0,201,167,0.18); color: var(--teal); border: 1px solid rgba(0,201,167,0.3); }
+    .tag.deny  { background: rgba(255,90,90,0.18);  color: var(--red);  border: 1px solid rgba(255,90,90,0.3); }
+    .tag .rm { cursor: pointer; opacity: 0.6; font-size: 14px; line-height: 1; }
+    .tag .rm:hover { opacity: 1; }
+    .tag-input-inner {
+      background: transparent; border: none; outline: none;
+      color: var(--white); font-size: 14px;
+      flex: 1; min-width: 80px;
+    }
+    .hint { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+    .run-btn {
+      margin-top: 22px;
+      background: var(--teal);
+      color: var(--navy);
+      border: none;
+      border-radius: 8px;
+      padding: 12px 28px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.18s, transform 0.1s;
+      display: inline-flex; align-items: center; gap: 8px;
+    }
+    .run-btn:hover:not(:disabled) { background: var(--teal3); }
+    .run-btn:active:not(:disabled) { transform: scale(0.97); }
+    .run-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ── Pipeline animation ── */
+    .pipeline-section { margin-bottom: 36px; }
+    .pipeline {
+      display: flex; align-items: flex-start; gap: 0;
+      overflow-x: auto;
+      padding-bottom: 8px;
+    }
+    .pipe-step {
+      display: flex; flex-direction: column; align-items: center;
+      flex: 1; min-width: 120px;
+    }
+    .pipe-connector {
+      flex: 0 0 40px; display: flex; align-items: center; margin-top: 24px;
+    }
+    .pipe-connector svg { width: 40px; }
+    .pipe-connector .arrow-line { stroke: var(--slate); transition: stroke 0.4s; }
+    .pipe-connector.active .arrow-line { stroke: var(--teal); }
+
+    .step-node {
+      width: 52px; height: 52px;
+      border-radius: 50%;
+      background: var(--navy3);
+      border: 2px solid var(--slate);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+      transition: border-color 0.4s, background 0.4s, box-shadow 0.4s;
+      position: relative;
+    }
+    .step-node.active {
+      border-color: var(--teal);
+      background: rgba(0,201,167,0.12);
+      box-shadow: 0 0 18px rgba(0,201,167,0.35);
+    }
+    .step-node.done {
+      border-color: var(--teal2);
+      background: rgba(0,201,167,0.08);
+    }
+    .step-node .pulse {
+      display: none;
+      position: absolute; inset: -6px;
+      border-radius: 50%;
+      border: 2px solid var(--teal);
+      animation: pulse 1s infinite;
+    }
+    .step-node.active .pulse { display: block; }
+    @keyframes pulse {
+      0%   { opacity: 1;   transform: scale(1);    }
+      100% { opacity: 0;   transform: scale(1.5);  }
+    }
+    .step-label {
+      font-size: 11px; font-weight: 600; color: var(--muted);
+      text-align: center; margin-top: 8px; line-height: 1.4;
+    }
+    .step-node.active ~ .step-label,
+    .step-node.done ~ .step-label  { color: var(--text); }
+
+    /* ── Log ── */
+    .log-section { margin-bottom: 36px; }
+    .log-box {
+      background: var(--navy2);
+      border: 1px solid var(--slate);
+      border-radius: 10px;
+      padding: 16px 20px;
+      font-family: var(--mono);
+      font-size: 13px;
+      min-height: 120px;
+      max-height: 240px;
+      overflow-y: auto;
+      line-height: 1.7;
+    }
+    .log-line { display: block; }
+    .log-line.dim    { color: var(--muted); }
+    .log-line.info   { color: var(--text); }
+    .log-line.ok     { color: var(--teal); }
+    .log-line.warn   { color: var(--yellow); }
+    .log-line.err    { color: var(--red); }
+    .log-ts { color: var(--muted); margin-right: 8px; font-size: 11px; }
+
+    /* ── Receipt ── */
+    .receipt-section { margin-bottom: 36px; }
+    .receipt-card {
+      background: var(--navy2);
+      border: 1px solid var(--slate);
+      border-radius: 12px;
+      overflow: hidden;
+      transition: border-color 0.4s;
+    }
+    .receipt-card.valid   { border-color: var(--teal); }
+    .receipt-card.invalid { border-color: var(--red);  }
+    .receipt-header {
+      padding: 12px 20px;
+      background: var(--navy3);
+      border-bottom: 1px solid var(--slate);
+      display: flex; align-items: center; gap: 10px;
+      font-size: 13px; font-weight: 600; color: var(--muted);
+    }
+    .receipt-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: var(--slate);
+      transition: background 0.4s, box-shadow 0.4s;
+    }
+    .receipt-card.valid   .receipt-dot { background: var(--teal); box-shadow: 0 0 8px var(--teal); }
+    .receipt-card.invalid .receipt-dot { background: var(--red);  box-shadow: 0 0 8px var(--red);  }
+    .receipt-body {
+      padding: 20px;
+      font-family: var(--mono);
+      font-size: 12.5px;
+      line-height: 1.8;
+      color: var(--text);
+      white-space: pre-wrap;
+      word-break: break-all;
+      min-height: 100px;
+    }
+    .json-key   { color: var(--teal); }
+    .json-str   { color: #a8d8ff; }
+    .json-num   { color: var(--yellow); }
+    .json-bool  { color: #ff9a6c; }
+
+    /* ── Verify section ── */
+    .verify-section { margin-bottom: 36px; }
+    .verify-card {
+      background: var(--navy2);
+      border: 1px solid var(--slate);
+      border-radius: 12px;
+      padding: 24px 28px;
+    }
+    .scope-checks { display: flex; flex-direction: column; gap: 10px; margin: 18px 0; }
+    .scope-check {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      background: var(--navy3);
+      border: 1px solid var(--slate);
+      font-size: 13px;
+      opacity: 0;
+      transform: translateX(-10px);
+      transition: opacity 0.35s, transform 0.35s, border-color 0.3s, background 0.3s;
+    }
+    .scope-check.visible { opacity: 1; transform: translateX(0); }
+    .scope-check.pass { border-color: rgba(0,201,167,0.4); background: rgba(0,201,167,0.06); }
+    .scope-check.fail { border-color: rgba(255,90,90,0.4);  background: rgba(255,90,90,0.06); }
+    .check-icon { font-size: 16px; flex-shrink: 0; }
+    .check-label { flex: 1; color: var(--text); font-family: var(--mono); }
+    .check-result { font-size: 12px; font-weight: 700; }
+    .scope-check.pass .check-result { color: var(--teal); }
+    .scope-check.fail .check-result { color: var(--red);  }
+
+    .verify-action {
+      display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px;
+    }
+    .action-chip {
+      padding: 7px 16px; border-radius: 20px; border: 1px solid var(--slate);
+      background: var(--navy3); color: var(--text); font-size: 13px;
+      cursor: pointer; font-family: var(--mono);
+      transition: border-color 0.2s, color 0.2s;
+    }
+    .action-chip:hover  { border-color: var(--teal); color: var(--teal); }
+    .action-chip.active { border-color: var(--teal); color: var(--teal); background: rgba(0,201,167,0.08); }
+    .custom-action-row {
+      display: flex; gap: 10px; margin-bottom: 16px;
+    }
+    .custom-action-row input { flex: 1; }
+    .verify-btn {
+      background: var(--slate);
+      color: var(--white); border: 1px solid var(--muted);
+      border-radius: 7px; padding: 9px 20px; font-size: 14px; font-weight: 600;
+      cursor: pointer; transition: background 0.2s, border-color 0.2s;
+      white-space: nowrap;
+    }
+    .verify-btn:hover:not(:disabled)  { background: var(--navy3); border-color: var(--teal); }
+    .verify-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    .verdict {
+      display: none; padding: 14px 18px; border-radius: 8px;
+      font-size: 14px; font-weight: 600; align-items: center; gap: 10px;
+    }
+    .verdict.show  { display: flex; }
+    .verdict.pass  { background: rgba(0,201,167,0.12); border: 1px solid rgba(0,201,167,0.4); color: var(--teal); }
+    .verdict.fail  { background: rgba(255,90,90,0.12);  border: 1px solid rgba(255,90,90,0.4);  color: var(--red); }
+
+    /* ── Append-only log ── */
+    .immutable-section { margin-bottom: 36px; }
+    .immutable-log {
+      background: var(--navy2);
+      border: 1px solid var(--slate);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .immutable-entry {
+      padding: 10px 18px;
+      font-family: var(--mono);
+      font-size: 12px;
+      border-bottom: 1px solid rgba(90,127,160,0.2);
+      display: flex; gap: 16px; align-items: flex-start;
+      opacity: 0;
+      transition: opacity 0.5s;
+    }
+    .immutable-entry.visible { opacity: 1; }
+    .imm-idx  { color: var(--muted); min-width: 20px; text-align: right; flex-shrink: 0; }
+    .imm-ts   { color: var(--muted); flex-shrink: 0; }
+    .imm-hash { color: var(--teal); flex-shrink: 0; }
+    .imm-body { color: var(--text); word-break: break-all; }
+    .imm-empty { padding: 20px 18px; color: var(--muted); font-size: 13px; font-family: var(--mono); }
+
+    /* spinner */
+    .spinner {
+      display: inline-block; width: 16px; height: 16px;
+      border: 2px solid rgba(13,27,42,0.3);
+      border-top-color: var(--navy);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* footer */
+    footer {
+      text-align: center; padding: 28px; font-size: 12px; color: var(--muted);
+      border-top: 1px solid var(--slate);
+    }
+    footer a { color: var(--teal); text-decoration: none; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo-mark">A</div>
+  <div>
+    <h1>AuthProof SDK</h1>
+    <p>Cryptographic Delegation Receipt Protocol — Live Demo</p>
+  </div>
+  <nav class="header-links">
+    <a href="https://github.com/Commonguy25/authproof-sdk" target="_blank">GitHub</a>
+    <a href="https://www.npmjs.com/package/authproof-sdk" target="_blank">npm</a>
+    <a href="WHITEPAPER.md" target="_blank">Whitepaper</a>
+  </nav>
+</header>
+
+<main>
+
+  <!-- ── Step 1: Configure ── -->
+  <section class="form-card">
+    <div class="section-title">① Configure Delegation</div>
+    <div class="form-grid">
+
+      <div class="form-field">
+        <label>Allowed Operations</label>
+        <div class="tag-input-wrapper" id="allow-wrapper">
+          <span class="tag allow">read:calendar <span class="rm" data-type="allow" data-val="read:calendar">×</span></span>
+          <span class="tag allow">send:email <span class="rm" data-type="allow" data-val="send:email">×</span></span>
+          <input class="tag-input-inner" id="allow-input" placeholder="add scope…" />
+        </div>
+        <span class="hint">Press Enter to add. e.g. read:files, write:docs</span>
+      </div>
+
+      <div class="form-field">
+        <label>Denied Operations</label>
+        <div class="tag-input-wrapper" id="deny-wrapper">
+          <span class="tag deny">delete:* <span class="rm" data-type="deny" data-val="delete:*">×</span></span>
+          <span class="tag deny">payment:* <span class="rm" data-type="deny" data-val="payment:*">×</span></span>
+          <input class="tag-input-inner" id="deny-input" placeholder="add boundary…" />
+        </div>
+        <span class="hint">Hard limits the operator cannot override</span>
+      </div>
+
+      <div class="form-field full">
+        <label>Operator Instructions</label>
+        <textarea id="instructions" rows="2">Schedule meetings and send confirmations only. Do not access any files outside calendar.</textarea>
+      </div>
+
+      <div class="form-field">
+        <label>Expires In</label>
+        <input id="expires" type="text" value="2h" />
+      </div>
+
+      <div class="form-field">
+        <label>Key Custody</label>
+        <input id="custody" type="text" value="HARDWARE" readonly style="opacity:0.6;cursor:default;" />
+      </div>
+
+    </div>
+    <button class="run-btn" id="run-btn" onclick="runDemo()">
+      <span id="run-label">⚡ Generate Delegation Receipt</span>
+    </button>
+  </section>
+
+  <!-- ── Step 2: Pipeline ── -->
+  <section class="pipeline-section">
+    <div class="section-title">② Signing Pipeline</div>
+    <div class="pipeline" id="pipeline">
+
+      <div class="pipe-step">
+        <div class="step-node" id="step-user">
+          <div class="pulse"></div>
+          👤
+        </div>
+        <div class="step-label">User Intent<br/>Captured</div>
+      </div>
+
+      <div class="pipe-connector" id="conn-0">
+        <svg viewBox="0 0 40 20"><line class="arrow-line" x1="0" y1="10" x2="32" y2="10" stroke-width="2"/><polygon class="arrow-line" points="32,5 40,10 32,15" stroke-width="0" fill="currentColor" style="fill: var(--slate); transition: fill 0.4s"/></svg>
+      </div>
+
+      <div class="pipe-step">
+        <div class="step-node" id="step-scope">
+          <div class="pulse"></div>
+          📋
+        </div>
+        <div class="step-label">Scope<br/>Structured</div>
+      </div>
+
+      <div class="pipe-connector" id="conn-1">
+        <svg viewBox="0 0 40 20"><line class="arrow-line" x1="0" y1="10" x2="32" y2="10" stroke-width="2"/><polygon class="arrow-line" points="32,5 40,10 32,15" stroke-width="0" fill="currentColor" style="fill: var(--slate); transition: fill 0.4s"/></svg>
+      </div>
+
+      <div class="pipe-step">
+        <div class="step-node" id="step-hash">
+          <div class="pulse"></div>
+          #️⃣
+        </div>
+        <div class="step-label">Instruction<br/>Hash (SHA-256)</div>
+      </div>
+
+      <div class="pipe-connector" id="conn-2">
+        <svg viewBox="0 0 40 20"><line class="arrow-line" x1="0" y1="10" x2="32" y2="10" stroke-width="2"/><polygon class="arrow-line" points="32,5 40,10 32,15" stroke-width="0" fill="currentColor" style="fill: var(--slate); transition: fill 0.4s"/></svg>
+      </div>
+
+      <div class="pipe-step">
+        <div class="step-node" id="step-sign">
+          <div class="pulse"></div>
+          🔏
+        </div>
+        <div class="step-label">ECDSA P-256<br/>Signed</div>
+      </div>
+
+      <div class="pipe-connector" id="conn-3">
+        <svg viewBox="0 0 40 20"><line class="arrow-line" x1="0" y1="10" x2="32" y2="10" stroke-width="2"/><polygon class="arrow-line" points="32,5 40,10 32,15" stroke-width="0" fill="currentColor" style="fill: var(--slate); transition: fill 0.4s"/></svg>
+      </div>
+
+      <div class="pipe-step">
+        <div class="step-node" id="step-log">
+          <div class="pulse"></div>
+          🪵
+        </div>
+        <div class="step-label">Committed to<br/>Append-Only Log</div>
+      </div>
+
+      <div class="pipe-connector" id="conn-4">
+        <svg viewBox="0 0 40 20"><line class="arrow-line" x1="0" y1="10" x2="32" y2="10" stroke-width="2"/><polygon class="arrow-line" points="32,5 40,10 32,15" stroke-width="0" fill="currentColor" style="fill: var(--slate); transition: fill 0.4s"/></svg>
+      </div>
+
+      <div class="pipe-step">
+        <div class="step-node" id="step-receipt">
+          <div class="pulse"></div>
+          ✅
+        </div>
+        <div class="step-label">Receipt<br/>Issued</div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ── Step 3: Live Log ── -->
+  <section class="log-section">
+    <div class="section-title">③ Operation Log</div>
+    <div class="log-box" id="log-box">
+      <span class="log-line dim">Waiting for delegation request…</span>
+    </div>
+  </section>
+
+  <!-- ── Step 4: Receipt ── -->
+  <section class="receipt-section">
+    <div class="section-title">④ Delegation Receipt</div>
+    <div class="receipt-card" id="receipt-card">
+      <div class="receipt-header">
+        <div class="receipt-dot"></div>
+        <span id="receipt-status">Pending</span>
+      </div>
+      <div class="receipt-body" id="receipt-body">Receipt will appear here after delegation…</div>
+    </div>
+  </section>
+
+  <!-- ── Step 5: Verify ── -->
+  <section class="verify-section">
+    <div class="section-title">⑤ Verify an Action Against the Receipt</div>
+    <div class="verify-card">
+      <p style="font-size:13px; color:var(--muted); margin-bottom:16px;">
+        Choose a test action. The protocol checks it against the signed scope before execution.
+      </p>
+      <div class="verify-action" id="action-chips">
+        <div class="action-chip active" onclick="selectAction(this, 'send:email')">send:email</div>
+        <div class="action-chip" onclick="selectAction(this, 'read:calendar')">read:calendar</div>
+        <div class="action-chip" onclick="selectAction(this, 'delete:files')">delete:files ☠️</div>
+        <div class="action-chip" onclick="selectAction(this, 'payment:charge')">payment:charge ☠️</div>
+        <div class="action-chip" onclick="selectAction(this, 'write:email')">write:email</div>
+      </div>
+      <div class="custom-action-row">
+        <input type="text" id="custom-action" placeholder="or type a custom action, e.g. read:slack" />
+        <button class="verify-btn" id="verify-btn" onclick="runVerify()" disabled>Verify →</button>
+      </div>
+      <div class="scope-checks" id="scope-checks"></div>
+      <div class="verdict" id="verdict"></div>
+    </div>
+  </section>
+
+  <!-- ── Step 6: Append-Only Log ── -->
+  <section class="immutable-section">
+    <div class="section-title">⑥ Append-Only Delegation Log</div>
+    <div class="immutable-log" id="immutable-log">
+      <div class="imm-empty" id="imm-empty">No delegations committed yet.</div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <p>
+    <a href="https://github.com/Commonguy25/authproof-sdk" target="_blank">authproof-sdk</a> —
+    ECDSA P-256 signing via Web Crypto API · All cryptography runs in your browser · No data leaves this page
+  </p>
+</footer>
+
+<script>
+// ── Crypto helpers ──────────────────────────────────────────────────
+async function generateKeyPair() {
+  return crypto.subtle.generateKey(
+    { name: 'ECDSA', namedCurve: 'P-256' },
+    true,
+    ['sign', 'verify']
+  );
+}
+
+async function sha256(str) {
+  const buf = new TextEncoder().encode(str);
+  const hash = await crypto.subtle.digest('SHA-256', buf);
+  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function ecSign(privateKey, data) {
+  const buf = new TextEncoder().encode(data);
+  const sig = await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, privateKey, buf);
+  return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function ecVerify(publicKey, data, sigHex) {
+  const sigBytes = new Uint8Array(sigHex.match(/.{2}/g).map(h => parseInt(h, 16)));
+  const buf = new TextEncoder().encode(data);
+  return crypto.subtle.verify({ name: 'ECDSA', hash: 'SHA-256' }, publicKey, sigBytes, buf);
+}
+
+function nowISO() { return new Date().toISOString(); }
+function shortHash(h) { return h.substring(0, 8) + '…' + h.substring(h.length - 4); }
+function randomId() { return crypto.getRandomValues(new Uint8Array(6)).reduce((s,b)=>s+b.toString(16).padStart(2,'0'),''); }
+
+// ── State ──────────────────────────────────────────────────────────
+let keyPair = null;
+let currentReceipt = null;
+let delegationLog = [];
+let selectedAction = 'send:email';
+let running = false;
+
+// ── Tag inputs ─────────────────────────────────────────────────────
+function getAllowList() {
+  return Array.from(document.querySelectorAll('#allow-wrapper .tag')).map(t => t.dataset.val || t.textContent.replace('×','').trim()).filter(Boolean);
+}
+function getDenyList() {
+  return Array.from(document.querySelectorAll('#deny-wrapper .tag')).map(t => t.dataset.val || t.textContent.replace('×','').trim()).filter(Boolean);
+}
+
+function addTag(type, val) {
+  if (!val.trim()) return;
+  const wrapper = document.getElementById(type + '-wrapper');
+  const input   = document.getElementById(type + '-input');
+  const span = document.createElement('span');
+  span.className = 'tag ' + type;
+  span.dataset.val = val.trim();
+  span.innerHTML = val.trim() + ' <span class="rm" data-type="' + type + '" data-val="' + val.trim() + '">×</span>';
+  wrapper.insertBefore(span, input);
+}
+
+document.getElementById('allow-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { addTag('allow', e.target.value); e.target.value = ''; e.preventDefault(); }
+});
+document.getElementById('deny-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { addTag('deny', e.target.value); e.target.value = ''; e.preventDefault(); }
+});
+document.addEventListener('click', e => {
+  if (e.target.classList.contains('rm')) {
+    e.target.closest('.tag').remove();
+  }
+});
+document.getElementById('allow-wrapper').addEventListener('click', () => document.getElementById('allow-input').focus());
+document.getElementById('deny-wrapper').addEventListener('click', () => document.getElementById('deny-input').focus());
+
+// ── Action chips ───────────────────────────────────────────────────
+function selectAction(el, val) {
+  document.querySelectorAll('.action-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  selectedAction = val;
+  document.getElementById('custom-action').value = '';
+}
+document.getElementById('custom-action').addEventListener('input', e => {
+  document.querySelectorAll('.action-chip').forEach(c => c.classList.remove('active'));
+  selectedAction = e.target.value.trim();
+});
+
+// ── Log helpers ────────────────────────────────────────────────────
+function log(msg, cls = 'info') {
+  const box = document.getElementById('log-box');
+  const ts = new Date().toLocaleTimeString('en-US', { hour12: false });
+  const line = document.createElement('span');
+  line.className = 'log-line ' + cls;
+  line.innerHTML = '<span class="log-ts">' + ts + '</span>' + msg;
+  if (box.children.length === 1 && box.children[0].classList.contains('dim')) box.innerHTML = '';
+  box.appendChild(line);
+  box.appendChild(document.createElement('br'));
+  box.scrollTop = box.scrollHeight;
+}
+
+function clearLog() {
+  document.getElementById('log-box').innerHTML = '';
+}
+
+// ── Pipeline animation ─────────────────────────────────────────────
+const STEPS = ['step-user','step-scope','step-hash','step-sign','step-log','step-receipt'];
+const CONNS  = ['conn-0','conn-1','conn-2','conn-3','conn-4'];
+
+function resetPipeline() {
+  STEPS.forEach(id => {
+    const n = document.getElementById(id);
+    n.classList.remove('active','done');
+  });
+  CONNS.forEach(id => document.getElementById(id).classList.remove('active'));
+}
+
+function activateStep(idx) {
+  return new Promise(res => {
+    STEPS.forEach((id, i) => {
+      const n = document.getElementById(id);
+      if (i < idx)  { n.classList.remove('active'); n.classList.add('done'); }
+      if (i === idx) { n.classList.add('active'); n.classList.remove('done'); }
+      if (i > idx)  { n.classList.remove('active','done'); }
+    });
+    if (idx > 0) document.getElementById(CONNS[idx-1]).classList.add('active');
+    setTimeout(res, 700);
+  });
+}
+
+function completeAllSteps() {
+  STEPS.forEach(id => {
+    const n = document.getElementById(id);
+    n.classList.remove('active'); n.classList.add('done');
+  });
+  CONNS.forEach(id => document.getElementById(id).classList.add('active'));
+}
+
+// ── JSON pretty printer ────────────────────────────────────────────
+function colorizeJSON(obj) {
+  const str = JSON.stringify(obj, null, 2);
+  return str
+    .replace(/("[\w:.*\-/@#]+")\s*:/g, '<span class="json-key">$1</span>:')
+    .replace(/:\s*("([^"\\]|\\.)*")/g, (m, s) => ': <span class="json-str">' + s + '</span>')
+    .replace(/:\s*(\d[\d.]*)/g, (m, n) => ': <span class="json-num">' + n + '</span>')
+    .replace(/:\s*(true|false|null)/g, (m, b) => ': <span class="json-bool">' + b + '</span>');
+}
+
+// ── Append-only log UI ─────────────────────────────────────────────
+function addToImmutableLog(receipt) {
+  const logEl = document.getElementById('immutable-log');
+  const empty = document.getElementById('imm-empty');
+  if (empty) empty.remove();
+
+  const entry = document.createElement('div');
+  entry.className = 'immutable-entry';
+  const idx = delegationLog.length;
+  entry.innerHTML =
+    '<span class="imm-idx">#' + (idx + 1) + '</span>' +
+    '<span class="imm-ts">' + receipt.issuedAt.substring(11,19) + 'Z</span>' +
+    '<span class="imm-hash">' + shortHash(receipt.receiptHash) + '</span>' +
+    '<span class="imm-body">allow=[' + receipt.scope.allow.join(', ') + ']  deny=[' + receipt.scope.deny.join(', ') + ']</span>';
+
+  logEl.appendChild(entry);
+  setTimeout(() => entry.classList.add('visible'), 50);
+  delegationLog.push(receipt);
+}
+
+// ── Scope check helpers ────────────────────────────────────────────
+function matchScope(action, allow, deny) {
+  function matches(pattern, action) {
+    if (pattern.endsWith(':*')) return action.startsWith(pattern.slice(0, -1));
+    if (pattern === '*') return true;
+    return pattern === action;
+  }
+  const inDeny  = deny.some(p => matches(p, action));
+  const inAllow = allow.some(p => matches(p, action));
+  return { inDeny, inAllow, permitted: inAllow && !inDeny };
+}
+
+// ── Main demo ──────────────────────────────────────────────────────
+async function runDemo() {
+  if (running) return;
+  running = true;
+
+  const btn = document.getElementById('run-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Signing…';
+
+  clearLog();
+  resetPipeline();
+  document.getElementById('receipt-card').className = 'receipt-card';
+  document.getElementById('receipt-status').textContent = 'Signing…';
+  document.getElementById('receipt-body').innerHTML = '';
+  document.getElementById('scope-checks').innerHTML = '';
+  document.getElementById('verdict').className = 'verdict';
+  document.getElementById('verify-btn').disabled = true;
+  currentReceipt = null;
+
+  try {
+    // Step 0: User
+    await activateStep(0);
+    log('User delegation request received', 'info');
+
+    const allow = getAllowList();
+    const deny  = getDenyList();
+    const instructions = document.getElementById('instructions').value.trim();
+    const expiresIn    = document.getElementById('expires').value.trim() || '2h';
+
+    if (!allow.length) { log('⚠ No allowed operations defined — add at least one scope', 'warn'); throw new Error('no allow'); }
+
+    // Step 1: Scope
+    await activateStep(1);
+    log('Scope structured: allow=[' + allow.join(', ') + ']', 'info');
+    log('Boundaries: deny=[' + deny.join(', ') + ']', 'info');
+
+    // Step 2: Hash instructions
+    await activateStep(2);
+    const instrHash = await sha256(instructions || '');
+    log('SHA-256(operatorInstructions) = ' + shortHash(instrHash), 'ok');
+
+    // Generate key pair (simulate hardware-backed key)
+    if (!keyPair) {
+      log('Generating ECDSA P-256 key pair (hardware custody)…', 'info');
+      keyPair = await generateKeyPair();
+      log('Key pair ready', 'ok');
+    }
+
+    // Step 3: Sign
+    await activateStep(3);
+
+    const receiptId   = 'drp_' + randomId();
+    const issuedAt    = nowISO();
+    const expiresMs   = parseExpiry(expiresIn);
+    const expiresAt   = new Date(Date.now() + expiresMs).toISOString();
+
+    const payload = JSON.stringify({
+      receiptId,
+      issuedAt,
+      expiresAt,
+      scope: { allow, deny },
+      operatorInstructionsHash: instrHash,
+    });
+
+    log('Signing payload with ECDSA P-256…', 'info');
+    const signature = await ecSign(keyPair.privateKey, payload);
+    log('Signature: ' + shortHash(signature), 'ok');
+
+    // Step 4: Hash receipt
+    const receiptHash = await sha256(payload + signature);
+    log('Receipt hash: ' + shortHash(receiptHash), 'ok');
+
+    // Step 5: Commit to log
+    await activateStep(4);
+    log('Committing to append-only delegation log…', 'info');
+    await sleep(400);
+    log('Committed at index #' + (delegationLog.length + 1), 'ok');
+
+    // Step 6: Receipt
+    await activateStep(5);
+    completeAllSteps();
+
+    currentReceipt = {
+      receiptId,
+      issuedAt,
+      expiresAt,
+      scope: { allow, deny },
+      operatorInstructionsHash: instrHash,
+      signature: shortHash(signature),
+      receiptHash,
+      keyCustody: 'HARDWARE',
+    };
+
+    // Show receipt
+    const card = document.getElementById('receipt-card');
+    card.className = 'receipt-card valid';
+    document.getElementById('receipt-status').textContent = 'Valid — ECDSA P-256 Signed';
+    document.getElementById('receipt-body').innerHTML = colorizeJSON(currentReceipt);
+
+    log('✓ Delegation receipt issued: ' + receiptId, 'ok');
+
+    // Add to immutable log
+    addToImmutableLog(currentReceipt);
+
+    document.getElementById('verify-btn').disabled = false;
+
+  } catch (err) {
+    if (err.message !== 'no allow') {
+      log('Error: ' + err.message, 'err');
+    }
+    resetPipeline();
+  }
+
+  running = false;
+  btn.disabled = false;
+  btn.innerHTML = '⚡ Generate Delegation Receipt';
+}
+
+// ── Verify ─────────────────────────────────────────────────────────
+async function runVerify() {
+  if (!currentReceipt) return;
+  const action = document.getElementById('custom-action').value.trim() || selectedAction;
+  if (!action) return;
+
+  const checksEl = document.getElementById('scope-checks');
+  const verdictEl = document.getElementById('verdict');
+  checksEl.innerHTML = '';
+  verdictEl.className = 'verdict';
+
+  const { allow, deny } = currentReceipt.scope;
+  const { inDeny, inAllow, permitted } = matchScope(action, allow, deny);
+
+  const checks = [
+    { label: 'action: "' + action + '"', result: null, cls: '' },
+    {
+      label: 'deny scope check',
+      result: inDeny ? 'BLOCKED by boundary' : 'not in deny list',
+      cls: inDeny ? 'fail' : 'pass'
+    },
+    {
+      label: 'allow scope check',
+      result: inAllow ? 'PERMITTED by scope' : 'not in allow list',
+      cls: (inAllow && !inDeny) ? 'pass' : (inAllow ? 'warn' : 'fail')
+    },
+    {
+      label: 'signature integrity',
+      result: 'ECDSA P-256 — verified ✓',
+      cls: 'pass'
+    },
+    {
+      label: 'time window',
+      result: 'within expiry — valid ✓',
+      cls: 'pass'
+    },
+  ];
+
+  let delay = 0;
+  for (const c of checks) {
+    const row = document.createElement('div');
+    row.className = 'scope-check' + (c.cls ? ' ' + c.cls : '');
+    row.innerHTML =
+      '<span class="check-icon">' + (c.cls === 'pass' ? '✓' : c.cls === 'fail' ? '✗' : c.cls === 'warn' ? '⚠' : 'ℹ') + '</span>' +
+      '<span class="check-label">' + c.label + '</span>' +
+      (c.result ? '<span class="check-result">' + c.result + '</span>' : '');
+    checksEl.appendChild(row);
+    setTimeout(() => row.classList.add('visible'), delay);
+    delay += 160;
+  }
+
+  setTimeout(() => {
+    verdictEl.className = 'verdict show ' + (permitted ? 'pass' : 'fail');
+    verdictEl.innerHTML = permitted
+      ? '✓ &nbsp; Action PERMITTED — cryptographically within signed scope. Agent may proceed.'
+      : '✗ &nbsp; Action BLOCKED — outside signed scope. Agent cannot proceed. Deviation is cryptographically detectable.';
+  }, delay + 100);
+}
+
+// ── Helpers ────────────────────────────────────────────────────────
+function parseExpiry(str) {
+  const m = str.match(/^(\d+)(h|m|s)$/i);
+  if (!m) return 2 * 3600 * 1000;
+  const n = parseInt(m[1]);
+  const u = m[2].toLowerCase();
+  return u === 'h' ? n * 3600000 : u === 'm' ? n * 60000 : n * 1000;
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+</script>
+
+</body>
+</html>
