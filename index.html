@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AuthProof SDK — Cryptographic Delegation for AI Agents</title>
+  <meta name="description" content="AuthProof removes operators as trusted third parties in AI agent authorization. Signed, verifiable, tamper-proof delegation receipts using ECDSA P-256." />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy:   #0d1b2a;
+      --navy2:  #112233;
+      --navy3:  #1a2e45;
+      --teal:   #00c9a7;
+      --teal2:  #00a88d;
+      --slate:  #1e3a52;
+      --muted:  #5a7fa0;
+      --text:   #cde0f5;
+      --white:  #e8f4ff;
+      --red:    #ff5a5a;
+      --yellow: #ffc857;
+      --mono:   'Courier New', monospace;
+      --sans:   -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--navy);
+      color: var(--text);
+      font-family: var(--sans);
+      line-height: 1.6;
+    }
+
+    a { color: var(--teal); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ── Nav ── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      background: rgba(13,27,42,0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--slate);
+      padding: 14px 32px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .nav-logo {
+      display: flex; align-items: center; gap: 10px;
+      font-weight: 700; font-size: 16px; color: var(--white);
+    }
+    .logo-mark {
+      width: 30px; height: 30px; background: var(--teal);
+      border-radius: 7px; display: flex; align-items: center;
+      justify-content: center; font-weight: 900; font-size: 16px;
+      color: var(--navy); flex-shrink: 0;
+    }
+    .nav-links { display: flex; gap: 24px; align-items: center; }
+    .nav-links a { font-size: 14px; color: var(--text); opacity: 0.8; }
+    .nav-links a:hover { opacity: 1; color: var(--white); text-decoration: none; }
+    .nav-cta {
+      background: var(--teal); color: var(--navy) !important;
+      font-weight: 700; padding: 8px 18px; border-radius: 7px;
+      opacity: 1 !important; font-size: 14px;
+    }
+    .nav-cta:hover { background: #00e0bc; text-decoration: none !important; }
+
+    /* ── Sections ── */
+    section { padding: 80px 24px; }
+    .container { max-width: 1040px; margin: 0 auto; }
+
+    /* ── Hero ── */
+    #hero {
+      padding-top: 140px;
+      padding-bottom: 100px;
+      text-align: center;
+      background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(0,201,167,0.10) 0%, transparent 70%);
+    }
+    .badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(0,201,167,0.12);
+      border: 1px solid rgba(0,201,167,0.3);
+      border-radius: 20px;
+      padding: 5px 14px;
+      font-size: 12px; font-weight: 600; color: var(--teal);
+      letter-spacing: 0.06em; text-transform: uppercase;
+      margin-bottom: 28px;
+    }
+    .badge-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--teal);
+      animation: blink 2s ease-in-out infinite;
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+    #hero h1 {
+      font-size: clamp(36px, 5vw, 60px);
+      font-weight: 800;
+      color: var(--white);
+      line-height: 1.15;
+      max-width: 820px;
+      margin: 0 auto 20px;
+      letter-spacing: -0.02em;
+    }
+    #hero h1 .highlight { color: var(--teal); }
+    #hero p.lead {
+      font-size: clamp(17px, 2vw, 20px);
+      color: var(--text);
+      max-width: 640px;
+      margin: 0 auto 40px;
+      opacity: 0.85;
+    }
+    .hero-ctas {
+      display: flex; flex-wrap: wrap; gap: 14px;
+      justify-content: center; margin-bottom: 60px;
+    }
+    .btn-primary {
+      background: var(--teal); color: var(--navy);
+      font-weight: 700; font-size: 16px;
+      padding: 14px 28px; border-radius: 9px;
+      border: none; cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      display: inline-block;
+    }
+    .btn-primary:hover { background: #00e0bc; text-decoration: none; }
+    .btn-primary:active { transform: scale(0.97); }
+    .btn-outline {
+      background: transparent; color: var(--text);
+      font-weight: 600; font-size: 16px;
+      padding: 14px 28px; border-radius: 9px;
+      border: 1px solid var(--slate);
+      transition: border-color 0.2s, color 0.2s;
+      display: inline-block;
+    }
+    .btn-outline:hover { border-color: var(--teal); color: var(--white); text-decoration: none; }
+
+    .stats-row {
+      display: flex; gap: 48px; justify-content: center;
+      flex-wrap: wrap;
+    }
+    .stat { text-align: center; }
+    .stat-num { font-size: 28px; font-weight: 800; color: var(--white); }
+    .stat-label { font-size: 12px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-top: 2px; }
+
+    /* ── Code preview ── */
+    .code-preview {
+      margin: 60px auto 0;
+      max-width: 720px;
+      background: var(--navy2);
+      border: 1px solid var(--slate);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .code-bar {
+      background: var(--navy3);
+      padding: 10px 16px;
+      display: flex; align-items: center; gap: 7px;
+      border-bottom: 1px solid var(--slate);
+    }
+    .code-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .code-dot-r { background: #ff5f57; }
+    .code-dot-y { background: #ffbd2e; }
+    .code-dot-g { background: #28ca41; }
+    .code-filename { font-size: 12px; color: var(--muted); margin-left: 8px; font-family: var(--mono); }
+    pre {
+      padding: 20px 24px;
+      font-family: var(--mono);
+      font-size: 13px;
+      line-height: 1.75;
+      overflow-x: auto;
+      color: var(--text);
+    }
+    .t { color: var(--teal); }      /* teal — keywords/types */
+    .s { color: #a8d8ff; }          /* string */
+    .c { color: var(--muted); }     /* comment */
+    .y { color: var(--yellow); }    /* numbers/booleans */
+    .w { color: var(--white); }     /* identifiers */
+    .p { color: #c9a0ff; }          /* punctuation/operators */
+
+    /* ── Problem / Primitive / Trust cards ── */
+    #problem { background: var(--navy2); }
+    .three-col {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;
+    }
+    @media (max-width: 740px) { .three-col { grid-template-columns: 1fr; } }
+    .col-card {
+      background: var(--navy3);
+      border: 1px solid var(--slate);
+      border-radius: 12px;
+      padding: 28px 24px;
+    }
+    .col-card h3 {
+      font-size: 15px; font-weight: 700;
+      color: var(--white); margin-bottom: 14px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .col-icon {
+      width: 34px; height: 34px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; flex-shrink: 0;
+    }
+    .col-icon.red    { background: rgba(255,90,90,0.15); }
+    .col-icon.teal   { background: rgba(0,201,167,0.15); }
+    .col-icon.yellow { background: rgba(255,200,87,0.15); }
+    .col-card p { font-size: 14px; color: var(--text); opacity: 0.85; line-height: 1.6; }
+    .col-card ul { margin-top: 12px; padding-left: 0; list-style: none; }
+    .col-card ul li {
+      font-size: 14px; color: var(--text); opacity: 0.85;
+      padding: 5px 0;
+      display: flex; align-items: flex-start; gap: 8px;
+    }
+    .col-card ul li::before { content: '→'; color: var(--teal); flex-shrink: 0; }
+
+    /* ── Section header ── */
+    .section-header { text-align: center; margin-bottom: 48px; }
+    .section-header h2 {
+      font-size: clamp(26px, 3.5vw, 40px);
+      font-weight: 800; color: var(--white);
+      letter-spacing: -0.02em; margin-bottom: 12px;
+    }
+    .section-header p {
+      font-size: 17px; color: var(--text); opacity: 0.8;
+      max-width: 560px; margin: 0 auto;
+    }
+    .section-tag {
+      font-size: 11px; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--teal);
+      margin-bottom: 12px;
+    }
+
+    /* ── How it works ── */
+    .steps { display: flex; flex-direction: column; gap: 0; max-width: 700px; margin: 0 auto; }
+    .step-row {
+      display: flex; gap: 20px; padding: 0 0 32px;
+      position: relative;
+    }
+    .step-row:not(:last-child)::before {
+      content: '';
+      position: absolute; left: 19px; top: 44px; bottom: 0;
+      width: 2px; background: var(--slate);
+    }
+    .step-num {
+      width: 40px; height: 40px; border-radius: 50%;
+      background: var(--navy3); border: 2px solid var(--teal);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700; color: var(--teal);
+      flex-shrink: 0; position: relative; z-index: 1;
+    }
+    .step-content h4 { font-size: 16px; font-weight: 700; color: var(--white); margin-bottom: 6px; }
+    .step-content p  { font-size: 14px; color: var(--text); opacity: 0.8; }
+
+    /* ── Links bar ── */
+    #links { background: var(--navy2); }
+    .links-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
+    }
+    @media (max-width: 600px) { .links-grid { grid-template-columns: 1fr 1fr; } }
+    .link-card {
+      background: var(--navy3); border: 1px solid var(--slate);
+      border-radius: 10px; padding: 22px 18px;
+      text-align: center; transition: border-color 0.2s, transform 0.2s;
+      display: block; color: var(--text);
+    }
+    .link-card:hover { border-color: var(--teal); transform: translateY(-2px); text-decoration: none; }
+    .link-card .link-icon { font-size: 28px; margin-bottom: 10px; }
+    .link-card .link-label { font-size: 14px; font-weight: 600; color: var(--white); }
+    .link-card .link-sub { font-size: 12px; color: var(--muted); margin-top: 3px; }
+
+    /* ── Signup ── */
+    #signup {
+      background: radial-gradient(ellipse 80% 100% at 50% 100%, rgba(0,201,167,0.10) 0%, transparent 70%);
+    }
+    .signup-box {
+      max-width: 520px; margin: 0 auto; text-align: center;
+    }
+    .signup-box h2 {
+      font-size: clamp(24px, 3vw, 36px);
+      font-weight: 800; color: var(--white);
+      letter-spacing: -0.02em; margin-bottom: 14px;
+    }
+    .signup-box p {
+      font-size: 15px; color: var(--text); opacity: 0.8; margin-bottom: 28px;
+    }
+    .signup-form {
+      display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;
+    }
+    .signup-form input {
+      flex: 1; min-width: 200px;
+      background: var(--navy3);
+      border: 1px solid var(--slate);
+      border-radius: 8px; color: var(--white);
+      font-size: 15px; padding: 13px 16px;
+      outline: none; transition: border-color 0.2s;
+      font-family: var(--sans);
+    }
+    .signup-form input:focus { border-color: var(--teal); }
+    .signup-form input::placeholder { color: var(--muted); }
+    .signup-form button {
+      background: var(--teal); color: var(--navy);
+      font-weight: 700; font-size: 15px;
+      padding: 13px 24px; border-radius: 8px;
+      border: none; cursor: pointer;
+      transition: background 0.2s;
+      white-space: nowrap;
+    }
+    .signup-form button:hover { background: #00e0bc; }
+    .signup-note { font-size: 12px; color: var(--muted); margin-top: 12px; }
+    .signup-success {
+      display: none; padding: 14px 20px;
+      background: rgba(0,201,167,0.12);
+      border: 1px solid rgba(0,201,167,0.35);
+      border-radius: 8px; color: var(--teal);
+      font-size: 14px; font-weight: 600;
+      margin-top: 16px;
+    }
+
+    /* ── Footer ── */
+    footer {
+      background: var(--navy2);
+      border-top: 1px solid var(--slate);
+      padding: 32px 24px;
+      text-align: center;
+      font-size: 13px; color: var(--muted);
+    }
+    footer a { color: var(--teal); }
+    footer .footer-links { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; margin-bottom: 12px; }
+  </style>
+</head>
+<body>
+
+<!-- ── Navigation ── -->
+<nav>
+  <a href="/" class="nav-logo" style="text-decoration:none;">
+    <div class="logo-mark">A</div>
+    AuthProof SDK
+  </a>
+  <div class="nav-links">
+    <a href="#how">How it works</a>
+    <a href="WHITEPAPER.md">Whitepaper</a>
+    <a href="demo.html">Live Demo</a>
+    <a href="https://github.com/Commonguy25/authproof-sdk" target="_blank">GitHub</a>
+    <a href="https://www.npmjs.com/package/authproof-sdk" target="_blank" class="nav-cta">npm install →</a>
+  </div>
+</nav>
+
+<!-- ── Hero ── -->
+<section id="hero">
+  <div class="container">
+    <div class="badge"><div class="badge-dot"></div>v1.1.0 — Live on npm</div>
+
+    <h1>
+      Close the <span class="highlight">operator trust gap</span><br/>
+      in AI agent authorization
+    </h1>
+
+    <p class="lead">
+      AuthProof commits user intent, scope, and operator instruction hashes to a
+      decentralized append-only log before any agent action executes.
+      Operators cannot exceed the signed boundary. Any deviation is cryptographically detectable.
+    </p>
+
+    <div class="hero-ctas">
+      <a href="demo.html" class="btn-primary">⚡ Try Live Demo</a>
+      <a href="https://github.com/Commonguy25/authproof-sdk" target="_blank" class="btn-outline">View on GitHub →</a>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat">
+        <div class="stat-num">ECDSA P-256</div>
+        <div class="stat-label">Signing Algorithm</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">100%</div>
+        <div class="stat-label">Browser-native crypto</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">Open source</div>
+        <div class="stat-label">MIT License</div>
+      </div>
+    </div>
+
+    <div class="code-preview">
+      <div class="code-bar">
+        <div class="code-dot code-dot-r"></div>
+        <div class="code-dot code-dot-y"></div>
+        <div class="code-dot code-dot-g"></div>
+        <span class="code-filename">agent.js</span>
+      </div>
+      <pre><span class="t">import</span> <span class="p">{</span> <span class="w">AuthProofClient</span><span class="p">,</span> <span class="w">Scope</span><span class="p">,</span> <span class="w">KeyCustody</span> <span class="p">}</span> <span class="t">from</span> <span class="s">'authproof-sdk'</span><span class="p">;</span>
+
+<span class="c">// User delegates to agent — scope is signed &amp; committed</span>
+<span class="t">const</span> <span class="w">client</span> <span class="p">=</span> <span class="t">new</span> <span class="w">AuthProofClient</span><span class="p">({</span> <span class="w">custody</span><span class="p">:</span> <span class="w">KeyCustody</span><span class="p">.</span><span class="w">HARDWARE</span> <span class="p">});</span>
+
+<span class="t">const</span> <span class="w">receipt</span> <span class="p">=</span> <span class="t">await</span> <span class="w">client</span><span class="p">.</span><span class="w">delegate</span><span class="p">({</span>
+  <span class="w">scope</span><span class="p">:</span> <span class="t">new</span> <span class="w">Scope</span><span class="p">({</span>
+    <span class="w">allow</span><span class="p">:</span> <span class="p">[</span><span class="s">'read:calendar'</span><span class="p">,</span> <span class="s">'send:email'</span><span class="p">],</span>
+    <span class="w">deny</span><span class="p">:</span>  <span class="p">[</span><span class="s">'delete:*'</span><span class="p">,</span> <span class="s">'payment:*'</span><span class="p">]</span>
+  <span class="p">}),</span>
+  <span class="w">operatorInstructions</span><span class="p">:</span> <span class="s">'Schedule meetings only'</span><span class="p">,</span>
+  <span class="w">expiresIn</span><span class="p">:</span> <span class="s">'2h'</span>
+<span class="p">});</span>
+
+<span class="c">// Before any action — verify against the signed receipt</span>
+<span class="t">const</span> <span class="w">ok</span> <span class="p">=</span> <span class="t">await</span> <span class="w">client</span><span class="p">.</span><span class="w">verify</span><span class="p">(</span><span class="w">receipt</span><span class="p">.</span><span class="w">hash</span><span class="p">,</span> <span class="w">action</span><span class="p">);</span>
+<span class="c">// Any deviation is detectable before execution</span></pre>
+    </div>
+  </div>
+</section>
+
+<!-- ── Problem / Primitive / Trust ── -->
+<section id="problem">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-tag">Why AuthProof</div>
+      <h2>The trust gap IETF frameworks leave open</h2>
+      <p>Current AI authorization standards delegate trust to the operator. AuthProof removes the operator as a trusted party entirely.</p>
+    </div>
+
+    <div class="three-col">
+      <div class="col-card">
+        <h3>
+          <div class="col-icon red">⚠️</div>
+          The Problem
+        </h3>
+        <ul>
+          <li>Operators can silently expand agent capabilities</li>
+          <li>No cryptographic record of what the user authorized</li>
+          <li>Agent actions can't be audited against original intent</li>
+          <li>Operator instructions can contradict user scope</li>
+        </ul>
+      </div>
+
+      <div class="col-card">
+        <h3>
+          <div class="col-icon teal">🔏</div>
+          The Primitive
+        </h3>
+        <p>A <strong style="color:var(--white)">Delegation Receipt</strong> is a signed Authorization Object committed to an append-only log before any action. It contains:</p>
+        <ul>
+          <li>User intent hash</li>
+          <li>Explicit allow/deny scope</li>
+          <li>Operator instruction hash</li>
+          <li>ECDSA P-256 signature + timestamp</li>
+        </ul>
+      </div>
+
+      <div class="col-card">
+        <h3>
+          <div class="col-icon yellow">🏛️</div>
+          The Trust Model
+        </h3>
+        <p>Operators are removed as trusted third parties. The signed receipt is the only authority. Any deviation between operator instructions and the committed hash is detectable by anyone with the public key.</p>
+        <ul>
+          <li>User holds the private key</li>
+          <li>Log is append-only and auditable</li>
+          <li>No trust in the operator required</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── How it works ── -->
+<section id="how">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-tag">Protocol</div>
+      <h2>How it works</h2>
+      <p>Six deterministic steps from user intent to verifiable delegation.</p>
+    </div>
+
+    <div class="steps">
+      <div class="step-row">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <h4>User specifies intent</h4>
+          <p>The user defines an explicit scope (allow list + deny list), time window, and operator instructions. Nothing is assumed or inferred.</p>
+        </div>
+      </div>
+      <div class="step-row">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <h4>Scope is structured</h4>
+          <p>Allow and deny lists are parsed into a normalized canonical form. Wildcards (e.g. <code style="font-family:var(--mono);color:var(--teal);font-size:13px">delete:*</code>) are resolved at verification time, not delegation time.</p>
+        </div>
+      </div>
+      <div class="step-row">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <h4>Operator instructions are hashed</h4>
+          <p>SHA-256 of the operator's stated instructions is embedded in the receipt. Any subsequent modification produces a detectable mismatch.</p>
+        </div>
+      </div>
+      <div class="step-row">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <h4>Payload is signed (ECDSA P-256)</h4>
+          <p>The full payload — scope, hashes, timestamps, receipt ID — is signed with the user's private key via the Web Crypto API. The key never leaves the hardware enclave.</p>
+        </div>
+      </div>
+      <div class="step-row">
+        <div class="step-num">5</div>
+        <div class="step-content">
+          <h4>Receipt committed to append-only log</h4>
+          <p>The signed receipt and its hash are committed before any agent action executes. The log is immutable — entries can be appended but never modified.</p>
+        </div>
+      </div>
+      <div class="step-row">
+        <div class="step-num">6</div>
+        <div class="step-content">
+          <h4>Every action verified against receipt</h4>
+          <p>Before execution, each agent action is checked against the signed scope. If the action falls outside the allow list or matches the deny list, it is blocked — cryptographically, not by policy.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Links ── -->
+<section id="links">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-tag">Resources</div>
+      <h2>Everything you need</h2>
+    </div>
+
+    <div class="links-grid">
+      <a class="link-card" href="demo.html">
+        <div class="link-icon">⚡</div>
+        <div class="link-label">Live Demo</div>
+        <div class="link-sub">Interactive browser demo</div>
+      </a>
+      <a class="link-card" href="WHITEPAPER.md">
+        <div class="link-icon">📄</div>
+        <div class="link-label">Whitepaper</div>
+        <div class="link-sub">Protocol specification</div>
+      </a>
+      <a class="link-card" href="https://github.com/Commonguy25/authproof-sdk" target="_blank">
+        <div class="link-icon">⬡</div>
+        <div class="link-label">GitHub</div>
+        <div class="link-sub">Source code + issues</div>
+      </a>
+      <a class="link-card" href="https://www.npmjs.com/package/authproof-sdk" target="_blank">
+        <div class="link-icon">📦</div>
+        <div class="link-label">npm package</div>
+        <div class="link-sub">authproof-sdk v1.1.0</div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ── Signup ── -->
+<section id="signup">
+  <div class="container">
+    <div class="signup-box">
+      <div class="section-tag">Stay in the loop</div>
+      <h2>Get notified on updates</h2>
+      <p>Early access to v2.0 features: on-chain log anchoring, multi-party delegation, and WASM verification.</p>
+
+      <form class="signup-form" id="signup-form"
+        action="https://formspree.io/f/xvgojvdn"
+        method="POST"
+        onsubmit="handleSignup(event)">
+        <input type="email" name="email" placeholder="your@email.com" required />
+        <input type="hidden" name="_subject" value="AuthProof SDK — Early Access Signup" />
+        <button type="submit">Notify me →</button>
+      </form>
+
+      <div class="signup-success" id="signup-success">
+        ✓ You're on the list. We'll reach out when v2.0 features are ready.
+      </div>
+      <p class="signup-note">No spam. One email when it ships. Unsubscribe anytime.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── Footer ── -->
+<footer>
+  <div class="footer-links">
+    <a href="demo.html">Live Demo</a>
+    <a href="WHITEPAPER.md">Whitepaper</a>
+    <a href="https://github.com/Commonguy25/authproof-sdk" target="_blank">GitHub</a>
+    <a href="https://www.npmjs.com/package/authproof-sdk" target="_blank">npm</a>
+  </div>
+  <p>AuthProof SDK — MIT License · Built by Ryan Nelson · ECDSA P-256 via Web Crypto API</p>
+</footer>
+
+<script>
+async function handleSignup(e) {
+  e.preventDefault();
+  const form = e.target;
+  const data = new FormData(form);
+
+  try {
+    const res = await fetch(form.action, {
+      method: 'POST',
+      body: data,
+      headers: { 'Accept': 'application/json' }
+    });
+    if (res.ok) {
+      form.style.display = 'none';
+      document.getElementById('signup-success').style.display = 'block';
+    } else {
+      form.querySelector('button').textContent = 'Try again →';
+    }
+  } catch {
+    form.querySelector('button').textContent = 'Try again →';
+  }
+}
+</script>
+
+</body>
+</html>
