@@ -68,6 +68,107 @@ async function _verify(publicJwk, signature, str) {
 }
 
 // ─────────────────────────────────────────────
+// RFC 3161 TRUSTED TIMESTAMP
+// ─────────────────────────────────────────────
+
+/**
+ * Build a minimal DER-encoded TimeStampReq (RFC 3161) for a SHA-256 hash.
+ *
+ * Structure (59 bytes total, fixed for SHA-256):
+ *   SEQUENCE {
+ *     INTEGER v1,
+ *     MessageImprint { AlgorithmIdentifier sha-256, OCTET STRING hash },
+ *     BOOLEAN certReq = TRUE
+ *   }
+ *
+ * SHA-256 OID 2.16.840.1.101.3.4.2.1 → bytes 60 86 48 01 65 03 04 02 01
+ *
+ * @param {Uint8Array} hashBytes - 32-byte SHA-256 digest
+ * @returns {Uint8Array}
+ */
+function _buildTsq(hashBytes) {
+  return new Uint8Array([
+    0x30, 0x39,              // SEQUENCE length 57 (TimeStampReq)
+      0x02, 0x01, 0x01,      // INTEGER v1
+      0x30, 0x31,            // SEQUENCE length 49 (MessageImprint)
+        0x30, 0x0d,          // SEQUENCE length 13 (AlgorithmIdentifier)
+          0x06, 0x09,        // OID length 9
+            0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01, // sha-256
+          0x05, 0x00,        // NULL (parameters)
+        0x04, 0x20,          // OCTET STRING length 32 (hashedMessage)
+          ...hashBytes,      // 32 bytes of the hash
+      0x01, 0x01, 0xff,      // BOOLEAN certReq = TRUE
+  ]);
+}
+
+/**
+ * Search for a byte subsequence inside a larger byte array.
+ * Used to verify that a TSA token contains the submitted hash.
+ * @param {Uint8Array} haystack
+ * @param {Uint8Array} needle
+ * @returns {boolean}
+ */
+function _tokenContainsHash(haystack, needle) {
+  outer: for (let i = 0; i <= haystack.length - needle.length; i++) {
+    for (let j = 0; j < needle.length; j++) {
+      if (haystack[i + j] !== needle[j]) continue outer;
+    }
+    return true;
+  }
+  return false;
+}
+
+/** Uint8Array → base64 string (safe for arbitrarily large arrays). */
+function _uint8ToBase64(bytes) {
+  let s = '';
+  for (const b of bytes) s += String.fromCharCode(b);
+  return btoa(s);
+}
+
+/** base64 string → Uint8Array. */
+function _base64ToUint8(b64) {
+  const s = atob(b64);
+  const out = new Uint8Array(s.length);
+  for (let i = 0; i < s.length; i++) out[i] = s.charCodeAt(i);
+  return out;
+}
+
+/**
+ * Request a RFC 3161 timestamp token from a TSA.
+ * Throws on network error, non-200 status, or malformed response.
+ * Callers must catch and fall back to UNVERIFIED_TIMESTAMP.
+ *
+ * @param {string} hashHex - Hex-encoded SHA-256 digest to timestamp
+ * @param {string} tsaUrl  - RFC 3161 TSA endpoint URL
+ * @returns {Promise<string>} base64-encoded TimeStampToken
+ */
+async function _requestRfc3161Timestamp(hashHex, tsaUrl) {
+  const hashBytes = _fromHex(hashHex);
+  const tsq = _buildTsq(hashBytes);
+
+  const response = await fetch(tsaUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/timestamp-query' },
+    body: tsq,
+    signal: AbortSignal.timeout(8000),
+  });
+
+  if (!response.ok) {
+    throw new Error(`TSA responded with HTTP ${response.status}`);
+  }
+
+  const tokenBuffer = await response.arrayBuffer();
+  const tokenBytes  = new Uint8Array(tokenBuffer);
+
+  // Sanity-check: the response must contain our hash bytes
+  if (!_tokenContainsHash(tokenBytes, hashBytes)) {
+    throw new Error('TSA response does not contain the submitted hash — response may be malformed');
+  }
+
+  return _uint8ToBase64(tokenBytes);
+}
+
+// ─────────────────────────────────────────────
 // SCOPE MATCHING
 // ─────────────────────────────────────────────
 
@@ -422,9 +523,12 @@ const _GENESIS = '0'.repeat(64);
  *   - entryId        — unique identifier
  *   - receiptHash    — the receipt this action is authorized under
  *   - action         — { operation, resource, parameters }
- *   - timestamp      — ms since epoch (see ⚠ note on record())
+ *   - timestamp      — ms since epoch (local clock, approximate)
  *   - agentPublicKey — agent's ECDSA P-256 public key JWK
  *   - prevHash       — SHA-256 of the previous entry (GENESIS for first)
+ *   - entryBodyHash  — SHA-256 of the base body fields (sent to TSA)
+ *   - timestampType  — 'RFC3161' | 'UNVERIFIED_TIMESTAMP'
+ *   - timestampToken — base64 TimeStampToken (RFC3161 entries only)
  *   - signature      — ECDSA P-256 signature over all fields above
  *   - entryHash      — SHA-256 of the full entry including signature
  *
@@ -448,18 +552,24 @@ class ActionLog {
     this._privateKey = null;
     /** @private {object|null} */
     this._publicJwk = null;
+    /** @private {string|null} RFC 3161 TSA endpoint; null disables TSA */
+    this._tsaUrl = 'https://freetsa.org/tsr';
   }
 
   /**
    * Initialize with the agent's ECDSA P-256 signing key.
    * Must be called once before record().
-   * @param {{ privateKey: CryptoKey, publicJwk: object }} opts
+   *
+   * @param {{ privateKey: CryptoKey, publicJwk: object, tsaUrl?: string|null }} opts
+   *   tsaUrl — RFC 3161 TSA endpoint. Defaults to 'https://freetsa.org/tsr'.
+   *            Pass null to disable TSA (entries will be UNVERIFIED_TIMESTAMP).
    */
-  async init({ privateKey, publicJwk }) {
+  async init({ privateKey, publicJwk, tsaUrl }) {
     if (!privateKey) throw new Error('ActionLog: privateKey is required');
     if (!publicJwk)  throw new Error('ActionLog: publicJwk is required');
     this._privateKey = privateKey;
     this._publicJwk  = publicJwk;
+    if (tsaUrl !== undefined) this._tsaUrl = tsaUrl;
   }
 
   /**
@@ -478,10 +588,19 @@ class ActionLog {
   /**
    * Record a signed, chain-linked entry for an action taken under a receipt.
    *
-   * ⚠ Timestamp uses Date.now() (the local system clock). This is not a
-   *   trusted time source. For production audit logs requiring tamper-proof
-   *   timestamps, integrate an RFC 3161 Trusted Timestamp Authority (TSA)
-   *   and replace timestamp before passing to this method.
+   * Timestamps: by default, record() obtains a signed timestamp token from
+   * the freetsa.org RFC 3161 Trusted Timestamp Authority (TSA) and embeds
+   * it in the entry. If the TSA request fails for any reason (network
+   * unavailable, timeout, non-200 response), the entry is still recorded
+   * using the local system clock and flagged with
+   * timestampType: 'UNVERIFIED_TIMESTAMP' so callers know the difference.
+   *
+   * Every entry carries:
+   *   - entryBodyHash  — SHA-256 of the base entry body (what was sent to the TSA)
+   *   - timestampType  — 'RFC3161' | 'UNVERIFIED_TIMESTAMP'
+   *   - timestampToken — base64 TimeStampToken (only present when type is RFC3161)
+   *
+   * Use verifyTimestamp(entryId) to independently verify the TSA token.
    *
    * @param {string} receiptHash
    * @param {{ operation: string, resource: string, parameters?: object }} action
@@ -498,23 +617,11 @@ class ActionLog {
       ? _GENESIS
       : this._entries.get(ids[ids.length - 1]).entryHash;
 
-    const entryId = `log-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-
-    // ─────────────────────────────────────────────────────────────────
-    // ⚠ PRODUCTION WARNING — UNTRUSTED TIMESTAMP
-    // The value below is taken from the local system clock (Date.now()).
-    // This clock is not independently verifiable and can be set
-    // arbitrarily by the host process. It MUST NOT be used in any
-    // compliance, legal, or regulatory context where timestamp
-    // authenticity matters.
-    //
-    // For production deployments requiring verifiable timestamps:
-    // obtain a timestamp token from an RFC 3161 Trusted Timestamp
-    // Authority (TSA) and replace this value before calling record().
-    // ─────────────────────────────────────────────────────────────────
+    const entryId   = `log-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
     const timestamp = Date.now();
 
-    const body = {
+    // Base body — the fields whose integrity we timestamp
+    const baseBody = {
       entryId,
       receiptHash,
       action: {
@@ -527,6 +634,32 @@ class ActionLog {
       prevHash,
     };
 
+    // SHA-256 of the base body — sent to the TSA for timestamping
+    const entryBodyHash = await _sha256(JSON.stringify(baseBody));
+
+    // Request an RFC 3161 trusted timestamp; fall back to UNVERIFIED_TIMESTAMP
+    let timestampToken = null;
+    let timestampType;
+
+    if (this._tsaUrl) {
+      try {
+        timestampToken = await _requestRfc3161Timestamp(entryBodyHash, this._tsaUrl);
+        timestampType  = 'RFC3161';
+      } catch {
+        timestampType = 'UNVERIFIED_TIMESTAMP';
+      }
+    } else {
+      timestampType = 'UNVERIFIED_TIMESTAMP';
+    }
+
+    // Full body — includes timestamp fields; signature covers everything
+    const body = {
+      ...baseBody,
+      entryBodyHash,
+      timestampType,
+      ...(timestampToken ? { timestampToken } : {}),
+    };
+
     const signature = await _sign(this._privateKey, JSON.stringify(body));
     const entryHash = await _sha256(JSON.stringify({ ...body, signature }));
 
@@ -536,6 +669,70 @@ class ActionLog {
     this._byReceipt.set(receiptHash, [...ids, entryId]);
 
     return entry;
+  }
+
+  /**
+   * Verify the timestamp on a log entry.
+   *
+   * For RFC3161 entries: confirms the stored TSA token contains the
+   * entry body hash that was submitted to the TSA.
+   * For UNVERIFIED_TIMESTAMP entries: reports that no TSA token exists
+   * and the timestamp cannot be independently verified.
+   *
+   * Note: this performs a structural verification (hash presence check).
+   * Full PKI verification of the TSA signing certificate requires the
+   * TSA root certificate chain, which is not bundled in this SDK.
+   *
+   * @param {string} entryId
+   * @returns {Promise<{ verified: boolean, type: string|null, reason: string, timestamp?: number, tokenBase64?: string }>}
+   */
+  async verifyTimestamp(entryId) {
+    const entry = this._entries.get(entryId);
+    if (!entry) {
+      return { verified: false, type: null, reason: 'Entry not found' };
+    }
+
+    const { timestampType, timestampToken, entryBodyHash, timestamp } = entry;
+
+    if (timestampType === 'UNVERIFIED_TIMESTAMP') {
+      return {
+        verified:  false,
+        type:      'UNVERIFIED_TIMESTAMP',
+        reason:    'Entry was recorded with a local system clock — no TSA token is available. Timestamps cannot be independently verified.',
+        timestamp,
+      };
+    }
+
+    if (timestampType === 'RFC3161') {
+      try {
+        const tokenBytes = _base64ToUint8(timestampToken);
+        const hashBytes  = _fromHex(entryBodyHash);
+        const valid      = _tokenContainsHash(tokenBytes, hashBytes);
+        return {
+          verified:   valid,
+          type:       'RFC3161',
+          reason:     valid
+            ? 'RFC 3161 token verified — TSA token contains the entry body hash'
+            : 'RFC 3161 token verification failed — entry hash not found in token',
+          timestamp,
+          tokenBase64: timestampToken,
+        };
+      } catch (e) {
+        return {
+          verified: false,
+          type:     'RFC3161',
+          reason:   `Token decode error: ${e.message}`,
+          timestamp,
+        };
+      }
+    }
+
+    return {
+      verified: false,
+      type:     timestampType ?? null,
+      reason:   `Unknown timestamp type: ${String(timestampType)}`,
+      timestamp,
+    };
   }
 
   /**

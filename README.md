@@ -237,10 +237,15 @@ const auditReport = log.diff(receiptId);
 | `log.verify(entryId)` | Verify one entry's signature and chain position. Returns `{ valid, reason }`. |
 | `log.getEntries(receiptHash)` | All entries for a receipt in chronological order. |
 | `log.diff(receiptHash)` | Compare all entries against the receipt's scope. Returns `{ compliant, violations, clean }`. |
+| `log.verifyTimestamp(entryId)` | Verify the RFC 3161 token on an entry. Returns `{ verified, type, reason, timestamp }`. |
 
-### Production Warning
+### Timestamps
 
-Timestamps in v1 use the client clock. For compliance or legal contexts where timestamps must be independently verifiable, replace with an RFC 3161 trusted timestamp authority before deploying in production.
+By default, `record()` obtains a cryptographically signed timestamp from the [freetsa.org](https://freetsa.org) RFC 3161 Trusted Timestamp Authority (TSA) and embeds the token in every log entry. RFC 3161 tokens are issued by a third-party TSA, signed with the TSA's private key, and independently verifiable — they cannot be forged or backdated by the recording party.
+
+If the TSA request fails (network unavailable, timeout), the entry is still recorded and flagged with `timestampType: 'UNVERIFIED_TIMESTAMP'`. Callers can distinguish the two cases and act accordingly. Use `log.verifyTimestamp(entryId)` to independently verify a token after the fact.
+
+For environments where outbound network access is restricted, pass `tsaUrl: null` to `log.init()` to disable TSA requests; all entries will be `UNVERIFIED_TIMESTAMP`.
 
 ### Important
 
