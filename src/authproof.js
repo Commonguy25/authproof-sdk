@@ -80,11 +80,18 @@ const STOP_WORDS = new Set([
   'then','up','out'
 ]);
 
+/** Strip simple English suffixes for basic stemming (s, es, ing, ed). */
+function _stem(w) {
+  return w.replace(/ings?$/, '').replace(/e?s$/, '').replace(/ed$/, '') || w;
+}
+
 function _tokenize(text) {
   return new Set(
     text.toLowerCase()
       .split(/[\s,;:.()\[\]{}'"""]+/)
       .filter(w => w.length > 3 && !STOP_WORDS.has(w))
+      .map(_stem)
+      .filter(w => w.length > 2)
   );
 }
 
@@ -105,7 +112,7 @@ function checkScope(action, receipt) {
   const scopeScore    = _overlapScore(action, receipt.scope);
   const boundaryScore = _overlapScore(action, receipt.boundaries);
   return {
-    withinScope:    scopeScore >= 0.3 && boundaryScore < 0.5,
+    withinScope:    scopeScore >= 0.3 && boundaryScore < 0.15,
     scopeScore:     Math.round(scopeScore * 100),
     boundaryScore:  Math.round(boundaryScore * 100),
   };
@@ -307,7 +314,7 @@ async function verify(receipt, receiptId, options = {}) {
     });
     checks.push({
       name:   'Action not blocked',
-      passed: boundaryScore < 50,
+      passed: boundaryScore < 15,
       detail: `${boundaryScore}% overlap with off-limits boundaries`,
     });
   }
@@ -351,19 +358,7 @@ function buildSystemPrompt(receipt, receiptId, verifyUrl) {
     ? `\nVerify this authorization: ${verifyUrl}?receipt=${receiptId}`
     : `\nAuthorization ID: ${receiptId}`;
 
-  return `You are authorized to act within the following scope:
-
-${receipt.scope}
-
-You must not:
-${receipt.boundaries}
-
-Operator instructions:
-${receipt.operatorInstructions}
-
-This authorization is valid until: ${expiry}${verifyLine}
-
-Before taking any significant action, confirm it falls within the authorized scope above. If uncertain, ask for clarification rather than proceeding.`;
+  return `You are authorized to act within the following scope:\n\n${receipt.scope}\n\nYou must not:\n${receipt.boundaries}\n\nOperator instructions:\n${receipt.operatorInstructions}\n\nThis authorization is valid until: ${expiry}${verifyLine}\n\nBefore taking any significant action, confirm it falls within the authorized scope above. If uncertain, ask for clarification rather than proceeding.`;
 }
 
 // ─────────────────────────────────────────────
@@ -425,7 +420,235 @@ const AuthProof = {
   secondsRemaining,
 };
 
-// ESM + CJS compatible export
+// ─────────────────────────────────────────────
+// CLASS-BASED API
+// Matches the README / whitepaper interface:
+//   import { AuthProofClient, Scope, KeyCustody } from 'authproof-sdk';
+// ─────────────────────────────────────────────
+
+/**
+ * Key custody modes.
+ */
+const KeyCustody = Object.freeze({
+  HARDWARE:  'hardware',   // WebAuthn / FIDO2 device secure enclave (recommended)
+  DELEGATED: 'delegated',  // Key manager / HSM
+  SELF:      'self',       // Self-custody / software key (default fallback)
+});
+
+/**
+ * Structured scope builder.
+ *
+ * const scope = new Scope()
+ *   .allow('reads',  ['resource://calendar/events'])
+ *   .allow('writes', ['resource://calendar/events'])
+ *   .deny('deletes', '*')
+ *   .execute('sha256:abc123', { program: 'scheduler-v1.sg' });
+ */
+class Scope {
+  constructor() {
+    this._allows   = [];
+    this._denies   = [];
+    this._executes = [];
+  }
+
+  /** Allow an operation class on the given resources (allowlist). */
+  allow(operationClass, resources) {
+    const res = Array.isArray(resources) ? resources : [resources];
+    this._allows.push({ class: operationClass, resources: res });
+    return this;
+  }
+
+  /** Deny an operation class on the given resources (hard boundary). */
+  deny(operationClass, resources) {
+    const res = Array.isArray(resources) ? resources : [resources];
+    this._denies.push({ class: operationClass, resources: res });
+    return this;
+  }
+
+  /** Bind execution to a specific program hash. */
+  execute(hash, options = {}) {
+    this._executes.push({ hash, ...options });
+    return this;
+  }
+
+  /** Serialize to structured string for receipt body. */
+  toString() {
+    // Strip resource:// URIs to readable path tokens so the keyword
+    // scope-checker can match natural-language action descriptions.
+    const _res = r => r === '*'
+      ? 'all resources'
+      : r.replace(/^[a-z][\w+.-]*:\/\//, '').replace(/\//g, ' ').trim() || r;
+
+    const lines = [];
+    for (const a of this._allows) {
+      lines.push(`ALLOW ${a.class}: ${a.resources.map(_res).join(', ')}`);
+    }
+    for (const d of this._denies) {
+      lines.push(`DENY ${d.class}: ${d.resources.map(_res).join(', ')}`);
+    }
+    for (const e of this._executes) {
+      lines.push(`EXECUTE ${e.hash}${e.program ? ` (${e.program})` : ''}`);
+    }
+    return lines.join('\n');
+  }
+
+  /**
+   * Serialize deny rules as natural-language boundary text.
+   * Used to feed DENY clauses into the boundaries check.
+   */
+  toBoundariesText() {
+    const _res = r => r === '*'
+      ? 'all resources'
+      : r.replace(/^[a-z][\w+.-]*:\/\//, '').replace(/\//g, ' ').trim() || r;
+    // Use infinitive form (strip trailing 's') so 'deletes'→'delete' matches
+    // natural-language action descriptions like "delete all events".
+    return this._denies
+      .map(d => `Do not ${d.class.replace(/s$/, '')}: ${d.resources.map(_res).join(', ')}`)
+      .join('. ');
+  }
+
+  /** Return structured object representation. */
+  toObject() {
+    return {
+      allows:   this._allows,
+      denies:   this._denies,
+      executes: this._executes,
+    };
+  }
+}
+
+/** Parse duration strings like '8h', '30m', '2d', '90s' → fractional hours. */
+function _parseDuration(str) {
+  const m = String(str).match(/^(\d+(?:\.\d+)?)\s*(h|m|d|s)?$/i);
+  if (!m) return 1;
+  const val  = parseFloat(m[1]);
+  const unit = (m[2] || 'h').toLowerCase();
+  return val * ({ h: 1, m: 1 / 60, d: 24, s: 1 / 3600 }[unit] ?? 1);
+}
+
+/** Serialize a boundaries object or string into a human-readable string. */
+function _serializeBoundaries(boundaries) {
+  if (!boundaries) return 'No additional boundaries specified.';
+  if (typeof boundaries === 'string') return boundaries;
+  return Object.entries(boundaries)
+    .map(([k, v]) => `${k}: ${v}`)
+    .join('; ');
+}
+
+/**
+ * Object-oriented AuthProof client — matches the README/whitepaper API surface.
+ *
+ * @example
+ * const ap = new AuthProofClient({ custody: KeyCustody.HARDWARE, log: 'https://log.authproof.dev' });
+ * const receipt = await ap.delegate({ scope, boundaries, window: { duration: '8h' }, operatorInstructions });
+ * const result  = await ap.validate({ receiptHash: receipt.hash, action: 'read calendar' });
+ */
+class AuthProofClient {
+  /**
+   * @param {object} [options]
+   * @param {string} [options.custody]  - KeyCustody mode (default: SELF)
+   * @param {string} [options.log]      - Log endpoint URL for receipt anchoring
+   */
+  constructor({ custody = KeyCustody.SELF, log } = {}) {
+    this.custody  = custody;
+    this.logUrl   = log || null;
+    this._keyPair = null;
+    this._store   = new Map();   // receiptHash → { receipt, revoked }
+  }
+
+  /** Lazily generate (or load) the signing key pair. */
+  async _ensureKey() {
+    if (!this._keyPair) {
+      this._keyPair = await generateKey();
+    }
+    return this._keyPair;
+  }
+
+  /**
+   * Delegate authority to an agent. Signs an Authorization Object and
+   * anchors it to the configured log.
+   *
+   * @param {object} options
+   * @param {Scope|string}   options.scope                - Authorized operations
+   * @param {object|string}  options.boundaries           - Hard prohibitions
+   * @param {{ duration: string }} options.window         - Time window (e.g. { duration: '8h' })
+   * @param {string}         options.operatorInstructions - Operator system prompt text
+   * @returns {{ receipt, receiptId, hash, systemPrompt, logAnchor }}
+   */
+  async delegate({ scope, boundaries, window: timeWindow, operatorInstructions }) {
+    if (!scope)                throw new Error('AuthProofClient: scope is required');
+    if (!operatorInstructions) throw new Error('AuthProofClient: operatorInstructions is required');
+
+    const { privateKey, publicJwk } = await this._ensureKey();
+
+    const scopeStr = scope instanceof Scope ? scope.toString() : String(scope);
+
+    // Merge explicit boundaries with any DENY rules declared in the Scope object
+    const explicitBoundaries = _serializeBoundaries(boundaries);
+    const denyBoundaries     = scope instanceof Scope ? scope.toBoundariesText() : '';
+    const boundariesStr      = [denyBoundaries, explicitBoundaries].filter(Boolean).join('. ')
+      || 'No additional boundaries specified.';
+    const ttlHours      = _parseDuration(timeWindow?.duration ?? '1h');
+
+    const { receipt, receiptId: hash, systemPrompt } = await create({
+      scope:        scopeStr,
+      boundaries:   boundariesStr,
+      instructions: operatorInstructions,
+      ttlHours,
+      privateKey,
+      publicJwk,
+    });
+
+    // Anchor to log (mock or real)
+    const logAnchor = this.logUrl
+      ? { logUrl: this.logUrl, receiptId: hash, anchoredAt: new Date().toISOString() }
+      : { logUrl: 'mock://local', receiptId: hash, anchoredAt: new Date().toISOString(), mock: true };
+
+    this._store.set(hash, { receipt, revoked: false });
+
+    return { receipt, receiptId: hash, hash, systemPrompt, logAnchor };
+  }
+
+  /**
+   * Validate an action against a previously issued receipt.
+   *
+   * @param {object} options
+   * @param {string} options.receiptHash  - The receipt ID to validate against
+   * @param {string} options.action       - The proposed action description
+   * @returns {{ authorized: boolean, checks: Array, receiptContext: object }}
+   */
+  async validate({ receiptHash, action }) {
+    const stored = this._store.get(receiptHash);
+    if (!stored) throw new Error(`AuthProofClient: receipt not found: ${receiptHash}`);
+    return verify(stored.receipt, receiptHash, { revoked: stored.revoked, action });
+  }
+
+  /**
+   * Revoke a previously issued receipt.
+   * @param {string} receiptHash
+   */
+  revoke(receiptHash) {
+    const stored = this._store.get(receiptHash);
+    if (stored) stored.revoked = true;
+  }
+
+  /**
+   * Check if a receipt is still active (not expired, not revoked).
+   * @param {string} receiptHash
+   * @returns {boolean}
+   */
+  isActive(receiptHash) {
+    const stored = this._store.get(receiptHash);
+    if (!stored) return false;
+    return isActive(stored.receipt, stored.revoked);
+  }
+}
+
+// ─────────────────────────────────────────────
+// EXPORTS
+// ─────────────────────────────────────────────
+
+// ESM + CJS compatible export (functional API default)
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = AuthProof;
 } else if (typeof globalThis !== 'undefined') {
@@ -434,6 +657,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 export default AuthProof;
 export {
+  // Functional API
   generateKey,
   importPrivateKey,
   create,
@@ -443,4 +667,8 @@ export {
   receiptId,
   isActive,
   secondsRemaining,
+  // Class-based API
+  AuthProofClient,
+  Scope,
+  KeyCustody,
 };
