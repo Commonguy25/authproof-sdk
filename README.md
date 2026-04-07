@@ -1,5 +1,34 @@
 # AuthProof SDK
 
+## Quick Demo
+
+```bash
+npm install authproof-sdk
+```
+
+```javascript
+import { AuthProofClient, Scope, KeyCustody } from 'authproof-sdk';
+
+const client = new AuthProofClient({ custody: KeyCustody.HARDWARE });
+
+const receipt = await client.delegate({
+  scope: new Scope({
+    allow: ['read:calendar', 'send:email'],
+    deny: ['delete:*', 'payment:*']
+  }),
+  operatorInstructions: 'Schedule meetings and send confirmations only',
+  expiresIn: '2h'
+});
+
+console.log(receipt.hash);
+// Verify any action against the original authorization
+const valid = await client.verify(receipt.hash, action);
+```
+
+> The operator cannot instruct the agent beyond the signed scope. Any deviation is cryptographically detectable before execution.
+
+---
+
 **A cryptographic delegation protocol for agentic AI — closes the user-to-operator trust gap that IETF frameworks leave open.**
 
 ---
@@ -33,7 +62,9 @@ A **Delegation Receipt** is a signed Authorization Object anchored to a decentra
 
 ### Scope
 
-An explicit allowlist of permitted operations. Everything not listed is denied by default. Expressed in structured format — not natural language. Operation classes:
+An explicit allowlist of permitted operations. Everything not listed is denied by default. Expressed in structured format — not natural language.
+
+Operation classes:
 
 | Class | Description |
 |---|---|
@@ -95,7 +126,7 @@ const authproof = new AuthProof({
 
 // Define permitted operations — explicit allowlist, deny-by-default
 const scope = new Scope()
-  .allow('reads',  ['resource://calendar/events', 'resource://email/inbox'])
+  .allow('reads', ['resource://calendar/events', 'resource://email/inbox'])
   .allow('writes', ['resource://calendar/events'])
   .deny('deletes', '*')
   .execute('sha256:a3f1c9d8...', { program: 'scheduler-v1.sg' }); // Safescript hash
@@ -109,13 +140,13 @@ const boundaries = {
 const receipt = await authproof.delegate({
   scope,
   boundaries,
-  window: { duration: '8h' },           // validated against log timestamp
+  window: { duration: '8h' }, // validated against log timestamp
   operatorInstructions: instructionText, // hashed and committed
 });
 
-// receipt.id    — unique receipt identifier
-// receipt.hash  — reference in every agent action
-// receipt.log   — append-only log anchor
+// receipt.id — unique receipt identifier
+// receipt.hash — reference in every agent action
+// receipt.log — append-only log anchor
 
 // Agent-side: validate an action against the receipt
 const check = await authproof.validate({
