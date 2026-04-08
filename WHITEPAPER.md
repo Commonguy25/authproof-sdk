@@ -237,7 +237,51 @@ The AuthProof protocol uses SHA-256 throughout: for receipt ID computation, inst
 
 ---
 
-## 8. Comparison to Existing Approaches
+## 8. Data Flow Receipt
+
+### 8.1 Motivation
+
+A Delegation Receipt establishes what an agent is authorized to do. But it does not capture what data the agent touched during execution — which inputs it accessed, what sensitive information it processed, and where that information subsequently flowed. This gap creates a compliance blind spot: a receipt may be valid and unrevoked, yet the agent may have propagated PII to an external system outside any user-visible boundary.
+
+The Data Flow Receipt addresses this. It is a cryptographically signed compliance artifact that tracks, at a per-execution level, every piece of data the agent accessed, tags each piece with sensitivity metadata, and records every egress event against a policy that defines which destinations are acceptable for which sensitivity classes. The result is a signed, verifiable record that can be attached to a Delegation Receipt to prove data handling compliance.
+
+### 8.2 Components
+
+**DataTagger** is the data access ledger. When the agent accesses a piece of data — a user record, a database row, an API response — the operator calls `tagger.tag(data, { source, sensitivity, accessedAt })`. The tagger computes `SHA-256(data)` and derives a stable `tagId = SHA-256(dataHash + receiptHash + accessedAt)`. Raw data is never stored; only the hash is recorded. The tag is appended to an in-memory manifest alongside its source label and sensitivity classification (e.g., `"PII"`, `"confidential"`, `"public"`).
+
+**TaintTracker** is the egress policy enforcer. Before the agent sends any output — to a log, an external API, a file, a downstream system — the operator calls `tracker.recordOutput({ output, destination, outputType })`. The tracker runs two checks: (1) exact-hash matching against the DataTagger manifest, detecting when a previously tagged value appears verbatim in the output; (2) PII regex scanning, detecting email addresses, US phone numbers, credit card numbers, and Social Security numbers that may not have been tagged at ingestion. If the output contains PII (either by tag or by pattern) and the destination is classified as high-risk (`external-api`, `file`), a policy violation is flagged. The egress event — clean or violating — is appended to an internal log.
+
+**DataFlowReceipt** is the signed artifact. At the end of execution, `DataFlowReceipt.generate({ delegationReceiptHash, tagger, tracker, privateKey, publicJwk })` serializes the full data manifest and egress log, computes `bodyHash = SHA-256(JSON.stringify(body))`, signs the body with ECDSA P-256, and requests a RFC 3161 trusted timestamp from the configured TSA (falling back to a local-clock `UNVERIFIED_TIMESTAMP` if the TSA is unreachable). The result is a self-contained, verifiable record. `DataFlowReceipt.verify(receipt)` recomputes the body hash and verifies the ECDSA signature, returning `{ valid, reason }`.
+
+### 8.3 Policy Model
+
+The current egress policy is conservative by design:
+
+- **High-risk destinations:** `external-api`, `file`. Any output to these destinations that contains PII (tagged or pattern-detected) constitutes a policy violation.
+- **Non-high-risk destinations:** `user`, `log`, and any other destination string. PII in these destinations is flagged as tainted but does not constitute a policy violation.
+- **Sensitivity escalation:** A tag with any sensitivity class is recorded in the egress log. Only tags with `sensitivity = "PII"` or outputs matching PII regex patterns trigger policy violations at high-risk destinations.
+
+This model reflects the most common compliance requirement — preventing PII from leaving a controlled execution environment via an unapproved channel — while leaving non-PII data movement unrestricted.
+
+### 8.4 ActionLog Integration
+
+`ActionLog.record()` accepts an optional `taintTracker` argument. When provided, it calls `tracker.recordOutput({ output, destination: 'log', outputType: 'log-entry' })` automatically before constructing the log entry, embedding the taint result in the entry body. This means every logged action transparently records whether tainted data was present in the agent's output at that step, without requiring the operator to call the tracker separately.
+
+### 8.5 Trust Properties
+
+The Data Flow Receipt provides the following guarantees:
+
+1. **Data access non-repudiation.** Every tagged input produces a `tagId` that is deterministically bound to the Delegation Receipt hash. An operator cannot retroactively claim a piece of data was not accessed — the tagId can only be produced from the combination of the data, the receipt, and the access timestamp.
+
+2. **Egress integrity.** The egress log and data manifest are included verbatim in the signed body. A verifier who holds the signer's public key can confirm that the log has not been modified after generation.
+
+3. **PII detection coverage.** The dual detection strategy — exact-hash matching plus regex scanning — provides defense in depth. Exact-hash matching catches structured data that was explicitly tagged; regex scanning catches PII that entered the agent's context through untagged channels (e.g., an LLM response that included a user's email address from its training context).
+
+4. **Binding to Delegation Receipt.** The `delegationReceiptHash` field binds the Data Flow Receipt to the specific delegation under which execution occurred. A verifier can confirm that the data handling record corresponds to the authorization record for the same session.
+
+---
+
+## 9. Comparison to Existing Approaches
 
 | Property | OAuth 2.0 / RAR | WIMSE | AIP | AuthProof |
 |---|---|---|---|---|
@@ -255,7 +299,7 @@ AuthProof is not a replacement for WIMSE, AIP, or OAuth 2.0. It operates at a di
 
 ---
 
-## 9. Conclusion
+## 10. Conclusion
 
 The agentic AI deployment model creates a trust problem that existing identity and authorization frameworks were not designed to address. The operator sits between the user and the agent with unchecked authority over what the agent is instructed to do. AuthProof makes that authority cryptographically bounded, the user's original intent immutably recorded, and operator deviation provable from a public log. The three-layer trust stack — signed capability manifest, Delegation Receipt, and Safescript execution binding — systematically eliminates trusted intermediaries from the agentic delegation chain.
 
