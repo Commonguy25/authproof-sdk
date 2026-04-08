@@ -527,15 +527,24 @@ async function create(options) {
  * @returns {{ authorized: boolean, checks: Array, receiptContext: object }}
  */
 async function verify(receipt, receiptId, options = {}) {
-  const { revoked = false, action } = options;
+  const { revoked = false, action, registry } = options;
   const checks = [];
 
-  // 1. Not revoked
-  const notRevoked = !revoked && !receipt.revoked;
+  // 1. Not revoked — check both the in-memory flag and the optional registry
+  let isRevoked = revoked || !!receipt.revoked;
+  let revokedReason = 'This authorization has been revoked';
+  if (!isRevoked && registry) {
+    const status = await registry.check(receiptId);
+    if (status.revoked) {
+      isRevoked = true;
+      revokedReason = `Revoked: ${status.reason}`;
+    }
+  }
+  const notRevoked = !isRevoked;
   checks.push({
     name:   'Not revoked',
     passed: notRevoked,
-    detail: notRevoked ? 'Active' : 'This authorization has been revoked',
+    detail: notRevoked ? 'Active' : revokedReason,
   });
 
   // 2. Within time window
@@ -746,22 +755,27 @@ class ActionLog {
     this._publicJwk = null;
     /** @private {string|null} RFC 3161 TSA endpoint; null disables TSA */
     this._tsaUrl = 'https://freetsa.org/tsr';
+    /** @private {RevocationRegistry|null} */
+    this._registry = null;
   }
 
   /**
    * Initialize with the agent's ECDSA P-256 signing key.
    * Must be called once before record().
    *
-   * @param {{ privateKey: CryptoKey, publicJwk: object, tsaUrl?: string|null }} opts
-   *   tsaUrl — RFC 3161 TSA endpoint. Defaults to 'https://freetsa.org/tsr'.
-   *            Pass null to disable TSA (entries will be UNVERIFIED_TIMESTAMP).
+   * @param {{ privateKey: CryptoKey, publicJwk: object, tsaUrl?: string|null, registry?: RevocationRegistry }} opts
+   *   tsaUrl   — RFC 3161 TSA endpoint. Defaults to 'https://freetsa.org/tsr'.
+   *              Pass null to disable TSA (entries will be UNVERIFIED_TIMESTAMP).
+   *   registry — Optional RevocationRegistry. When provided, record() will
+   *              reject any action whose receipt has been revoked.
    */
-  async init({ privateKey, publicJwk, tsaUrl }) {
+  async init({ privateKey, publicJwk, tsaUrl, registry }) {
     if (!privateKey) throw new Error('ActionLog: privateKey is required');
     if (!publicJwk)  throw new Error('ActionLog: publicJwk is required');
     this._privateKey = privateKey;
     this._publicJwk  = publicJwk;
-    if (tsaUrl !== undefined) this._tsaUrl = tsaUrl;
+    if (tsaUrl   !== undefined) this._tsaUrl  = tsaUrl;
+    if (registry !== undefined) this._registry = registry;
   }
 
   /**
@@ -803,6 +817,16 @@ class ActionLog {
     if (!receiptHash)       throw new Error('ActionLog: receiptHash is required');
     if (!action?.operation) throw new Error('ActionLog: action.operation is required');
     if (!action?.resource)  throw new Error('ActionLog: action.resource is required');
+
+    // Reject if the receipt has been revoked
+    if (this._registry) {
+      const status = await this._registry.check(receiptHash);
+      if (status.revoked) {
+        throw new Error(
+          `ActionLog: receipt has been revoked and cannot be used — reason: ${status.reason}`
+        );
+      }
+    }
 
     const ids      = this._byReceipt.get(receiptHash) || [];
     const prevHash = ids.length === 0
@@ -1074,6 +1098,161 @@ class ActionLog {
 }
 
 // ─────────────────────────────────────────────
+// REVOCATION REGISTRY
+// ─────────────────────────────────────────────
+
+/**
+ * RevocationRegistry — append-only, cryptographically signed store of
+ * revoked delegation receipts.
+ *
+ * Properties:
+ *   - Append-only: once a receipt is revoked it cannot be un-revoked or
+ *     deleted from the registry.
+ *   - Each revocation record is signed by the revoker's ECDSA P-256 key.
+ *   - The registry is exportable and importable so it can be shared across
+ *     processes, backed up, or synchronized.
+ *   - ActionLog.record() consults the registry before sealing an entry.
+ *   - AuthProof.verify() consults the registry when passed as an option.
+ *
+ * @example
+ * const registry = new RevocationRegistry();
+ * await registry.init({ privateKey, publicJwk });
+ *
+ * await registry.revoke(receiptHash, { reason: 'user cancelled' });
+ *
+ * const status = await registry.check(receiptHash);
+ * // { revoked: true, reason: 'user cancelled', revokedAt: <ms> }
+ */
+class RevocationRegistry {
+  constructor() {
+    /** @private {Map<string, object>} receiptHash → signed revocation record */
+    this._revocations = new Map();
+    /** @private {CryptoKey|null} */
+    this._privateKey = null;
+    /** @private {object|null} */
+    this._publicJwk = null;
+  }
+
+  /**
+   * Initialize with an ECDSA P-256 signing key.
+   * Required before calling revoke().
+   * @param {{ privateKey: CryptoKey, publicJwk: object }} opts
+   */
+  async init({ privateKey, publicJwk }) {
+    if (!privateKey) throw new Error('RevocationRegistry: privateKey is required');
+    if (!publicJwk)  throw new Error('RevocationRegistry: publicJwk is required');
+    this._privateKey = privateKey;
+    this._publicJwk  = publicJwk;
+  }
+
+  /**
+   * Revoke a receipt. Append-only — this cannot be undone.
+   * Throws if the registry has not been initialized or if the receipt
+   * is already revoked.
+   *
+   * @param {string} receiptHash — SHA-256 receipt ID to revoke
+   * @param {object} [opts]
+   * @param {string} [opts.reason='user revoked'] — Human-readable reason
+   * @param {number} [opts.revokedAt=Date.now()]  — Epoch-ms timestamp of revocation
+   * @returns {Promise<object>} The signed revocation record
+   */
+  async revoke(receiptHash, { reason = 'user revoked', revokedAt } = {}) {
+    if (!receiptHash) throw new Error('RevocationRegistry: receiptHash is required');
+    if (!this._privateKey) throw new Error('RevocationRegistry: call init() before revoke()');
+    if (this._revocations.has(receiptHash)) {
+      throw new Error(`RevocationRegistry: receipt is already revoked — revocations are permanent`);
+    }
+
+    const record = {
+      receiptHash,
+      reason:    reason ?? 'user revoked',
+      revokedAt: revokedAt ?? Date.now(),
+      revokedBy: this._publicJwk,
+    };
+
+    const signature = await _sign(this._privateKey, JSON.stringify(record));
+    const entry = { ...record, signature };
+
+    this._revocations.set(receiptHash, entry);
+    return entry;
+  }
+
+  /**
+   * Check whether a receipt has been revoked.
+   *
+   * @param {string} receiptHash
+   * @returns {Promise<{ revoked: boolean, reason?: string, revokedAt?: number }>}
+   */
+  async check(receiptHash) {
+    const entry = this._revocations.get(receiptHash);
+    if (!entry) return { revoked: false };
+    return {
+      revoked:   true,
+      reason:    entry.reason,
+      revokedAt: entry.revokedAt,
+    };
+  }
+
+  /**
+   * Export all revocation records as a JSON-safe array.
+   * The exported array can be stored, shared, or passed to import().
+   * @returns {object[]}
+   */
+  export() {
+    return [...this._revocations.values()];
+  }
+
+  /**
+   * Import revocation records from a previously exported array.
+   * Each record's ECDSA signature is verified before import.
+   * Records with invalid signatures are skipped and reported in errors[].
+   * Records for already-revoked hashes are silently skipped.
+   *
+   * @param {object[]} records
+   * @returns {Promise<{ imported: number, skipped: number, errors: string[] }>}
+   */
+  async import(records) {
+    if (!Array.isArray(records)) throw new Error('RevocationRegistry: records must be an array');
+
+    let imported = 0;
+    let skipped  = 0;
+    const errors = [];
+
+    for (const record of records) {
+      try {
+        if (!record?.receiptHash || !record?.signature || !record?.revokedBy) {
+          errors.push(`Skipped: record missing receiptHash, signature, or revokedBy`);
+          skipped++;
+          continue;
+        }
+
+        // Verify the revoker's signature over the record body
+        const { signature, ...body } = record;
+        const valid = await _verify(record.revokedBy, signature, JSON.stringify(body));
+        if (!valid) {
+          errors.push(`Skipped: invalid signature for ${record.receiptHash.slice(0, 8)}...`);
+          skipped++;
+          continue;
+        }
+
+        if (this._revocations.has(record.receiptHash)) {
+          skipped++; // already present — idempotent
+          continue;
+        }
+
+        this._revocations.set(record.receiptHash, record);
+        imported++;
+      } catch (e) {
+        errors.push(`Error importing record: ${e.message}`);
+        skipped++;
+      }
+    }
+
+    return { imported, skipped, errors };
+  }
+}
+
+// ─────────────────────────────────────────────
 // EXPORTS
 // ─────────────────────────────────────────────
 
@@ -1098,17 +1277,22 @@ const AuthProof = {
 
   // Scope schema
   ScopeSchema,
+
+  // Revocation registry
+  RevocationRegistry,
 };
 
 // ESM + CJS compatible export
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = AuthProof;
-  module.exports.ActionLog  = ActionLog;
-  module.exports.ScopeSchema = ScopeSchema;
+  module.exports.ActionLog          = ActionLog;
+  module.exports.ScopeSchema        = ScopeSchema;
+  module.exports.RevocationRegistry = RevocationRegistry;
 } else if (typeof globalThis !== 'undefined') {
-  globalThis.AuthProof   = AuthProof;
-  globalThis.ActionLog   = ActionLog;
-  globalThis.ScopeSchema = ScopeSchema;
+  globalThis.AuthProof           = AuthProof;
+  globalThis.ActionLog           = ActionLog;
+  globalThis.ScopeSchema         = ScopeSchema;
+  globalThis.RevocationRegistry  = RevocationRegistry;
 }
 
 export default AuthProof;
@@ -1124,4 +1308,5 @@ export {
   secondsRemaining,
   ActionLog,
   ScopeSchema,
+  RevocationRegistry,
 };
