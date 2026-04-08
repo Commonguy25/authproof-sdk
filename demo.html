@@ -342,6 +342,156 @@
       /* Status bar text — allow wrap */
       .status-bar { font-size: 12px; }
     }
+
+    /* ── Live indicator dot ── */
+    .live-dot {
+      display: inline-block; width: 8px; height: 8px;
+      border-radius: 50%; flex-shrink: 0;
+    }
+    .live-dot.green { background: var(--teal); animation: pulse-green 2s ease-in-out infinite; }
+    .live-dot.blue  { background: #4da6ff;    animation: pulse-blue  2s ease-in-out infinite; }
+    @keyframes pulse-green {
+      0%,100% { box-shadow: 0 0 0 0 rgba(0,201,167,0.5); }
+      50%     { box-shadow: 0 0 0 7px rgba(0,201,167,0); }
+    }
+    @keyframes pulse-blue {
+      0%,100% { box-shadow: 0 0 0 0 rgba(77,166,255,0.5); }
+      50%     { box-shadow: 0 0 0 7px rgba(77,166,255,0); }
+    }
+
+    /* ── Select ── */
+    select {
+      width: 100%; background: var(--navy3); border: 1px solid var(--slate);
+      border-radius: 8px; padding: 10px 14px; color: var(--text);
+      font-size: 16px; font-family: var(--sans); outline: none;
+      cursor: pointer; -webkit-appearance: none; appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%235a7fa0' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 14px center;
+      padding-right: 36px; transition: border-color 0.2s;
+    }
+    select:focus { border-color: var(--teal); }
+
+    /* ── DFR viz steps ── */
+    .dfr-viz { display: flex; flex-direction: column; gap: 10px; }
+    .dfr-step {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 12px 14px; border-radius: 8px;
+      background: var(--navy3); border: 1px solid var(--slate);
+      border-left: 3px solid transparent;
+      opacity: 0; transform: translateY(8px);
+      transition: opacity 0.3s, transform 0.3s, border-color 0.3s;
+      will-change: opacity, transform;
+    }
+    .dfr-step.visible   { opacity: 1; transform: translateY(0); }
+    .dfr-step.done-teal { border-left-color: var(--teal); }
+    .dfr-step.done-red  { border-left-color: var(--red); }
+    .dfr-step-icon  { font-size: 16px; flex-shrink: 0; width: 22px; text-align: center; margin-top: 2px; }
+    .dfr-step-body  { flex: 1; min-width: 0; }
+    .dfr-step-title { font-size: 11px; font-weight: 600; color: var(--muted);
+                      text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+
+    .pii-check-row {
+      display: flex; align-items: center; gap: 8px; padding: 2px 0;
+      font-size: 12px; opacity: 0; transition: opacity 0.25s;
+    }
+    .pii-check-row.visible { opacity: 1; }
+
+    .violation-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 14px; border-radius: 6px;
+      font-weight: 700; font-size: 13px; margin-top: 8px;
+    }
+    .violation-badge.violation { background: rgba(255,90,90,0.15); color: var(--red);  border: 1px solid rgba(255,90,90,0.3); }
+    .violation-badge.clean     { background: rgba(0,201,167,0.12); color: var(--teal); border: 1px solid rgba(0,201,167,0.25); }
+
+    /* ── Batch chain ── */
+    .batch-chain { display: flex; flex-direction: column; }
+    .batch-node {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 12px 14px; border-radius: 8px;
+      background: var(--navy3); border: 1px solid var(--slate);
+      border-left: 3px solid transparent;
+      opacity: 0; transform: translateY(8px);
+      transition: opacity 0.3s, transform 0.3s, border-color 0.3s, background 0.3s;
+      will-change: opacity, transform;
+    }
+    .batch-node.visible  { opacity: 1; transform: translateY(0); }
+    .batch-node.done     { border-left-color: var(--teal); }
+    .batch-node.rejected { border-left-color: var(--red); background: rgba(255,90,90,0.04); }
+    .batch-node-num {
+      width: 26px; height: 26px; border-radius: 50%;
+      background: var(--slate); color: var(--muted); font-size: 11px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; transition: background 0.3s, color 0.3s;
+    }
+    .batch-node.done     .batch-node-num { background: rgba(0,201,167,0.2); color: var(--teal); }
+    .batch-node.rejected .batch-node-num { background: rgba(255,90,90,0.2); color: var(--red); }
+    .batch-node-op   { font-size: 13px; font-weight: 600; font-family: var(--mono); color: var(--white); word-break: break-word; }
+    .batch-node-res  { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .batch-node-hash { font-size: 10px; font-family: var(--mono); color: var(--teal);
+                       margin-top: 4px; opacity: 0; transition: opacity 0.4s; }
+    .batch-node.hashed .batch-node-hash { opacity: 1; }
+
+    .chain-connector {
+      padding: 2px 0 2px 13px; opacity: 0; transition: opacity 0.4s;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .chain-connector.visible { opacity: 1; }
+    .chain-connector-line {
+      width: 2px; height: 20px; background: var(--slate); position: relative; overflow: hidden;
+    }
+    .chain-connector-fill {
+      position: absolute; top: 0; left: 0; width: 100%;
+      height: 0; background: var(--teal); transition: height 0.4s ease-in-out;
+    }
+
+    .lock-anim {
+      text-align: center; font-size: 28px; padding: 8px 0;
+      opacity: 0; transform: scale(0.4);
+      transition: opacity 0.3s, transform 0.45s cubic-bezier(0.175,0.885,0.32,1.275);
+    }
+    .lock-anim.visible { opacity: 1; transform: scale(1); }
+
+    /* ── Sequence player ── */
+    .seq-player {
+      margin-top: 14px; padding: 16px;
+      background: var(--navy3); border-radius: 8px; border: 1px solid var(--slate);
+      opacity: 0; transition: opacity 0.4s;
+    }
+    .seq-player.visible { opacity: 1; }
+    .seq-player-title {
+      font-size: 11px; font-weight: 600; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 12px;
+    }
+    .seq-step {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 12px; border-radius: 6px; background: var(--navy2);
+      border: 1px solid transparent; margin-bottom: 6px; transition: all 0.3s;
+    }
+    .seq-step.active        { border-color: var(--teal); background: rgba(0,201,167,0.06); }
+    .seq-step.done-seq      { border-color: rgba(0,201,167,0.3); }
+    .seq-step.rejected-step { border-color: rgba(255,90,90,0.3); background: rgba(255,90,90,0.04); }
+    .seq-step-num {
+      width: 20px; height: 20px; border-radius: 50%; font-size: 10px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--slate); color: var(--muted); flex-shrink: 0; transition: all 0.3s;
+    }
+    .seq-step.active        .seq-step-num { background: var(--teal); color: var(--navy); }
+    .seq-step.done-seq      .seq-step-num { background: rgba(0,201,167,0.2); color: var(--teal); }
+    .seq-step.rejected-step .seq-step-num { background: rgba(255,90,90,0.2); color: var(--red); }
+    .seq-step-label  { font-family: var(--mono); color: var(--text); font-size: 12px; flex: 1; min-width: 0; word-break: break-word; }
+    .seq-step-result { font-size: 11px; font-weight: 600; flex-shrink: 0; }
+    .seq-log { margin-top: 10px; font-size: 12px; color: var(--muted); line-height: 1.5; min-height: 34px; }
+
+    @media (max-width: 640px) {
+      .dfr-step       { padding: 10px 12px; }
+      .dfr-step-title { font-size: 10px; }
+      .batch-node     { padding: 10px 12px; }
+      .seq-step       { padding: 6px 10px; }
+      .seq-step-label { font-size: 11px; }
+      .violation-badge { font-size: 12px; padding: 5px 12px; }
+      .lock-anim      { font-size: 24px; }
+    }
   </style>
 </head>
 <body>
@@ -474,6 +624,116 @@
 
     <div id="log-entries" class="log-entries" style="margin-top:24px;"></div>
     <div id="diff-output"></div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       PANEL 4 — DATA FLOW RECEIPT
+  ═══════════════════════════════════════════════ -->
+  <div class="divider"></div>
+  <a name="dfr-demo"></a>
+  <div class="panel">
+    <div class="panel-title" style="display:flex;align-items:center;gap:8px;">
+      Data Flow Receipt <span class="live-dot green"></span>
+    </div>
+
+    <div class="two-col">
+      <!-- Left: controls -->
+      <div>
+        <div class="field">
+          <label>Data sensitivity</label>
+          <select id="dfr-sensitivity">
+            <option value="PII">PII</option>
+            <option value="CONFIDENTIAL">CONFIDENTIAL</option>
+            <option value="PUBLIC">PUBLIC</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Data source</label>
+          <input id="dfr-source" type="text" value="email-inbox" placeholder="email-inbox" />
+        </div>
+        <div class="field">
+          <label>Output destination</label>
+          <select id="dfr-destination">
+            <option value="external-api">external-api</option>
+            <option value="file">file</option>
+            <option value="user">user</option>
+            <option value="log">log</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" id="btn-dfr" onclick="tagAndTrack()">
+          🔍 Tag and Track
+        </button>
+      </div>
+
+      <!-- Right: animation -->
+      <div>
+        <div id="dfr-status" class="status-bar idle" style="margin-top:0;margin-bottom:12px;">
+          Configure a data source and click Tag and Track
+        </div>
+        <div id="dfr-viz" class="dfr-viz"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       PANEL 5 — BATCH RECEIPT
+  ═══════════════════════════════════════════════ -->
+  <a name="batch-demo"></a>
+  <div class="panel">
+    <div class="panel-title" style="display:flex;align-items:center;gap:8px;">
+      Batch Receipt <span class="live-dot blue"></span>
+    </div>
+
+    <div class="two-col">
+      <!-- Left: controls -->
+      <div>
+        <div class="field">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;">Action sequence</div>
+          <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px;">
+            <div style="background:var(--navy3);border:1px solid var(--slate);border-radius:8px;padding:10px 12px;display:flex;align-items:center;gap:10px;">
+              <span style="color:var(--muted);font-size:16px;line-height:1;user-select:none;">⠿</span>
+              <div>
+                <div style="font-size:12px;font-family:var(--mono);color:var(--white);">read · calendar/events</div>
+                <div style="font-size:11px;color:var(--muted);">range=this_week</div>
+              </div>
+            </div>
+            <div style="background:var(--navy3);border:1px solid var(--slate);border-radius:8px;padding:10px 12px;display:flex;align-items:center;gap:10px;">
+              <span style="color:var(--muted);font-size:16px;line-height:1;user-select:none;">⠿</span>
+              <div>
+                <div style="font-size:12px;font-family:var(--mono);color:var(--white);">write · calendar/summary</div>
+                <div style="font-size:11px;color:var(--muted);">format=markdown</div>
+              </div>
+            </div>
+            <div style="background:var(--navy3);border:1px solid var(--slate);border-radius:8px;padding:10px 12px;display:flex;align-items:center;gap:10px;">
+              <span style="color:var(--muted);font-size:16px;line-height:1;user-select:none;">⠿</span>
+              <div>
+                <div style="font-size:12px;font-family:var(--mono);color:var(--white);">notify · email/admin</div>
+                <div style="font-size:11px;color:var(--muted);">subject=Weekly summary</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="field">
+          <label>Time window</label>
+          <select id="batch-ttl">
+            <option value="3600000">1 hour</option>
+            <option value="14400000">4 hours</option>
+            <option value="86400000">24 hours</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" id="btn-batch" onclick="signBatch()">
+          🔒 Sign Batch
+        </button>
+      </div>
+
+      <!-- Right: animation -->
+      <div>
+        <div id="batch-status" class="status-bar idle" style="margin-top:0;margin-bottom:12px;">
+          Define an action sequence and click Sign Batch
+        </div>
+        <div id="batch-viz"></div>
+      </div>
+    </div>
   </div>
 
 </div>
@@ -858,8 +1118,348 @@ window.simulateActions = async function() {
 };
 
 // ──────────────────────────────────────────────
-// resetDemo
+// tagAndTrack — Data Flow Receipt demo
 // ──────────────────────────────────────────────
+window.tagAndTrack = async function() {
+  const btn    = document.getElementById('btn-dfr');
+  const status = document.getElementById('dfr-status');
+  const viz    = document.getElementById('dfr-viz');
+  btn.disabled = true;
+  viz.innerHTML = '';
+
+  const sensitivity = document.getElementById('dfr-sensitivity').value;
+  const source      = document.getElementById('dfr-source').value.trim() || 'email-inbox';
+  const destination = document.getElementById('dfr-destination').value;
+
+  status.className = 'status-bar working';
+  status.innerHTML = '<span class="spinner"></span> Generating key pair…';
+  const kp = await generateKey();
+  await delay(200);
+
+  const samples = {
+    PII:          'john.doe@example.com — phone: (555) 867-5309',
+    CONFIDENTIAL: 'Q3 Revenue: $4.2M — internal eyes only',
+    PUBLIC:       'AuthProof SDK v1.4.0 released — BatchReceipt and DataFlowReceipt',
+  };
+  const sampleData = samples[sensitivity];
+
+  function addStep(icon, title, innerHtml, cls) {
+    const el = document.createElement('div');
+    el.className = 'dfr-step' + (cls ? ' '+cls : '');
+    el.innerHTML =
+      '<div class="dfr-step-icon">'+icon+'</div>' +
+      '<div class="dfr-step-body"><div class="dfr-step-title">'+title+'</div>'+innerHtml+'</div>';
+    viz.appendChild(el);
+    requestAnimationFrame(()=>requestAnimationFrame(()=>el.classList.add('visible')));
+    return el;
+  }
+
+  status.innerHTML = '<span class="spinner"></span> Hashing data…';
+  const dataHash   = await _sha256(sampleData);
+  const recHash    = await _sha256('demo-receipt-' + Date.now());
+  const accessedAt = Date.now();
+  const tagId      = await _sha256(dataHash + recHash + String(accessedAt));
+
+  // Step 1 — data accessed
+  const sensColor = sensitivity==='PII' ? 'var(--red)' : sensitivity==='CONFIDENTIAL' ? 'var(--yellow)' : 'var(--teal)';
+  addStep('📦', 'Data accessed',
+    '<div style="font-size:12px;font-family:var(--mono);color:var(--text);">' +
+    '<span style="color:var(--muted);">source:</span> '+source+' &nbsp;·&nbsp; ' +
+    '<span style="color:var(--muted);">sensitivity:</span> <span style="color:'+sensColor+';">'+sensitivity+'</span></div>',
+    'done-teal');
+  await delay(380);
+
+  // Step 2 — SHA-256
+  status.innerHTML = '<span class="spinner"></span> DataTagger computing tagId…';
+  addStep('⚙️', 'DataTagger · SHA-256',
+    '<div style="font-size:11px;color:var(--muted);">tagId = SHA-256(dataHash + receiptHash + accessedAt)</div>' +
+    '<div style="font-size:11px;font-family:var(--mono);margin-top:4px;">' +
+    '<span style="color:var(--muted);">dataHash:</span> <span class="hash-pill">'+shortHash(dataHash)+'</span></div>',
+    'done-teal');
+  await delay(560);
+
+  // Step 3 — manifest entry
+  addStep('🏷️', 'Tag manifest entry',
+    '<div style="font-size:11px;font-family:var(--mono);line-height:1.8;">' +
+    '<span style="color:var(--muted);">tagId:</span> <span class="hash-pill">'+shortHash(tagId)+'</span><br>' +
+    '<span style="color:var(--muted);">dataHash:</span> <span class="hash-pill">'+shortHash(dataHash)+'</span><br>' +
+    '<span style="color:var(--muted);">source:</span> '+source+' &nbsp;·&nbsp; <span style="color:'+sensColor+';">'+sensitivity+'</span></div>',
+    'done-teal');
+  await delay(480);
+
+  // Step 4 — PII inspection
+  const piiPatterns = [
+    { name:'Email',       re:/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g },
+    { name:'Phone',       re:/(\+?1[-.\s]?)?(\(?\d{3}\)?[-.\s]?)?\d{3}[-.\s]?\d{4}/g },
+    { name:'Credit card', re:/\b(?:4\d{12}(?:\d{3})?|5[1-5]\d{14}|3[47]\d{13}|6(?:011|5\d{2})\d{12})\b/g },
+    { name:'SSN',         re:/\b\d{3}[-]?\d{2}[-]?\d{4}\b/g },
+  ];
+  const piiResults = piiPatterns.map(p => {
+    const hits = (sampleData.match(p.re)||[]).length;
+    return { name:p.name, detected:hits>0, count:hits };
+  });
+  const hasPII = piiResults.some(r=>r.detected);
+
+  const inspEl = document.createElement('div');
+  inspEl.className = 'dfr-step done-teal';
+  inspEl.innerHTML =
+    '<div class="dfr-step-icon">🔍</div>' +
+    '<div class="dfr-step-body"><div class="dfr-step-title">PII inspection · TaintTracker</div>' +
+    '<div id="dfr-pii-rows" style="margin-top:4px;"></div></div>';
+  viz.appendChild(inspEl);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>inspEl.classList.add('visible')));
+
+  const piiRows = document.getElementById('dfr-pii-rows');
+  for (const r of piiResults) {
+    await delay(220);
+    const row = document.createElement('div');
+    row.className = 'pii-check-row';
+    const icon   = r.detected ? '<span style="color:var(--red);">✗</span>' : '<span style="color:var(--teal);">✓</span>';
+    const detail = r.detected
+      ? '<span style="color:var(--red);font-size:11px;">'+r.count+' match'+(r.count>1?'es':'')+'</span>'
+      : '<span style="color:var(--muted);font-size:11px;">not found</span>';
+    row.innerHTML = icon+'<span style="color:var(--text);">'+r.name+'</span>'+detail;
+    piiRows.appendChild(row);
+    requestAnimationFrame(()=>requestAnimationFrame(()=>row.classList.add('visible')));
+  }
+  await delay(380);
+
+  // Step 5 — DataFlowReceipt
+  status.innerHTML = '<span class="spinner"></span> Generating DataFlowReceipt…';
+  const _HIGH_RISK      = new Set(['external-api','file']);
+  const policyViolation = hasPII && _HIGH_RISK.has(destination);
+  const generatedAt     = new Date().toISOString();
+
+  const receiptBody = {
+    delegationReceiptHash: shortHash(recHash)+'…',
+    dataManifest:  [{ tagId:shortHash(tagId)+'…', source, sensitivity }],
+    egressLog:     [{ destination, policyViolation, clean:!hasPII }],
+    violations:    policyViolation ? [{ destination, reason:'PII data routed to '+destination }] : [],
+    clean:         !policyViolation,
+    generatedAt,
+  };
+  const sig   = await _sign(kp.privateKey, JSON.stringify(receiptBody));
+  const bHash = await _sha256(JSON.stringify(receiptBody));
+  const disp  = { ...receiptBody, bodyHash:shortHash(bHash)+'…', signature:sig.slice(0,16)+'…' };
+
+  addStep('📄', 'DataFlowReceipt · Signed',
+    '<div class="code-block" style="max-height:150px;margin-top:6px;">'+hlJson(disp)+'</div>',
+    policyViolation ? 'done-red' : 'done-teal');
+  await delay(280);
+
+  // Badge
+  const badgeWrap = document.createElement('div');
+  badgeWrap.style.paddingLeft = '34px';
+  badgeWrap.innerHTML =
+    '<span class="violation-badge '+(policyViolation?'violation':'clean')+'">' +
+    (policyViolation ? '🔴 Policy Violation — PII → '+destination : '🟢 Clean — no violations') + '</span>';
+  viz.appendChild(badgeWrap);
+
+  status.className  = policyViolation ? 'status-bar error' : 'status-bar success';
+  status.textContent = policyViolation
+    ? '✗ Violation: '+sensitivity+' data routed to high-risk destination "'+destination+'"'
+    : '✓ Clean: no policy violations — '+sensitivity+' → '+destination;
+
+  btn.disabled = false;
+};
+
+// ──────────────────────────────────────────────
+// signBatch — Batch Receipt demo
+// ──────────────────────────────────────────────
+window.signBatch = async function() {
+  const btn    = document.getElementById('btn-batch');
+  const status = document.getElementById('batch-status');
+  const viz    = document.getElementById('batch-viz');
+  btn.disabled = true;
+  viz.innerHTML = '';
+
+  status.className = 'status-bar working';
+  status.innerHTML = '<span class="spinner"></span> Generating key pair…';
+  const kp = await generateKey();
+  await delay(180);
+
+  const expiresIn  = parseInt(document.getElementById('batch-ttl').value);
+  const delRecHash = await _sha256('demo-delegation-receipt-' + Date.now());
+
+  const ACTIONS = [
+    { operation:'read',   resource:'calendar/events',  params:'range=this_week' },
+    { operation:'write',  resource:'calendar/summary', params:'format=markdown' },
+    { operation:'notify', resource:'email/admin',       params:'subject=Weekly summary' },
+  ];
+
+  status.innerHTML = '<span class="spinner"></span> Computing hash chain…';
+
+  const stepHashes = [];
+  let prevHash = delRecHash;
+  for (let i=0; i<ACTIONS.length; i++) {
+    const h = await _sha256(JSON.stringify({ index:i, operation:ACTIONS[i].operation, resource:ACTIONS[i].resource }) + prevHash);
+    stepHashes.push(h);
+    prevHash = h;
+  }
+
+  const chainEl = document.createElement('div');
+  chainEl.className = 'batch-chain';
+  viz.appendChild(chainEl);
+
+  for (let i=0; i<ACTIONS.length; i++) {
+    if (i > 0) {
+      const conn = document.createElement('div');
+      conn.className = 'chain-connector';
+      conn.innerHTML =
+        '<div class="chain-connector-line"><div class="chain-connector-fill" id="cfill-'+i+'"></div></div>' +
+        '<span style="font-size:10px;font-family:var(--mono);color:var(--muted);">prev: <span class="hash-pill">'+shortHash(stepHashes[i-1])+'</span></span>';
+      chainEl.appendChild(conn);
+      await delay(60);
+      requestAnimationFrame(()=>requestAnimationFrame(()=>conn.classList.add('visible')));
+      await delay(80);
+      const fill = document.getElementById('cfill-'+i);
+      if (fill) fill.style.height = '100%';
+    }
+
+    await delay(270);
+    const node = document.createElement('div');
+    node.className = 'batch-node';
+    node.id = 'bnode-'+i;
+    node.innerHTML =
+      '<div class="batch-node-num">'+(i+1)+'</div>' +
+      '<div style="flex:1;min-width:0;">' +
+        '<div class="batch-node-op">'+ACTIONS[i].operation+' · '+ACTIONS[i].resource+'</div>' +
+        '<div class="batch-node-res">'+ACTIONS[i].params+'</div>' +
+        '<div class="batch-node-hash" id="nhash-'+i+'">actionHash: <span class="hash-pill">'+shortHash(stepHashes[i])+'</span></div>' +
+      '</div>';
+    chainEl.appendChild(node);
+    requestAnimationFrame(()=>requestAnimationFrame(()=>node.classList.add('visible')));
+    await delay(180);
+    node.classList.add('hashed');
+  }
+
+  await delay(350);
+
+  const lockEl = document.createElement('div');
+  lockEl.className = 'lock-anim';
+  lockEl.textContent = '🔒';
+  viz.appendChild(lockEl);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>lockEl.classList.add('visible')));
+  await delay(380);
+
+  status.innerHTML = '<span class="spinner"></span> Signing batch receipt…';
+  const batchId   = 'batch-'+Date.now()+'-'+Math.random().toString(36).slice(2,9);
+  const expiresAt = new Date(Date.now()+expiresIn).toISOString();
+  const batchBody = {
+    batchId,
+    delegationReceiptHash: shortHash(delRecHash)+'…',
+    actionChain: ACTIONS.map((a,i)=>({ index:i, operation:a.operation, resource:a.resource, actionHash:shortHash(stepHashes[i])+'…' })),
+    expiresAt,
+  };
+  const bHash = await _sha256(JSON.stringify(batchBody));
+  const sig   = await _sign(kp.privateKey, bHash);
+  await delay(280);
+
+  const receiptEl = document.createElement('div');
+  receiptEl.className = 'dfr-step done-teal visible';
+  receiptEl.style.marginTop = '12px';
+  receiptEl.innerHTML =
+    '<div class="dfr-step-icon">📋</div>' +
+    '<div class="dfr-step-body"><div class="dfr-step-title">BatchReceipt · Signed</div>' +
+    '<div class="code-block" style="max-height:160px;margin-top:6px;">' +
+    hlJson({ ...batchBody, bodyHash:shortHash(bHash)+'…', signature:sig.slice(0,16)+'…', _currentIndex:0 }) +
+    '</div></div>';
+  viz.appendChild(receiptEl);
+
+  status.className  = 'status-bar success';
+  status.textContent = '✓ Batch signed — '+ACTIONS.length+' actions pre-authorized, expires '+new Date(Date.now()+expiresIn).toLocaleTimeString();
+  await delay(420);
+
+  const playerEl = document.createElement('div');
+  playerEl.className = 'seq-player';
+  playerEl.innerHTML =
+    '<div class="seq-player-title">Sequence execution simulator</div>' +
+    ACTIONS.map((a,i) =>
+      '<div class="seq-step" id="ss-'+i+'">' +
+        '<div class="seq-step-num">'+(i+1)+'</div>' +
+        '<div class="seq-step-label">'+a.operation+' · '+a.resource+'</div>' +
+        '<div class="seq-step-result" id="sr-'+i+'"></div>' +
+      '</div>'
+    ).join('') +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">' +
+      '<button class="btn btn-ghost" id="btn-seq-run" onclick="runSequence()" style="font-size:12px;padding:8px 16px;min-height:40px;flex:1;">▶ Run In Order</button>' +
+      '<button class="btn btn-ghost" id="btn-seq-ooo" onclick="runOutOfOrder()" style="font-size:12px;padding:8px 16px;min-height:40px;flex:1;">⚠ Out-of-Order</button>' +
+    '</div>' +
+    '<div class="seq-log" id="seq-log"></div>';
+
+  viz.appendChild(playerEl);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>playerEl.classList.add('visible')));
+
+  window._batchActions    = ACTIONS;
+  window._batchStepHashes = stepHashes;
+  btn.disabled = false;
+};
+
+// ──────────────────────────────────────────────
+// Sequence simulators
+// ──────────────────────────────────────────────
+window.runSequence = async function() {
+  const log = document.getElementById('seq-log');
+  ['btn-seq-run','btn-seq-ooo'].forEach(id=>{const b=document.getElementById(id);if(b)b.disabled=true;});
+  log.style.color='var(--muted)'; log.textContent='';
+  for (let i=0;i<3;i++) {
+    const s=document.getElementById('ss-'+i), r=document.getElementById('sr-'+i);
+    if(s) s.className='seq-step'; if(r) r.textContent='';
+  }
+  const actions = window._batchActions||[];
+  for (let i=0; i<actions.length; i++) {
+    await delay(550);
+    const s=document.getElementById('ss-'+i), r=document.getElementById('sr-'+i);
+    if(!s) continue;
+    s.classList.add('active');
+    log.textContent='Executing step '+(i+1)+': '+actions[i].operation+' · '+actions[i].resource+'…';
+    await delay(420);
+    s.classList.remove('active'); s.classList.add('done-seq');
+    r.style.color='var(--teal)'; r.textContent='valid ✓';
+  }
+  await delay(200);
+  log.style.color='var(--teal)';
+  log.textContent='✓ All '+actions.length+' actions completed in declared order';
+  ['btn-seq-run','btn-seq-ooo'].forEach(id=>{const b=document.getElementById(id);if(b)b.disabled=false;});
+};
+
+window.runOutOfOrder = async function() {
+  const log = document.getElementById('seq-log');
+  ['btn-seq-run','btn-seq-ooo'].forEach(id=>{const b=document.getElementById(id);if(b)b.disabled=true;});
+  log.style.color='var(--muted)'; log.textContent='';
+  for (let i=0;i<3;i++) {
+    const s=document.getElementById('ss-'+i), r=document.getElementById('sr-'+i);
+    if(s) s.className='seq-step'; if(r) r.textContent='';
+  }
+  const actions = window._batchActions||[];
+
+  // Step 0 succeeds
+  await delay(420);
+  const s0=document.getElementById('ss-0'), r0=document.getElementById('sr-0');
+  if(s0) { s0.classList.add('active'); }
+  log.textContent='Step 1: '+actions[0]?.operation+' · '+actions[0]?.resource+'…';
+  await delay(400);
+  if(s0) { s0.classList.remove('active'); s0.classList.add('done-seq'); }
+  if(r0) { r0.style.color='var(--teal)'; r0.textContent='valid ✓'; }
+
+  // Attempt step 2 (index 2) skipping step 1
+  await delay(480);
+  const s2=document.getElementById('ss-2'), r2=document.getElementById('sr-2');
+  if(s2) s2.classList.add('active');
+  log.textContent='Attempting step 3 out of order (skipping step 2)…';
+  await delay(560);
+  if(s2) { s2.classList.remove('active'); s2.classList.add('rejected-step'); }
+  if(r2) { r2.style.color='var(--red)'; r2.textContent='✗ rejected'; }
+
+  await delay(150);
+  log.style.color='var(--red)';
+  log.innerHTML=
+    '✗ Expected "'+actions[1]?.operation+' · '+actions[1]?.resource+'" at index 1,' +
+    ' got "'+actions[2]?.operation+' · '+actions[2]?.resource+'"<br>' +
+    '<span style="color:var(--muted);">Hash chain broken — actionHash mismatch at position 1</span>';
+  ['btn-seq-run','btn-seq-ooo'].forEach(id=>{const b=document.getElementById(id);if(b)b.disabled=false;});
+};
+
 window.resetDemo = function() {
   _keyPair = _receipt = _receiptId = _log = null;
   const s = document.getElementById('sign-status');
