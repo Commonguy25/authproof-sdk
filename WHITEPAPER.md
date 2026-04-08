@@ -98,6 +98,23 @@ Before executing any action, the agent must:
 
 Any validation failure aborts the action. The agent does not proceed. There is no fallback to operator instruction.
 
+### 2.4 Formal Verification Pseudocode
+
+The complete validation procedure for a single agent action can be stated precisely as:
+
+```
+Verify(receipt, action):
+  if not VerifySig(receipt.signature, receipt.content, userPubKey) → fail
+  if not InTimeWindow(receipt.timeWindow, logTimestamp) → fail
+  if not InScope(action, receipt.scope) → fail
+  if ViolatesBoundary(action, receipt.boundaries) → fail
+  if action.type == EXECUTE and Hash(SafescriptDAG(program)) != receipt.execHash → fail
+  if Hash(currentOperatorInstructions) != receipt.instructionHash → fail
+  return true
+```
+
+Each step eliminates a distinct attack surface. `VerifySig` confirms the receipt was signed by the user's private key and has not been altered since signing — any tampering with the receipt content invalidates the signature. `InTimeWindow` checks the action against the log-assigned timestamp, not the client clock, preventing time manipulation. `InScope` enforces the deny-by-default allowlist: if the action is not explicitly listed, it fails regardless of operator instruction. `ViolatesBoundary` enforces the user's hard limits, which survive any subsequent operator override. The `EXECUTE` hash check computes the static capability signature of the actual program the agent has been given and compares it to the hash committed at delegation — substituting a different program after signing is detectable without any runtime introspection. Finally, the instruction hash check compares the hash of the operator's current instructions against the hash committed at delegation time — if the operator has changed its instructions since the receipt was issued, the mismatch is immediately detectable from the log entry, with no reliance on the operator's own account.
+
 ---
 
 ## 3. Trust Stack Architecture
@@ -183,9 +200,40 @@ The security of the protocol depends on the tamper-evidence of the append-only l
 
 If the user's signing key is compromised, an attacker can issue Delegation Receipts in the user's name. Hardware custody significantly reduces this risk by making key extraction technically infeasible on modern devices with secure enclaves. Receipt revocation is supported: a revocation entry anchored to the log invalidates all receipts issued before the revocation timestamp.
 
-### 7.5 Scope Creep via Micro-Receipt Fatigue
+### 7.5 Revocation Mechanism
+
+Receipt revocation is a first-class protocol operation, not an out-of-band administrative action. When a user wishes to revoke a Delegation Receipt — due to key compromise, changed intent, or completed task — they issue a **Revocation Receipt** following this procedure:
+
+1. The user constructs a revocation record containing: the SHA-256 hash of the original Delegation Receipt being revoked, the reason for revocation, and the revocation timestamp.
+2. The user signs the revocation record with the same private key used to sign the original receipt.
+3. The signed revocation record is published to the append-only log, producing an immutable log anchor.
+4. The revocation registry — a queryable index of all published revocation records — is updated.
+
+The log anchor establishes an authoritative revocation time. Actions taken before this timestamp under the original receipt remain valid. Actions attempted after this timestamp must fail validation.
+
+**Verification must check revocation first.** The `Verify` procedure in Section 2.4 is extended with a pre-check: before evaluating signature, time window, scope, or boundaries, the verifier queries the revocation registry for the receipt hash. If a valid, signed revocation record exists, the check fails immediately and no further steps are evaluated. This ordering ensures revoked receipts cannot pass verification on any other grounds.
+
+Because the revocation record is itself signed by the user and anchored to the log, it carries the same evidentiary weight as the original receipt. Revocation is auditable, tamper-evident, and does not depend on the operator to propagate or acknowledge it.
+
+### 7.6 Scope Creep via Micro-Receipt Fatigue
 
 A malicious operator could structure an agentic workflow to generate many micro-receipt requests in rapid succession, inducing the user to approve actions they do not meaningfully review. This is analogous to notification fatigue attacks against 2FA prompts. The protocol does not eliminate this risk, but it makes every micro-receipt a signed, auditable artifact — the user's approval is recorded. Rate-limiting and UI affordances are the primary mitigation.
+
+### 7.7 Non-Repudiation and Soundness
+
+Let `R` be a Delegation Receipt with content `C`, user signature `σ = Sign(sk_u, C)`, and log anchor `L`. Let `a` be an agent action. Define `Authorized(a, R)` to be true if and only if `Verify(R, a)` returns true per the procedure in Section 2.4.
+
+**Non-repudiation.** If `Verify(R, a) = true`, then `VerifySig(σ, C, pk_u) = true`, which implies `σ` was produced by the holder of `sk_u`. Under the ECDSA P-256 unforgeability assumption (EUF-CMA), no party without `sk_u` can produce a valid `σ` for any `C`. Therefore, the existence of a valid receipt on the log is non-repudiable evidence that the holder of `sk_u` authorized the content of `C` at time `L`. The user cannot plausibly deny having issued the receipt.
+
+**Soundness.** For any action `a` where `Verify(R, a) = true`: (i) `a` falls within the scope allowlist in `C` (by the `InScope` check); (ii) `a` does not violate any boundary in `C` (by the `ViolatesBoundary` check); (iii) if `a` is an execution action, the program's capability signature matches the hash committed in `C` (by the `EXECUTE` hash check); (iv) the operator's instructions at execution time hash to the value committed in `C` (by the instruction hash check). It follows that any deviation from (i)–(iv) causes `Verify` to return false, and therefore any detectable deviation is provable from `C` and `L` without additional trust assumptions. The operator cannot alter `C` without invalidating `σ`; the operator cannot alter `L` by the tamper-evidence property of the append-only log. **Corollary:** a valid receipt implies the action was explicitly authorized; any deviation from the authorized parameters is detectable from the public log.
+
+### 7.8 Cryptographic Primitive Considerations
+
+The AuthProof protocol uses SHA-256 throughout: for receipt ID computation, instruction hash commitment, manifest body hashing, action log entry chaining, and revocation record linking. SHA-256 provides 128 bits of collision resistance under current cryptanalysis and is suitable for all protocol roles as specified.
+
+**Hash function upgrade path.** The receipt structure includes a version field. A future protocol version may migrate to SHA-3-256 (FIPS 202) or BLAKE3. Both are drop-in replacements for the SHA-256 role in this protocol — the structural commitment mechanism is hash-function-agnostic. Migration requires a versioned receipt format and a transition period during which verifiers accept both hash algorithms. No structural redesign is required.
+
+**Quantum resistance.** ECDSA P-256 is vulnerable to Shor's algorithm on a sufficiently capable quantum computer. The signing layer of the protocol — receipt signing, action log entry signing, and revocation signing — is therefore not post-quantum secure under current implementations. The migration path is through the FIDO2/WebAuthn credential layer: FIDO2 authenticators are expected to support post-quantum signature schemes (CRYSTALS-Dilithium, FALCON) as NIST PQC standards are finalized and incorporated into platform authenticator firmware. Because all AuthProof signing is abstracted behind the WebAuthn API, a platform-level upgrade to post-quantum FIDO2 authenticators upgrades the protocol's quantum resistance without protocol-layer changes. The append-only log and hash commitment structures are unaffected — SHA-256 preimage resistance is not threatened by known quantum algorithms.
 
 ---
 
