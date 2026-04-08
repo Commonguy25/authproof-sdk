@@ -1253,6 +1253,312 @@ class RevocationRegistry {
 }
 
 // ─────────────────────────────────────────────
+// CROSS-AGENT TRUST HANDSHAKE
+// ─────────────────────────────────────────────
+
+/**
+ * AgentHandshake — cross-agent mutual trust protocol.
+ *
+ * Two agents from different operators can establish mutual trust by each
+ * presenting a valid, non-revoked delegation receipt. The handshake is a
+ * three-step cryptographic protocol:
+ *
+ *   1. initiate()  — Agent A signs a request committing to their receipt + nonce
+ *   2. respond()   — Agent B verifies A's signature, signs a response linking
+ *                    their own receipt and both nonces
+ *   3. verify()    — Either agent validates both signatures, both receipts, and
+ *                    produces a shared context that embeds both agents' proofs.
+ *
+ * Security properties:
+ *   - Both agents' ECDSA signatures are verified before the handshake is trusted
+ *   - Both delegation receipts must be valid and non-revoked
+ *   - The shared context embeds both signatures — it is jointly provable
+ *   - Neither agent's scope is expanded: scopePolicy = 'each-agent-limited-to-own-receipt'
+ *   - The handshake event is logged to an ActionLog if one is provided
+ *
+ * @example
+ * // Agent A
+ * const { request } = await AgentHandshake.initiate({
+ *   myReceiptHash, myPrivateKey, myPublicJwk, targetPublicJwk
+ * });
+ *
+ * // Agent B (receives request over a channel)
+ * const { response } = await AgentHandshake.respond({
+ *   handshakeRequest: request, myReceiptHash, myPrivateKey, myPublicJwk
+ * });
+ *
+ * // Either agent verifies
+ * const trust = await AgentHandshake.verify(request, response, {
+ *   receipts: new Map([[hashA, receiptA], [hashB, receiptB]]),
+ *   registry,  // optional RevocationRegistry
+ *   log,       // optional ActionLog
+ * });
+ * // { trusted: true, reason: '...', sharedContext: { ... } }
+ */
+class AgentHandshake {
+  /**
+   * Initiate a handshake as Agent A.
+   * Signs a request committing to your receipt hash, public key, and a random nonce.
+   *
+   * @param {object} opts
+   * @param {string}    opts.myReceiptHash    — Your delegation receipt hash
+   * @param {CryptoKey} opts.myPrivateKey     — Your ECDSA P-256 private signing key
+   * @param {object}    opts.myPublicJwk      — Your public key JWK (embedded in request)
+   * @param {object}    opts.targetPublicJwk  — The target agent's public key JWK
+   * @returns {Promise<{ request: object }>}
+   */
+  static async initiate({ myReceiptHash, myPrivateKey, myPublicJwk, targetPublicJwk }) {
+    if (!myReceiptHash)   throw new Error('AgentHandshake: myReceiptHash is required');
+    if (!myPrivateKey)    throw new Error('AgentHandshake: myPrivateKey is required');
+    if (!myPublicJwk)     throw new Error('AgentHandshake: myPublicJwk is required');
+    if (!targetPublicJwk) throw new Error('AgentHandshake: targetPublicJwk is required');
+
+    const handshakeId = `hs-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    const nonce = _hex(crypto.getRandomValues(new Uint8Array(16)).buffer);
+
+    const body = {
+      handshakeId,
+      initiatorReceiptHash: myReceiptHash,
+      initiatorPublicJwk:   myPublicJwk,
+      targetPublicJwk,
+      nonce,
+      initiatedAt: Date.now(),
+    };
+
+    const signature = await _sign(myPrivateKey, JSON.stringify(body));
+    return { request: { ...body, signature } };
+  }
+
+  /**
+   * Respond to a handshake as Agent B.
+   * Verifies Agent A's signature, then signs a response linking both receipts.
+   *
+   * @param {object} opts
+   * @param {object}    opts.handshakeRequest — The request object from initiate()
+   * @param {string}    opts.myReceiptHash    — Your delegation receipt hash
+   * @param {CryptoKey} opts.myPrivateKey     — Your ECDSA P-256 private signing key
+   * @param {object}    opts.myPublicJwk      — Your public key JWK
+   * @returns {Promise<{ response: object }>}
+   * @throws if the initiator's signature is invalid
+   */
+  static async respond({ handshakeRequest, myReceiptHash, myPrivateKey, myPublicJwk }) {
+    if (!handshakeRequest) throw new Error('AgentHandshake: handshakeRequest is required');
+    if (!myReceiptHash)    throw new Error('AgentHandshake: myReceiptHash is required');
+    if (!myPrivateKey)     throw new Error('AgentHandshake: myPrivateKey is required');
+    if (!myPublicJwk)      throw new Error('AgentHandshake: myPublicJwk is required');
+
+    // Verify the initiator's ECDSA signature before accepting the request
+    const { signature: initSig, ...requestBody } = handshakeRequest;
+    const initSigValid = await _verify(
+      handshakeRequest.initiatorPublicJwk,
+      initSig,
+      JSON.stringify(requestBody)
+    );
+    if (!initSigValid) {
+      throw new Error('AgentHandshake: initiator signature is invalid — request rejected');
+    }
+
+    // SHA-256 of the full request (including signature) — links response to request
+    const requestHash    = await _sha256(JSON.stringify(handshakeRequest));
+    const responderNonce = _hex(crypto.getRandomValues(new Uint8Array(16)).buffer);
+
+    const body = {
+      handshakeId:          handshakeRequest.handshakeId,
+      requestHash,
+      responderReceiptHash: myReceiptHash,
+      responderPublicJwk:   myPublicJwk,
+      initiatorNonce:       handshakeRequest.nonce,
+      responderNonce,
+      respondedAt: Date.now(),
+    };
+
+    const signature = await _sign(myPrivateKey, JSON.stringify(body));
+    return { response: { ...body, signature } };
+  }
+
+  /**
+   * Verify a completed handshake and produce a shared context.
+   *
+   * Checks:
+   *   1. Initiator ECDSA signature over the request body
+   *   2. Responder ECDSA signature over the response body
+   *   3. Handshake IDs match (request ↔ response)
+   *   4. Response references the correct request (SHA-256 requestHash)
+   *   5. Both delegation receipts are within their time windows
+   *   6. Neither receipt is revoked (if a registry is provided)
+   *
+   * The returned sharedContext embeds both agents' signatures, making it
+   * jointly provable. scopePolicy is always 'each-agent-limited-to-own-receipt'
+   * — the handshake confers no new permissions.
+   *
+   * If a log (ActionLog) is provided the handshake event is recorded under
+   * the initiator's receipt. Logging failures are non-fatal.
+   *
+   * @param {object} request  — From AgentHandshake.initiate()
+   * @param {object} response — From AgentHandshake.respond()
+   * @param {object} [opts]
+   * @param {Map<string,object>} [opts.receipts]  — Map of receiptHash → receipt
+   * @param {RevocationRegistry} [opts.registry]  — Optional revocation check
+   * @param {ActionLog}          [opts.log]        — Optional action log
+   * @returns {Promise<{ trusted: boolean, reason: string, sharedContext: object|null }>}
+   */
+  static async verify(request, response, { receipts = new Map(), registry, log } = {}) {
+    if (!request)  return { trusted: false, reason: 'request is required', sharedContext: null };
+    if (!response) return { trusted: false, reason: 'response is required', sharedContext: null };
+
+    // ── Check 1: Initiator signature ──────────────────────────────────
+    const { signature: initSig, ...requestBody } = request;
+    const initSigValid = await _verify(
+      request.initiatorPublicJwk,
+      initSig,
+      JSON.stringify(requestBody)
+    );
+    if (!initSigValid) {
+      return {
+        trusted: false,
+        reason:  'Initiator signature is invalid — request may have been tampered',
+        sharedContext: null,
+      };
+    }
+
+    // ── Check 2: Responder signature ──────────────────────────────────
+    const { signature: respSig, ...responseBody } = response;
+    const respSigValid = await _verify(
+      response.responderPublicJwk,
+      respSig,
+      JSON.stringify(responseBody)
+    );
+    if (!respSigValid) {
+      return {
+        trusted: false,
+        reason:  'Responder signature is invalid — response may have been tampered',
+        sharedContext: null,
+      };
+    }
+
+    // ── Check 3: Handshake ID matches ─────────────────────────────────
+    if (request.handshakeId !== response.handshakeId) {
+      return {
+        trusted: false,
+        reason:  'Handshake ID mismatch — request and response belong to different handshakes',
+        sharedContext: null,
+      };
+    }
+
+    // ── Check 4: Response links to correct request ────────────────────
+    const computedRequestHash = await _sha256(JSON.stringify(request));
+    if (computedRequestHash !== response.requestHash) {
+      return {
+        trusted: false,
+        reason:  'requestHash mismatch — response does not reference this request',
+        sharedContext: null,
+      };
+    }
+
+    // ── Check 5: Validate initiator receipt ───────────────────────────
+    const initiatorReceipt = receipts.get(request.initiatorReceiptHash);
+    if (!initiatorReceipt) {
+      return {
+        trusted: false,
+        reason:  `Initiator receipt ${request.initiatorReceiptHash.slice(0, 8)}... not found in receipts map`,
+        sharedContext: null,
+      };
+    }
+    const now = new Date();
+    if (now < new Date(initiatorReceipt.timeWindow.start) ||
+        now > new Date(initiatorReceipt.timeWindow.end)) {
+      return {
+        trusted: false,
+        reason:  'Initiator receipt is outside its time window',
+        sharedContext: null,
+      };
+    }
+    if (registry) {
+      const iStatus = await registry.check(request.initiatorReceiptHash);
+      if (iStatus.revoked) {
+        return {
+          trusted: false,
+          reason:  `Initiator receipt is revoked: ${iStatus.reason}`,
+          sharedContext: null,
+        };
+      }
+    }
+
+    // ── Check 6: Validate responder receipt ───────────────────────────
+    const responderReceipt = receipts.get(response.responderReceiptHash);
+    if (!responderReceipt) {
+      return {
+        trusted: false,
+        reason:  `Responder receipt ${response.responderReceiptHash.slice(0, 8)}... not found in receipts map`,
+        sharedContext: null,
+      };
+    }
+    if (now < new Date(responderReceipt.timeWindow.start) ||
+        now > new Date(responderReceipt.timeWindow.end)) {
+      return {
+        trusted: false,
+        reason:  'Responder receipt is outside its time window',
+        sharedContext: null,
+      };
+    }
+    if (registry) {
+      const rStatus = await registry.check(response.responderReceiptHash);
+      if (rStatus.revoked) {
+        return {
+          trusted: false,
+          reason:  `Responder receipt is revoked: ${rStatus.reason}`,
+          sharedContext: null,
+        };
+      }
+    }
+
+    // ── Build shared context ──────────────────────────────────────────
+    // Embeds both agents' cryptographic signatures — jointly provable.
+    // scopePolicy = 'each-agent-limited-to-own-receipt' — no scope expansion.
+    const sharedContextBody = {
+      handshakeId:          request.handshakeId,
+      initiatorReceiptHash: request.initiatorReceiptHash,
+      responderReceiptHash: response.responderReceiptHash,
+      initiatorPublicJwk:   request.initiatorPublicJwk,
+      responderPublicJwk:   response.responderPublicJwk,
+      initiatorScope:       initiatorReceipt.scope,
+      responderScope:       responderReceipt.scope,
+      scopePolicy:          'each-agent-limited-to-own-receipt',
+      // Both ECDSA signatures are embedded — any party can verify either
+      initiatorSignature:   initSig,
+      responderSignature:   respSig,
+      establishedAt:        now.getTime(),
+    };
+
+    const sharedContextHash = await _sha256(JSON.stringify(sharedContextBody));
+    const sharedContext = { ...sharedContextBody, sharedContextHash };
+
+    // ── Log the handshake event (best-effort) ─────────────────────────
+    if (log) {
+      try {
+        await log.record(request.initiatorReceiptHash, {
+          operation:  'handshake_established',
+          resource:   `agent/${response.responderReceiptHash.slice(0, 8)}`,
+          parameters: {
+            handshakeId:          request.handshakeId,
+            responderReceiptHash: response.responderReceiptHash,
+            sharedContextHash,
+          },
+        });
+      } catch {
+        // Logging is best-effort — never fail the handshake
+      }
+    }
+
+    return {
+      trusted: true,
+      reason:  'Both agents presented valid non-revoked receipts and all signatures verified',
+      sharedContext,
+    };
+  }
+}
+
+// ─────────────────────────────────────────────
 // EXPORTS
 // ─────────────────────────────────────────────
 
@@ -1280,6 +1586,9 @@ const AuthProof = {
 
   // Revocation registry
   RevocationRegistry,
+
+  // Cross-agent trust handshake
+  AgentHandshake,
 };
 
 // ESM + CJS compatible export
@@ -1288,11 +1597,13 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports.ActionLog          = ActionLog;
   module.exports.ScopeSchema        = ScopeSchema;
   module.exports.RevocationRegistry = RevocationRegistry;
+  module.exports.AgentHandshake     = AgentHandshake;
 } else if (typeof globalThis !== 'undefined') {
   globalThis.AuthProof           = AuthProof;
   globalThis.ActionLog           = ActionLog;
   globalThis.ScopeSchema         = ScopeSchema;
   globalThis.RevocationRegistry  = RevocationRegistry;
+  globalThis.AgentHandshake      = AgentHandshake;
 }
 
 export default AuthProof;
@@ -1309,4 +1620,5 @@ export {
   ActionLog,
   ScopeSchema,
   RevocationRegistry,
+  AgentHandshake,
 };
