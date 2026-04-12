@@ -63,6 +63,24 @@
       opacity: 1 !important; font-size: 14px;
     }
     .nav-cta:hover { background: #00e0bc; text-decoration: none !important; }
+    .nav-hamburger {
+      display: none; background: none; border: none; cursor: pointer;
+      color: var(--white); font-size: 22px; padding: 4px 8px; line-height: 1;
+    }
+    @media (max-width: 640px) {
+      .nav-links a:not(.nav-cta) { display: none; }
+      .nav-hamburger { display: block; }
+      nav { flex-wrap: wrap; padding: 12px 20px; }
+      .nav-links {
+        display: none; flex-direction: column; width: 100%;
+        background: rgba(13,27,42,0.97); border-top: 1px solid var(--slate);
+        padding: 12px 0; gap: 0; margin-top: 10px;
+      }
+      .nav-links.open { display: flex; }
+      .nav-links.open a:not(.nav-cta) { display: block; }
+      .nav-links a { padding: 10px 20px; opacity: 1; font-size: 15px; width: 100%; }
+      .nav-cta { margin: 8px 20px; text-align: center; border-radius: 7px; }
+    }
 
     /* ── Sections ── */
     section { padding: 80px 24px; }
@@ -335,9 +353,10 @@
     <div class="logo-mark">A</div>
     AuthProof SDK
   </a>
-  <div class="nav-links">
+  <button class="nav-hamburger" id="nav-hamburger" aria-label="Toggle menu" onclick="toggleNav()">☰</button>
+  <div class="nav-links" id="nav-links">
     <a href="#how">How it works</a>
-    <a href="WHITEPAPER.md">Whitepaper</a>
+    <a href="https://github.com/Commonguy25/authproof-sdk/blob/main/WHITEPAPER.md">Whitepaper</a>
     <a href="demo.html">Live Demo</a>
     <a href="https://github.com/Commonguy25/authproof-sdk" target="_blank">GitHub</a>
     <a href="https://www.npmjs.com/package/authproof-sdk" target="_blank" class="nav-cta">npm install →</a>
@@ -347,7 +366,7 @@
 <!-- ── Hero ── -->
 <section id="hero">
   <div class="container">
-    <div class="badge"><div class="badge-dot"></div>v1.1.0 — Live on npm</div>
+    <div class="badge"><div class="badge-dot"></div>v1.4.0 — Live on npm</div>
 
     <h1>
       Close the <span class="highlight">operator trust gap</span><br/>
@@ -531,7 +550,7 @@
         <div class="link-label">Live Demo</div>
         <div class="link-sub">Interactive browser demo</div>
       </a>
-      <a class="link-card" href="WHITEPAPER.md">
+      <a class="link-card" href="https://github.com/Commonguy25/authproof-sdk/blob/main/WHITEPAPER.md">
         <div class="link-icon">📄</div>
         <div class="link-label">Whitepaper</div>
         <div class="link-sub">Protocol specification</div>
@@ -544,7 +563,7 @@
       <a class="link-card" href="https://www.npmjs.com/package/authproof-sdk" target="_blank">
         <div class="link-icon">📦</div>
         <div class="link-label">npm package</div>
-        <div class="link-sub">authproof-sdk v1.1.0</div>
+        <div class="link-sub">authproof-sdk v1.4.0</div>
       </a>
     </div>
   </div>
@@ -579,7 +598,7 @@
 <footer>
   <div class="footer-links">
     <a href="demo.html">Live Demo</a>
-    <a href="WHITEPAPER.md">Whitepaper</a>
+    <a href="https://github.com/Commonguy25/authproof-sdk/blob/main/WHITEPAPER.md">Whitepaper</a>
     <a href="https://github.com/Commonguy25/authproof-sdk" target="_blank">GitHub</a>
     <a href="https://www.npmjs.com/package/authproof-sdk" target="_blank">npm</a>
   </div>
@@ -587,6 +606,10 @@
 </footer>
 
 <script>
+function toggleNav() {
+  const links = document.getElementById('nav-links');
+  links.classList.toggle('open');
+}
 async function handleSignup(e) {
   e.preventDefault();
   const form = e.target;
