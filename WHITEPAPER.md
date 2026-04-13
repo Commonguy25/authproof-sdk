@@ -281,7 +281,160 @@ The Data Flow Receipt provides the following guarantees:
 
 ---
 
-## 9. Comparison to Existing Approaches
+## 9. Model State Attestation: Closing the Model Identity Gap
+
+### 9.1 The Problem — Operator Model Substitution Attack
+
+The Delegation Receipt described in Section 2 proves that a human authorized a specific agent to act within defined scope and boundaries. It does not prove that the model executing the receipt is the same model the user thought they were authorizing.
+
+Consider the following attack scenario:
+
+1. A user authorizes `claude-sonnet-4-5` to manage their calendar under a set of stated boundaries.
+2. The operator signs a Delegation Receipt reflecting those boundaries.
+3. Before execution, the operator silently substitutes a fine-tuned variant of the model — one that has been trained to be more aggressive, less bounded, or to prioritize operator interests over user interests.
+4. The substituted model executes under the valid Delegation Receipt. All cryptographic checks pass because the receipt is genuine.
+
+This is the **model substitution attack**: a valid receipt being executed by an unauthorized model. The receipt proves authorization; it does not prove identity of the executing model. The gap is structural and cannot be closed by receipt verification alone.
+
+### 9.2 The Primitive — Model State Commitment and Execution Verification
+
+The **Model State Attestation** closes this gap by introducing a two-phase cryptographic protocol that binds the delegation receipt to a measurement of the model state at both issuance time and execution time.
+
+**Phase 1 — Commitment (at delegation time):**
+
+Before execution begins, the operator commits to the exact model state that will execute. The commitment is a cryptographic measurement of five components concatenated in canonical order:
+
+```
+modelMeasurement = SHA-256(
+  Canonicalizer.normalize(modelId)      ||
+  Canonicalizer.normalize(modelVersion) ||
+  systemPromptHash                      ||
+  runtimeConfigHash                     ||
+  receiptHash
+)
+```
+
+The inclusion of `receiptHash` as the fifth component is critical: it binds the model measurement to the specific delegation under which execution will occur. The same model with the same system prompt but a different receipt produces a different measurement. A commitment cannot be reused across delegations.
+
+The commitment is signed by the operator's ECDSA P-256 key and attested by the TEE runtime, producing a sealed artifact:
+
+```
+{
+  commitmentId,
+  receiptHash,          // bound delegation
+  modelMeasurement,     // SHA-256 of all five components
+  modelId,
+  modelVersion,
+  systemPromptHash,
+  runtimeConfigHash,
+  committedAt,          // ISO timestamp
+  signature,            // operator ECDSA P-256 signature
+  signerPublicKey,
+  teeAttestation        // TEE hardware proof of commitment
+}
+```
+
+**Phase 2 — Verification (at execution time):**
+
+Immediately before the agent function executes, the current model state is measured using the same five-component computation. The resulting measurement is compared against the committed measurement. If the two measurements differ — for any reason — execution is blocked with a `ModelDriftDetected` error that identifies exactly which components changed.
+
+### 9.3 The Five-Layer Chain
+
+With Model State Attestation added, the complete verifiable chain of accountability becomes:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  Layer 1 — Delegation Receipt                                    │
+│  SHA-256 signed commitment: human authorized agent to act        │
+│  Fields: scope, boundaries, instructions, timeWindow, signature  │
+└────────────────────────────┬────────────────────────────────────┘
+                             │ receiptHash bound into commitment
+                             ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Layer 2 — Model State Commitment                                │
+│  Cryptographic measurement of the authorized model state         │
+│  modelMeasurement = SHA-256(modelId || modelVersion ||           │
+│                             systemPromptHash ||                  │
+│                             runtimeConfigHash || receiptHash)    │
+│  Signed by operator + TEE attested at delegation time            │
+└────────────────────────────┬────────────────────────────────────┘
+                             │ commitmentId referenced at execution
+                             ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Layer 3 — Execution Attestation                                 │
+│  TEE verifies current model state matches commitment             │
+│  If any component changed: ModelDriftDetected, block immediately │
+│  TEE attestation proves verification occurred inside enclave     │
+└────────────────────────────┬────────────────────────────────────┘
+                             │ verificationTeeAttestation bound
+                             ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Layer 4 — Action Log Entry                                      │
+│  Append-only, chain-linked, agent-signed record of execution     │
+│  Includes modelCommitmentId, binding action to model state       │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+The `generateChainProof()` method produces a single serializable artifact that encodes this entire chain, enabling any external verifier to trace a specific action back through execution attestation, model commitment, and delegation receipt in a single pass.
+
+### 9.4 Security Properties
+
+**What Model State Attestation proves:**
+
+1. **Model identity at commitment time.** The operator committed to a specific `(modelId, modelVersion, systemPromptHash, runtimeConfigHash)` tuple before execution began. The ECDSA signature and TEE attestation prove this commitment was made inside a trusted environment and has not been altered.
+
+2. **Model state at execution time.** The TEE verification attestation proves that the model measurement was recomputed inside the enclave immediately before execution, and that the recomputed measurement matched the committed measurement.
+
+3. **Delegation binding.** The `receiptHash` component in the measurement ensures the commitment is irrevocably bound to a specific delegation. A commitment made under receipt A cannot be presented as valid under receipt B.
+
+4. **Drift detection.** The per-component comparison in `verify()` identifies exactly which aspects of the model state changed — model identity, version, system prompt, or runtime configuration — enabling forensic analysis of how an unauthorized execution occurred.
+
+**What Model State Attestation does not prove:**
+
+1. **Correctness of the committed model.** The attestation proves the executing model matches the committed model. It does not prove the committed model is safe, aligned, or has not been fine-tuned in ways the user did not anticipate. The user's trust in the operator's commitment is still required.
+
+2. **That `systemPromptHash` reflects a safe system prompt.** The attestation proves the system prompt did not change between commitment and execution. It does not inspect the content of the system prompt.
+
+3. **Hardware attestation without TEE hardware.** In simulation mode (the default for testing), attestations are signed with an ECDSA key pair rather than produced by real SGX or TrustZone hardware. Production deployments should use `platform: 'intel-sgx'` or `platform: 'arm-trustzone'`.
+
+### 9.5 Formal Definition of Model Drift
+
+**Model drift** is defined as any divergence between the model state at commitment time and the model state at execution time. Specifically, a `ModelDriftDetected` condition is raised when any of the following is true:
+
+- `Canonicalizer.normalize(currentModelId) ≠ Canonicalizer.normalize(committedModelId)`
+- `Canonicalizer.normalize(currentModelVersion) ≠ Canonicalizer.normalize(committedModelVersion)`
+- `currentSystemPromptHash ≠ committedSystemPromptHash`
+- `currentRuntimeConfigHash ≠ committedRuntimeConfigHash`
+- `computeMeasurement(currentState) ≠ committedModelMeasurement`
+
+The measurement check is redundant given the component checks but provides an additional cryptographic guarantee: even if the component comparison logic contains a bug, the SHA-256 measurement comparison will catch any state change.
+
+### 9.6 Integration with the Delegation Receipt
+
+The Model State Attestation integrates with the existing delegation primitives at three points:
+
+**PreExecutionVerifier (check 7).** When a `ModelStateAttestation` instance is provided to the verifier constructor and a `commitmentId` is passed to `check()`, check 7 runs after all six existing checks. If model drift is detected, execution is blocked with `ModelDriftDetected` before the agent function ever receives control.
+
+**TEERuntime.execute().** When an agent function is executed via `TEERuntime.execute()` with a `commitment` and `modelStateAttestation` instance, the runtime automatically verifies model state inside the enclave before invoking the function. This provides defense-in-depth: even if the PreExecutionVerifier is bypassed, the runtime enforces the commitment.
+
+**ActionLog.record().** When `modelCommitmentId` is passed to `ActionLog.record()`, the commitment ID is embedded in the log entry, creating an auditable link between every recorded action and the model state commitment under which it was authorized.
+
+### 9.7 The Combined Framework
+
+Together, the Delegation Receipt and Model State Attestation form a complete framework for verifiable AI agent accountability:
+
+| Layer | Primitive | What it proves |
+|---|---|---|
+| Authorization | Delegation Receipt | Human authorized agent with defined scope |
+| Identity | Model State Commitment | Which model was authorized to execute |
+| Execution | Execution Attestation | Authorized model actually ran (no substitution) |
+| Audit | Action Log Entry | What the model actually did |
+
+An auditor presented with a chain proof can verify each layer independently and confirm that the action recorded in the log was taken by the model the user authorized, acting within the scope the user defined, under conditions that have not been altered since authorization was granted.
+
+---
+
+## 10. Comparison to Existing Approaches
 
 | Property | OAuth 2.0 / RAR | WIMSE | AIP | AuthProof |
 |---|---|---|---|---|
@@ -299,7 +452,7 @@ AuthProof is not a replacement for WIMSE, AIP, or OAuth 2.0. It operates at a di
 
 ---
 
-## 10. Conclusion
+## 11. Conclusion
 
 The agentic AI deployment model creates a trust problem that existing identity and authorization frameworks were not designed to address. The operator sits between the user and the agent with unchecked authority over what the agent is instructed to do. AuthProof makes that authority cryptographically bounded, the user's original intent immutably recorded, and operator deviation provable from a public log. The three-layer trust stack — signed capability manifest, Delegation Receipt, and Safescript execution binding — systematically eliminates trusted intermediaries from the agentic delegation chain.
 

@@ -1118,7 +1118,7 @@ class ActionLog {
    * @param {{ operation: string, resource: string, parameters?: object }} action
    * @returns {Promise<object>} The sealed log entry
    */
-  async record(receiptHash, action, { attestation, output, taintTracker, batchReceiptHash } = {}) {
+  async record(receiptHash, action, { attestation, output, taintTracker, batchReceiptHash, modelCommitmentId } = {}) {
     if (!this._privateKey) throw new Error('ActionLog: call init() before record()');
     if (!receiptHash)       throw new Error('ActionLog: receiptHash is required');
     if (!action?.operation) throw new Error('ActionLog: action.operation is required');
@@ -1191,6 +1191,7 @@ class ActionLog {
       ...(attestation       ? { attestation }       : {}),
       ...(taintResult       ? { taintResult }       : {}),
       ...(batchReceiptHash  ? { batchReceiptHash }  : {}),
+      ...(modelCommitmentId ? { modelCommitmentId } : {}),
     };
 
     const signature = await _sign(this._privateKey, JSON.stringify(body));
@@ -2154,6 +2155,184 @@ class TEEAttestation {
 }
 
 // ─────────────────────────────────────────────
+// TEE RUNTIME
+// ─────────────────────────────────────────────
+
+/**
+ * TEERuntime — Trusted Execution Environment runtime wrapper.
+ *
+ * Wraps agent function execution with TEE attestation and optional model
+ * state verification. In simulation mode, produces cryptographically signed
+ * attestations using an ECDSA P-256 key pair without requiring hardware.
+ * In hardware mode, delegates to TEEAttestation for Intel SGX or ARM TrustZone.
+ *
+ * @example
+ * const runtime = new TEERuntime({ platform: 'simulation' });
+ * await runtime.init({ privateKey, publicJwk });
+ *
+ * const attestation = await runtime.attest(measurementHash);
+ *
+ * const result = await runtime.execute(agentFn, {
+ *   commitment,
+ *   currentModelId,
+ *   currentModelVersion,
+ *   currentSystemPromptHash,
+ *   currentRuntimeConfigHash,
+ *   modelStateAttestation,
+ * });
+ */
+class TEERuntime {
+  /**
+   * @param {object} opts
+   * @param {string} [opts.platform='simulation'] — 'simulation' | 'intel-sgx' | 'arm-trustzone'
+   */
+  constructor({ platform = 'simulation' } = {}) {
+    const VALID_PLATFORMS = new Set(['simulation', 'intel-sgx', 'arm-trustzone']);
+    if (!VALID_PLATFORMS.has(platform)) {
+      throw new Error(
+        `TEERuntime: unsupported platform "${platform}" — ` +
+        'supported: simulation, intel-sgx, arm-trustzone'
+      );
+    }
+    this._platform    = platform;
+    this._privateKey  = null;
+    this._publicJwk   = null;
+    this._initialized = false;
+  }
+
+  /**
+   * Initialize with a signing key pair.
+   * Required before attest() in simulation mode.
+   *
+   * @param {{ privateKey: CryptoKey, publicJwk: object }} opts
+   */
+  async init({ privateKey, publicJwk } = {}) {
+    if (!privateKey) throw new Error('TEERuntime.init: privateKey is required');
+    if (!publicJwk)  throw new Error('TEERuntime.init: publicJwk is required');
+    this._privateKey  = privateKey;
+    this._publicJwk   = publicJwk;
+    this._initialized = true;
+  }
+
+  /**
+   * Generate a TEE attestation for a data hash.
+   *
+   * In simulation mode: produces a signed mock attestation (no hardware required).
+   * In hardware mode: delegates to TEEAttestation.create().
+   *
+   * @param {string} dataHash — 64-char hex SHA-256 digest
+   * @returns {Promise<object>} Platform-specific attestation object
+   */
+  async attest(dataHash) {
+    if (typeof dataHash !== 'string' || dataHash.length !== 64) {
+      throw new Error('TEERuntime.attest: dataHash must be a 64-character hex SHA-256 digest');
+    }
+
+    if (this._platform === 'simulation') {
+      if (!this._initialized) {
+        throw new Error('TEERuntime: call init() before attest()');
+      }
+      const body = {
+        platform:    'simulation',
+        dataHash,
+        generatedAt: Date.now(),
+      };
+      const signature = await _sign(this._privateKey, JSON.stringify(body));
+      return { ...body, signature, signerPublicKey: this._publicJwk };
+    }
+
+    // Hardware platforms — delegate to TEEAttestation
+    const entryId = `tee-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    return TEEAttestation.create({ entryId, entryHash: dataHash, platform: this._platform });
+  }
+
+  /**
+   * Execute an agent function inside the TEE context.
+   *
+   * When a commitment + modelStateAttestation are provided, verifies that the model
+   * currently running matches the committed measurement before executing.
+   * Throws ModelDriftDetected immediately if any state component has changed.
+   *
+   * @param {Function} fn                              — Agent function to execute
+   * @param {object}   [opts]
+   * @param {object}   [opts.commitment]               — Model state commitment to verify against
+   * @param {string}   [opts.currentModelId]
+   * @param {string}   [opts.currentModelVersion]
+   * @param {string}   [opts.currentSystemPromptHash]
+   * @param {string}   [opts.currentRuntimeConfigHash]
+   * @param {object}   [opts.modelStateAttestation]    — ModelStateAttestation instance
+   * @returns {Promise<*>} Return value of fn
+   */
+  async execute(fn, {
+    commitment,
+    currentModelId,
+    currentModelVersion,
+    currentSystemPromptHash,
+    currentRuntimeConfigHash,
+    modelStateAttestation,
+  } = {}) {
+    if (typeof fn !== 'function') throw new Error('TEERuntime.execute: fn must be a function');
+
+    if (commitment && modelStateAttestation) {
+      const result = await modelStateAttestation.verify({
+        commitmentId:             commitment.commitmentId,
+        currentModelId:           currentModelId           ?? commitment.modelId,
+        currentModelVersion:      currentModelVersion      ?? commitment.modelVersion,
+        currentSystemPromptHash:  currentSystemPromptHash  ?? commitment.systemPromptHash,
+        currentRuntimeConfigHash: currentRuntimeConfigHash ?? commitment.runtimeConfigHash,
+      });
+
+      if (!result.valid || !result.commitmentMatches) {
+        const driftList = result.modelDrift.length > 0
+          ? result.modelDrift
+          : ['measurement mismatch'];
+        const err = new Error(
+          `ModelDriftDetected: model state does not match commitment — ${driftList.join('; ')}`
+        );
+        err.name      = 'ModelDriftDetected';
+        err.modelDrift = driftList;
+        throw err;
+      }
+    }
+
+    return fn();
+  }
+
+  /**
+   * Verify a TEE attestation produced by attest().
+   *
+   * @param {object} attestation
+   * @returns {Promise<{ verified: boolean, platform: string, reason: string }>}
+   */
+  static async verifyAttestation(attestation) {
+    if (!attestation || typeof attestation !== 'object') {
+      return { verified: false, platform: null, reason: 'attestation is required' };
+    }
+
+    if (attestation.platform === 'simulation') {
+      const { signature, signerPublicKey, ...body } = attestation;
+      if (!signature || !signerPublicKey) {
+        return {
+          verified: false,
+          platform: 'simulation',
+          reason:   'simulation attestation missing signature or signerPublicKey',
+        };
+      }
+      const valid = await _verify(signerPublicKey, signature, JSON.stringify(body));
+      return {
+        verified: valid,
+        platform: 'simulation',
+        reason:   valid
+          ? 'Simulation attestation ECDSA P-256 signature verified'
+          : 'Simulation attestation ECDSA P-256 signature invalid',
+      };
+    }
+
+    return TEEAttestation.verify(attestation);
+  }
+}
+
+// ─────────────────────────────────────────────
 // DATA FLOW RECEIPT
 // ─────────────────────────────────────────────
 
@@ -2690,8 +2869,9 @@ const AuthProof = {
   // Cross-agent trust handshake
   AgentHandshake,
 
-  // TEE attestation
+  // TEE attestation and runtime
   TEEAttestation,
+  TEERuntime,
 
   // Signed capability manifests
   CapabilityManifest,
@@ -2715,6 +2895,7 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports.RevocationRegistry = RevocationRegistry;
   module.exports.AgentHandshake     = AgentHandshake;
   module.exports.TEEAttestation     = TEEAttestation;
+  module.exports.TEERuntime         = TEERuntime;
   module.exports.CapabilityManifest = CapabilityManifest;
   module.exports.DataTagger         = DataTagger;
   module.exports.TaintTracker       = TaintTracker;
@@ -2728,6 +2909,7 @@ if (typeof module !== 'undefined' && module.exports) {
   globalThis.RevocationRegistry   = RevocationRegistry;
   globalThis.AgentHandshake       = AgentHandshake;
   globalThis.TEEAttestation       = TEEAttestation;
+  globalThis.TEERuntime           = TEERuntime;
   globalThis.CapabilityManifest   = CapabilityManifest;
   globalThis.DataTagger           = DataTagger;
   globalThis.TaintTracker         = TaintTracker;
@@ -2752,6 +2934,7 @@ export {
   RevocationRegistry,
   AgentHandshake,
   TEEAttestation,
+  TEERuntime,
   CapabilityManifest,
   DataTagger,
   TaintTracker,

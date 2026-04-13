@@ -5,13 +5,14 @@
  * this verifier passes. A compromised or malicious agent cannot skip it
  * because it runs before the runtime.
  *
- * Six sequential checks (stops at first failure):
+ * Seven sequential checks (stops at first failure):
  *   1. Receipt signature valid (ECDSA P-256)
  *   2. Receipt not revoked (RevocationRegistry)
  *   3. Within time window (log timestamp as oracle, not client clock)
  *   4. Action within scope (ScopeSchema.validate or fuzzy fallback)
  *   5. Operator instructions match receipt (Canonicalizer.hash)
  *   6. Program hash match (optional — prevents code substitution attacks)
+ *   7. Model state verification (optional — ModelStateAttestation check)
  *
  * @module pre-execution-verifier
  */
@@ -177,17 +178,19 @@ class DelegationLog {
 class PreExecutionVerifier {
   /**
    * @param {object} opts
-   * @param {DelegationLog}      opts.delegationLog        — append-only receipt store
-   * @param {RevocationRegistry} opts.revocationRegistry   — live revocation registry
-   * @param {boolean}            [opts.requireTEE=false]   — require hardware attestation
+   * @param {DelegationLog}        opts.delegationLog          — append-only receipt store
+   * @param {RevocationRegistry}   opts.revocationRegistry     — live revocation registry
+   * @param {boolean}              [opts.requireTEE=false]     — require hardware attestation
+   * @param {ModelStateAttestation} [opts.modelStateAttestation] — when provided, enables check 7
    */
-  constructor({ delegationLog, revocationRegistry, requireTEE = false } = {}) {
+  constructor({ delegationLog, revocationRegistry, requireTEE = false, modelStateAttestation } = {}) {
     if (!delegationLog)      throw new Error('PreExecutionVerifier: delegationLog is required');
     if (!revocationRegistry) throw new Error('PreExecutionVerifier: revocationRegistry is required');
 
-    this._log        = delegationLog;
-    this._registry   = revocationRegistry;
-    this._requireTEE = requireTEE;
+    this._log                  = delegationLog;
+    this._registry             = revocationRegistry;
+    this._requireTEE           = requireTEE;
+    this._modelStateAttestation = modelStateAttestation ?? null;
 
     /** @private — internal audit log of every gate decision */
     this._auditLog     = new ActionLog();
@@ -239,7 +242,17 @@ class PreExecutionVerifier {
    *   verifiedAt: string
    * }>}
    */
-  async check({ receiptHash, action, operatorInstructions, programHash } = {}) {
+  async check({
+    receiptHash,
+    action,
+    operatorInstructions,
+    programHash,
+    commitmentId,
+    currentModelId,
+    currentModelVersion,
+    currentSystemPromptHash,
+    currentRuntimeConfigHash,
+  } = {}) {
     if (!this._initialized) {
       throw new Error('PreExecutionVerifier: call init() before check()');
     }
@@ -252,8 +265,9 @@ class PreExecutionVerifier {
       actionWithinScope:         false,
       operatorInstructionsMatch: false,
     };
-    if (programHash !== undefined) checks.programHashMatch    = false;
-    if (this._requireTEE)          checks.teeAttestationValid = false;
+    if (programHash !== undefined)                               checks.programHashMatch    = false;
+    if (this._requireTEE)                                        checks.teeAttestationValid = false;
+    if (this._modelStateAttestation && commitmentId !== undefined) checks.modelStateValid    = false;
 
     // ── Check 1: Receipt signature ─────────────────────────────────────
     const logEntry = this._log.getEntry(receiptHash);
@@ -409,6 +423,33 @@ class PreExecutionVerifier {
           blockedReason: teeAttestation
             ? 'TEE attestation verification failed'
             : 'TEE attestation required but not present in receipt',
+          receiptHash,
+          action,
+        });
+      }
+    }
+
+    // ── Check 7: Model state verification (optional) ─────────────────
+    if (this._modelStateAttestation && commitmentId !== undefined) {
+      const msaResult = await this._modelStateAttestation.verify({
+        commitmentId,
+        currentModelId,
+        currentModelVersion,
+        currentSystemPromptHash,
+        currentRuntimeConfigHash,
+      });
+
+      const modelStateValid = msaResult.valid && msaResult.commitmentMatches;
+      checks.modelStateValid = modelStateValid;
+
+      if (!modelStateValid) {
+        const driftDesc = msaResult.modelDrift.length > 0
+          ? msaResult.modelDrift.join('; ')
+          : 'measurement mismatch';
+        return this._finalize({
+          allowed:       false,
+          checks,
+          blockedReason: `ModelDriftDetected: ${driftDesc}`,
           receiptHash,
           action,
         });
