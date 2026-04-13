@@ -122,6 +122,14 @@
       letter-spacing: -0.02em;
     }
     #hero h1 .highlight { color: var(--teal); }
+    .hero-tagline {
+      font-size: clamp(14px, 1.6vw, 17px);
+      font-weight: 600;
+      color: var(--teal);
+      letter-spacing: 0.04em;
+      margin-bottom: 16px;
+      opacity: 0.9;
+    }
     #hero p.lead {
       font-size: clamp(17px, 2vw, 20px);
       color: var(--text);
@@ -247,7 +255,114 @@
       margin-bottom: 12px;
     }
 
+    /* ── Primitives ── */
+    #primitives { background: var(--navy); }
+    .two-col {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 24px;
+    }
+    @media (max-width: 680px) { .two-col { grid-template-columns: 1fr; } }
+    .prim-card {
+      background: var(--navy2);
+      border: 1px solid var(--slate);
+      border-radius: 14px;
+      padding: 32px 28px;
+      position: relative;
+    }
+    .prim-card--new {
+      border-color: rgba(0,201,167,0.4);
+      background: linear-gradient(135deg, var(--navy2) 0%, rgba(0,201,167,0.05) 100%);
+    }
+    .prim-new-badge {
+      display: inline-block;
+      background: rgba(0,201,167,0.15);
+      border: 1px solid rgba(0,201,167,0.35);
+      color: var(--teal);
+      font-size: 10px; font-weight: 700;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      padding: 3px 10px; border-radius: 20px;
+      margin-bottom: 18px;
+    }
+    .prim-icon {
+      font-size: 32px; margin-bottom: 16px; display: block;
+    }
+    .prim-card h3 {
+      font-size: 20px; font-weight: 800;
+      color: var(--white); margin-bottom: 12px;
+      letter-spacing: -0.01em;
+    }
+    .prim-card p {
+      font-size: 15px; color: var(--text); opacity: 0.85;
+      line-height: 1.65; margin-bottom: 20px;
+    }
+    .prim-tech {
+      display: flex; gap: 8px; flex-wrap: wrap;
+    }
+    .prim-tech span {
+      font-size: 11px; font-weight: 600; letter-spacing: 0.06em;
+      font-family: var(--mono);
+      background: var(--navy3);
+      border: 1px solid var(--slate);
+      color: var(--muted);
+      padding: 4px 10px; border-radius: 6px;
+    }
+
+    /* ── Trust Stack ── */
+    #truststack { background: var(--navy2); }
+    .trust-chain {
+      max-width: 720px; margin: 0 auto;
+    }
+    .trust-layer {
+      display: flex; align-items: flex-start; gap: 20px;
+      background: var(--navy3);
+      border: 1px solid var(--slate);
+      border-radius: 12px;
+      padding: 22px 24px;
+      position: relative;
+    }
+    .trust-layer--new {
+      border-color: rgba(0,201,167,0.35);
+    }
+    .trust-num {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: var(--navy2); border: 2px solid var(--teal);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700; color: var(--teal);
+      flex-shrink: 0;
+    }
+    .trust-body { flex: 1; }
+    .trust-body h4 {
+      font-size: 15px; font-weight: 700;
+      color: var(--white); margin-bottom: 5px;
+    }
+    .trust-body p {
+      font-size: 13px; color: var(--text); opacity: 0.8; line-height: 1.55;
+    }
+    .trust-pill {
+      flex-shrink: 0;
+      font-size: 10px; font-weight: 700;
+      letter-spacing: 0.07em; text-transform: uppercase;
+      padding: 4px 10px; border-radius: 20px;
+      align-self: center;
+    }
+    .trust-pill--teal {
+      background: rgba(0,201,167,0.15);
+      border: 1px solid rgba(0,201,167,0.35);
+      color: var(--teal);
+    }
+    .trust-pill--muted {
+      background: var(--navy2);
+      border: 1px solid var(--slate);
+      color: var(--muted);
+    }
+    .trust-arrow {
+      text-align: center; color: var(--teal);
+      font-size: 20px; line-height: 1;
+      padding: 6px 0;
+      opacity: 0.6;
+    }
+
     /* ── How it works ── */
+    #how { background: var(--navy); }
     .steps { display: flex; flex-direction: column; gap: 0; max-width: 700px; margin: 0 auto; }
     .step-row {
       display: flex; gap: 20px; padding: 0 0 32px;
@@ -366,17 +481,19 @@
 <!-- ── Hero ── -->
 <section id="hero">
   <div class="container">
-    <div class="badge"><div class="badge-dot"></div>v1.4.0 — Live on npm</div>
+    <div class="badge"><div class="badge-dot"></div>v1.6.0 — Live on npm</div>
 
     <h1>
       Close the <span class="highlight">operator trust gap</span><br/>
       in AI agent authorization
     </h1>
 
+    <p class="hero-tagline">Two primitives. Complete accountability. Human authorized it. Hardware verified it.</p>
+
     <p class="lead">
       AuthProof commits user intent, scope, and operator instruction hashes to a
       decentralized append-only log before any agent action executes.
-      Operators cannot exceed the signed boundary. Any deviation is cryptographically detectable.
+      Now with Model State Attestation: if the model changes after authorization, execution is blocked.
     </p>
 
     <div class="hero-ctas">
@@ -480,6 +597,100 @@
   </div>
 </section>
 
+<!-- ── Core Primitives ── -->
+<section id="primitives">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-tag">Core Primitives</div>
+      <h2>Two primitives. Complete accountability.</h2>
+      <p>Each closes a different layer of the trust gap. Together they make AI agent authorization fully verifiable from intent to output.</p>
+    </div>
+
+    <div class="two-col">
+      <div class="prim-card">
+        <span class="prim-icon">🔏</span>
+        <h3>Delegation Receipt</h3>
+        <p>A signed authorization object committing user intent, scope, and operator instruction hash to an append-only log before any agent action executes. The receipt is the only authority — operators cannot exceed what is signed.</p>
+        <div class="prim-tech">
+          <span>ECDSA P-256</span>
+          <span>SHA-256</span>
+          <span>Append-only log</span>
+        </div>
+      </div>
+
+      <div class="prim-card prim-card--new">
+        <div class="prim-new-badge">New in v1.6.0</div>
+        <span class="prim-icon">🧬</span>
+        <h3>Model State Attestation</h3>
+        <p>Cryptographically binds the delegation receipt to the specific model instance that acted on it. If an operator swaps the model after authorization, the measurement changes and execution is blocked.</p>
+        <div class="prim-tech">
+          <span>SHA-256 commitment</span>
+          <span>TEE verified</span>
+          <span>Drift detection</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Trust Stack ── -->
+<section id="truststack">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-tag">Architecture</div>
+      <h2>The complete trust stack</h2>
+      <p>Five cryptographic layers from human intent to auditable outcome. Each layer anchors to the one before it.</p>
+    </div>
+
+    <div class="trust-chain">
+      <div class="trust-layer">
+        <div class="trust-num">1</div>
+        <div class="trust-body">
+          <h4>Delegation Receipt</h4>
+          <p>ECDSA P-256 signed scope and operator instruction hash. The root of trust — every subsequent layer anchors to this.</p>
+        </div>
+        <div class="trust-pill trust-pill--muted">User signs</div>
+      </div>
+      <div class="trust-arrow">↓</div>
+      <div class="trust-layer trust-layer--new">
+        <div class="trust-num">2</div>
+        <div class="trust-body">
+          <h4>Model State Commitment</h4>
+          <p>SHA-256 measurement of model ID, version, system prompt, runtime config, and receipt hash. Blocks execution if the model drifts after authorization.</p>
+        </div>
+        <div class="trust-pill trust-pill--teal">New · v1.6.0</div>
+      </div>
+      <div class="trust-arrow">↓</div>
+      <div class="trust-layer">
+        <div class="trust-num">3</div>
+        <div class="trust-body">
+          <h4>Execution Attestation</h4>
+          <p>Hardware-backed verification that the authorized model instance is the one executing. TEE simulation available for development environments.</p>
+        </div>
+        <div class="trust-pill trust-pill--muted">TEE verified</div>
+      </div>
+      <div class="trust-arrow">↓</div>
+      <div class="trust-layer">
+        <div class="trust-num">4</div>
+        <div class="trust-body">
+          <h4>Action Log Entry</h4>
+          <p>Tamper-evident chain-linked record of every executed action — signed and appended before the response is returned. Immutable by design.</p>
+        </div>
+        <div class="trust-pill trust-pill--muted">Append-only</div>
+      </div>
+      <div class="trust-arrow">↓</div>
+      <div class="trust-layer">
+        <div class="trust-num">5</div>
+        <div class="trust-body">
+          <h4>Data Flow Receipt</h4>
+          <p>End-to-end cryptographic proof linking user intent through model execution to final output. Auditable by anyone with the public key.</p>
+        </div>
+        <div class="trust-pill trust-pill--muted">Auditable</div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ── How it works ── -->
 <section id="how">
   <div class="container">
@@ -563,7 +774,7 @@
       <a class="link-card" href="https://www.npmjs.com/package/authproof-sdk" target="_blank">
         <div class="link-icon">📦</div>
         <div class="link-label">npm package</div>
-        <div class="link-sub">authproof-sdk v1.4.0</div>
+        <div class="link-sub">authproof-sdk v1.6.0</div>
       </a>
     </div>
   </div>
