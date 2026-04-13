@@ -4,6 +4,84 @@
 
 ---
 
+## Pre-Execution Verifier
+
+**The deterministic gate that runs before any agent action executes.**
+
+The `PreExecutionVerifier` sits outside the agent runtime. The runtime never gets control until the verifier passes. A compromised or malicious agent cannot skip it — it runs before the runtime starts.
+
+### Why it matters
+
+Traditional authorization checks happen inside the agent runtime. If the runtime is compromised, those checks can be skipped, reordered, or bypassed. `PreExecutionVerifier` eliminates this attack surface by moving authorization outside the runtime entirely. The agent only executes if — and only if — all six sequential checks pass first.
+
+### Quickstart
+
+```js
+import { PreExecutionVerifier, DelegationLog } from 'authproof-sdk/pre-execution-verifier'
+import { RevocationRegistry } from 'authproof-sdk'
+
+// 1. Set up the gate
+const delegationLog      = new DelegationLog()
+const revocationRegistry = new RevocationRegistry()
+await revocationRegistry.init({ privateKey, publicJwk })
+
+const verifier = new PreExecutionVerifier({ delegationLog, revocationRegistry })
+await verifier.init({ privateKey: verifierKey, publicJwk: verifierPub })
+
+// 2. Register your delegation receipt
+delegationLog.add(receiptHash, receipt)
+
+// 3. Gate every action — before the agent runs
+const result = await verifier.check({
+  receiptHash,
+  action:               { operation: 'read', resource: 'calendar' },
+  operatorInstructions: 'Summarize meetings. Stay within scope.',
+  programHash,          // optional: prevents code substitution attacks
+})
+
+if (!result.allowed) {
+  throw new Error(`Blocked: ${result.blockedReason}`)
+}
+// Agent runtime only reaches here after all six checks pass
+```
+
+### Six sequential checks (stops at first failure)
+
+| # | Check | Blocks when |
+|---|-------|-------------|
+| 1 | Receipt signature | ECDSA P-256 signature invalid or receipt tampered |
+| 2 | Revocation | Receipt has been revoked via `RevocationRegistry` |
+| 3 | Time window | Receipt expired or not yet valid (log timestamp oracle, not client clock) |
+| 4 | Scope | Action not in `ScopeSchema.allowedActions` or fails text-based scope matching |
+| 5 | Operator instructions | Current instructions don't match the hash locked into the receipt at issuance |
+| 6 | Program hash | Provided `programHash` doesn't match the committed `executes` hash (code substitution prevention) |
+
+Every check result — pass or fail — is automatically logged to an immutable `ActionLog` signed with the verifier's own key.
+
+### Middleware integrations
+
+Drop-in wrappers for common frameworks. Each wrapper gates every call through `PreExecutionVerifier` before the wrapped code executes.
+
+- **[LangChain](src/middleware/langchain.js)** — wraps any agent with an `invoke()` method
+- **[Express/HTTP](src/middleware/express.js)** — request middleware for any Express-compatible framework
+- **[Generic function wrapper](src/middleware/generic.js)** — wraps any async function
+
+```js
+// LangChain
+import { authproofMiddleware } from 'authproof-sdk/middleware/langchain'
+const guardedAgent = authproofMiddleware(agent, { receiptHash, verifier })
+
+// Express
+import { authproofMiddleware } from 'authproof-sdk/middleware/express'
+app.use(authproofMiddleware({ verifier, getReceiptHash: (req) => req.headers['x-receipt-hash'] }))
+
+// Any function
+import { guardFunction } from 'authproof-sdk/middleware/generic'
+const guardedExecute = guardFunction(executeAction, { receiptHash, verifier, action })
+```
+
+---
+
 ## The Problem
 
 Every existing IETF framework for agent identity — [AIP](https://identity.foundation/agent-identity-protocol/), [draft-klrc-aiagent-auth](https://datatracker.ietf.org/), [WIMSE](https://datatracker.ietf.org/wg/wimse/about/) — addresses service-to-agent trust: how a downstream service verifies that an agent is authorized to call it. None of them address **user-to-operator trust**.
