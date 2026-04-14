@@ -3,845 +3,648 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AuthProof SDK — Cryptographic Delegation for AI Agents</title>
-  <meta name="description" content="AuthProof removes operators as trusted third parties in AI agent authorization. Signed, verifiable, tamper-proof delegation receipts using ECDSA P-256." />
+  <title>AuthProof — Delegation Receipt Protocol</title>
+  <meta name="description" content="Cryptographic delegation receipts for AI agents. Every action pre-authorized. Every authorization verifiable. No operator trust required." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
     :root {
-      --navy:   #0d1b2a;
-      --navy2:  #112233;
-      --navy3:  #1a2e45;
-      --teal:   #00c9a7;
-      --teal2:  #00a88d;
-      --slate:  #1e3a52;
-      --muted:  #5a7fa0;
-      --text:   #cde0f5;
-      --white:  #e8f4ff;
-      --red:    #ff5a5a;
-      --yellow: #ffc857;
-      --mono:   'Courier New', monospace;
-      --sans:   -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --black:   #000000;
+      --black2:  #0a0a0a;
+      --black3:  #111111;
+      --black4:  #1a1a1a;
+      --green:   #00FF41;
+      --green2:  #00cc34;
+      --green3:  rgba(0,255,65,0.08);
+      --white:   #ffffff;
+      --gray1:   #e0e0e0;
+      --gray2:   #999999;
+      --gray3:   #555555;
+      --gray4:   #2a2a2a;
+      --mono:    'JetBrains Mono', 'Courier New', monospace;
+      --sans:    'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     }
 
     html { scroll-behavior: smooth; }
+
     body {
-      background: var(--navy);
-      color: var(--text);
+      background: var(--black);
+      color: var(--gray1);
       font-family: var(--sans);
+      font-size: 16px;
       line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
     }
 
-    a { color: var(--teal); text-decoration: none; }
+    a { color: var(--green); text-decoration: none; }
     a:hover { text-decoration: underline; }
 
     /* ── Nav ── */
     nav {
       position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-      background: rgba(13,27,42,0.92);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid var(--slate);
-      padding: 14px 32px;
+      background: rgba(0,0,0,0.96);
+      border-bottom: 1px solid var(--gray4);
+      padding: 0 40px;
+      height: 52px;
       display: flex; align-items: center; justify-content: space-between;
     }
-    .nav-logo {
-      display: flex; align-items: center; gap: 10px;
-      font-weight: 700; font-size: 16px; color: var(--white);
+    .nav-brand {
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--white);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
     }
-    .logo-mark {
-      width: 30px; height: 30px; background: var(--teal);
-      border-radius: 7px; display: flex; align-items: center;
-      justify-content: center; font-weight: 900; font-size: 16px;
-      color: var(--navy); flex-shrink: 0;
+    .nav-brand span { color: var(--green); }
+    .nav-links {
+      display: flex; gap: 32px; align-items: center;
     }
-    .nav-links { display: flex; gap: 24px; align-items: center; }
-    .nav-links a { font-size: 14px; color: var(--text); opacity: 0.8; }
-    .nav-links a:hover { opacity: 1; color: var(--white); text-decoration: none; }
-    .nav-cta {
-      background: var(--teal); color: var(--navy) !important;
-      font-weight: 700; padding: 8px 18px; border-radius: 7px;
-      opacity: 1 !important; font-size: 14px;
+    .nav-links a {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--gray2);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      transition: color 0.15s;
     }
-    .nav-cta:hover { background: #00e0bc; text-decoration: none !important; }
-    .nav-hamburger {
-      display: none; background: none; border: none; cursor: pointer;
-      color: var(--white); font-size: 22px; padding: 4px 8px; line-height: 1;
+    .nav-links a:hover { color: var(--white); text-decoration: none; }
+    .nav-links a.nav-npm {
+      color: var(--green);
+      border: 1px solid var(--green);
+      padding: 5px 12px;
     }
-    @media (max-width: 640px) {
-      .nav-links a:not(.nav-cta) { display: none; }
-      .nav-hamburger { display: block; }
-      nav { flex-wrap: wrap; padding: 12px 20px; }
-      .nav-links {
-        display: none; flex-direction: column; width: 100%;
-        background: rgba(13,27,42,0.97); border-top: 1px solid var(--slate);
-        padding: 12px 0; gap: 0; margin-top: 10px;
-      }
-      .nav-links.open { display: flex; }
-      .nav-links.open a:not(.nav-cta) { display: block; }
-      .nav-links a { padding: 10px 20px; opacity: 1; font-size: 15px; width: 100%; }
-      .nav-cta { margin: 8px 20px; text-align: center; border-radius: 7px; }
+    .nav-links a.nav-npm:hover { background: var(--green3); }
+    @media (max-width: 700px) {
+      nav { padding: 0 20px; }
+      .nav-links a:not(.nav-npm) { display: none; }
     }
 
-    /* ── Sections ── */
-    section { padding: 80px 24px; }
-    .container { max-width: 1040px; margin: 0 auto; }
+    /* ── Layout ── */
+    .section { padding: 96px 40px; max-width: 1100px; margin: 0 auto; }
+    .section-full { padding: 96px 0; }
+    .section-full .inner { max-width: 1100px; margin: 0 auto; padding: 0 40px; }
+    hr.divider {
+      border: none;
+      border-top: 1px solid var(--gray4);
+    }
 
     /* ── Hero ── */
     #hero {
-      padding-top: 140px;
-      padding-bottom: 100px;
-      text-align: center;
-      background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(0,201,167,0.10) 0%, transparent 70%);
+      padding-top: 148px;
+      padding-bottom: 96px;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding-left: 40px;
+      padding-right: 40px;
     }
-    .badge {
-      display: inline-flex; align-items: center; gap: 8px;
-      background: rgba(0,201,167,0.12);
-      border: 1px solid rgba(0,201,167,0.3);
-      border-radius: 20px;
-      padding: 5px 14px;
-      font-size: 12px; font-weight: 600; color: var(--teal);
-      letter-spacing: 0.06em; text-transform: uppercase;
-      margin-bottom: 28px;
+    .hero-label {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--green);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-bottom: 32px;
     }
-    .badge-dot {
-      width: 7px; height: 7px; border-radius: 50%;
-      background: var(--teal);
-      animation: blink 2s ease-in-out infinite;
-    }
-    @keyframes blink {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.3; }
+    .hero-label::before {
+      content: '> ';
+      opacity: 0.45;
     }
     #hero h1 {
-      font-size: clamp(36px, 5vw, 60px);
+      font-family: var(--sans);
+      font-size: clamp(34px, 4.8vw, 66px);
       font-weight: 800;
       color: var(--white);
-      line-height: 1.15;
+      line-height: 1.08;
+      letter-spacing: -0.03em;
       max-width: 820px;
-      margin: 0 auto 20px;
-      letter-spacing: -0.02em;
+      margin-bottom: 28px;
     }
-    #hero h1 .highlight { color: var(--teal); }
-    .hero-tagline {
-      font-size: clamp(14px, 1.6vw, 17px);
-      font-weight: 600;
-      color: var(--teal);
-      letter-spacing: 0.04em;
-      margin-bottom: 16px;
-      opacity: 0.9;
-    }
-    #hero p.lead {
-      font-size: clamp(17px, 2vw, 20px);
-      color: var(--text);
-      max-width: 640px;
-      margin: 0 auto 40px;
-      opacity: 0.85;
+    .hero-sub {
+      font-size: clamp(15px, 1.8vw, 18px);
+      color: var(--gray2);
+      max-width: 540px;
+      line-height: 1.75;
+      margin-bottom: 44px;
     }
     .hero-ctas {
-      display: flex; flex-wrap: wrap; gap: 14px;
-      justify-content: center; margin-bottom: 60px;
+      display: flex; gap: 16px; flex-wrap: wrap; align-items: center;
     }
-    .btn-primary {
-      background: var(--teal); color: var(--navy);
-      font-weight: 700; font-size: 16px;
-      padding: 14px 28px; border-radius: 9px;
-      border: none; cursor: pointer;
-      transition: background 0.2s, transform 0.1s;
-      display: inline-block;
-    }
-    .btn-primary:hover { background: #00e0bc; text-decoration: none; }
-    .btn-primary:active { transform: scale(0.97); }
-    .btn-outline {
-      background: transparent; color: var(--text);
-      font-weight: 600; font-size: 16px;
-      padding: 14px 28px; border-radius: 9px;
-      border: 1px solid var(--slate);
-      transition: border-color 0.2s, color 0.2s;
-      display: inline-block;
-    }
-    .btn-outline:hover { border-color: var(--teal); color: var(--white); text-decoration: none; }
-
-    .stats-row {
-      display: flex; gap: 48px; justify-content: center;
-      flex-wrap: wrap;
-    }
-    .stat { text-align: center; }
-    .stat-num { font-size: 28px; font-weight: 800; color: var(--white); }
-    .stat-label { font-size: 12px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-top: 2px; }
-
-    /* ── Code preview ── */
-    .code-preview {
-      margin: 60px auto 0;
-      max-width: 720px;
-      background: var(--navy2);
-      border: 1px solid var(--slate);
-      border-radius: 12px;
-      overflow: hidden;
-    }
-    .code-bar {
-      background: var(--navy3);
-      padding: 10px 16px;
-      display: flex; align-items: center; gap: 7px;
-      border-bottom: 1px solid var(--slate);
-    }
-    .code-dot { width: 10px; height: 10px; border-radius: 50%; }
-    .code-dot-r { background: #ff5f57; }
-    .code-dot-y { background: #ffbd2e; }
-    .code-dot-g { background: #28ca41; }
-    .code-filename { font-size: 12px; color: var(--muted); margin-left: 8px; font-family: var(--mono); }
-    pre {
-      padding: 20px 24px;
+    .btn-install {
+      display: inline-flex; align-items: center; gap: 10px;
       font-family: var(--mono);
       font-size: 13px;
-      line-height: 1.75;
-      overflow-x: auto;
-      color: var(--text);
+      font-weight: 600;
+      color: var(--green);
+      background: transparent;
+      border: 1px solid var(--green);
+      padding: 12px 20px;
+      cursor: pointer;
+      transition: background 0.15s;
+      letter-spacing: 0.02em;
+      user-select: none;
+      outline: none;
     }
-    .t { color: var(--teal); }      /* teal — keywords/types */
-    .s { color: #a8d8ff; }          /* string */
-    .c { color: var(--muted); }     /* comment */
-    .y { color: var(--yellow); }    /* numbers/booleans */
-    .w { color: var(--white); }     /* identifiers */
-    .p { color: #c9a0ff; }          /* punctuation/operators */
+    .btn-install:hover { background: var(--green3); text-decoration: none; }
+    .btn-install.copied { color: var(--white); border-color: var(--white); }
+    .copy-icon { opacity: 0.55; font-size: 14px; }
+    .btn-wp {
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--green);
+      letter-spacing: 0.02em;
+      padding: 12px 4px;
+      border-bottom: 1px solid transparent;
+      transition: border-color 0.15s;
+    }
+    .btn-wp:hover { border-color: var(--green); text-decoration: none; }
 
-    /* ── Problem / Primitive / Trust cards ── */
-    #problem { background: var(--navy2); }
-    .three-col {
-      display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;
+    /* ── Problem ── */
+    #problem { background: var(--black); }
+    .problem-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0;
     }
-    @media (max-width: 740px) { .three-col { grid-template-columns: 1fr; } }
-    .col-card {
-      background: var(--navy3);
-      border: 1px solid var(--slate);
-      border-radius: 12px;
-      padding: 28px 24px;
+    @media (max-width: 800px) {
+      .problem-grid { grid-template-columns: 1fr; }
+      .problem-col { border-left: 2px solid var(--green) !important; border-top: none !important; padding: 28px 20px !important; }
     }
-    .col-card h3 {
-      font-size: 15px; font-weight: 700;
-      color: var(--white); margin-bottom: 14px;
-      display: flex; align-items: center; gap: 10px;
-    }
-    .col-icon {
-      width: 34px; height: 34px; border-radius: 8px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 16px; flex-shrink: 0;
-    }
-    .col-icon.red    { background: rgba(255,90,90,0.15); }
-    .col-icon.teal   { background: rgba(0,201,167,0.15); }
-    .col-icon.yellow { background: rgba(255,200,87,0.15); }
-    .col-card p { font-size: 14px; color: var(--text); opacity: 0.85; line-height: 1.6; }
-    .col-card ul { margin-top: 12px; padding-left: 0; list-style: none; }
-    .col-card ul li {
-      font-size: 14px; color: var(--text); opacity: 0.85;
-      padding: 5px 0;
-      display: flex; align-items: flex-start; gap: 8px;
-    }
-    .col-card ul li::before { content: '→'; color: var(--teal); flex-shrink: 0; }
-
-    /* ── Section header ── */
-    .section-header { text-align: center; margin-bottom: 48px; }
-    .section-header h2 {
-      font-size: clamp(26px, 3.5vw, 40px);
-      font-weight: 800; color: var(--white);
-      letter-spacing: -0.02em; margin-bottom: 12px;
-    }
-    .section-header p {
-      font-size: 17px; color: var(--text); opacity: 0.8;
-      max-width: 560px; margin: 0 auto;
-    }
-    .section-tag {
-      font-size: 11px; font-weight: 700; letter-spacing: 0.1em;
-      text-transform: uppercase; color: var(--teal);
-      margin-bottom: 12px;
-    }
-
-    /* ── Primitives ── */
-    #primitives { background: var(--navy); }
-    .two-col {
-      display: grid; grid-template-columns: 1fr 1fr; gap: 24px;
-    }
-    @media (max-width: 680px) { .two-col { grid-template-columns: 1fr; } }
-    .prim-card {
-      background: var(--navy2);
-      border: 1px solid var(--slate);
-      border-radius: 14px;
-      padding: 32px 28px;
+    .problem-col {
+      border-left: 1px solid var(--gray4);
+      padding: 44px 36px;
       position: relative;
+      transition: background 0.2s;
     }
-    .prim-card--new {
-      border-color: rgba(0,201,167,0.4);
-      background: linear-gradient(135deg, var(--navy2) 0%, rgba(0,201,167,0.05) 100%);
+    .problem-col::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 2px;
+      background: var(--green);
+      opacity: 0;
+      transition: opacity 0.25s;
     }
-    .prim-new-badge {
-      display: inline-block;
-      background: rgba(0,201,167,0.15);
-      border: 1px solid rgba(0,201,167,0.35);
-      color: var(--teal);
-      font-size: 10px; font-weight: 700;
-      letter-spacing: 0.08em; text-transform: uppercase;
-      padding: 3px 10px; border-radius: 20px;
-      margin-bottom: 18px;
+    .problem-col:hover { background: rgba(255,255,255,0.015); }
+    .problem-col:hover::before { opacity: 1; }
+    .problem-col:first-child {
+      border-left: 2px solid var(--green);
     }
-    .prim-icon {
-      font-size: 32px; margin-bottom: 16px; display: block;
+    .problem-col:first-child::before { display: none; }
+    .problem-num {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--gray3);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 20px;
     }
-    .prim-card h3 {
-      font-size: 20px; font-weight: 800;
-      color: var(--white); margin-bottom: 12px;
+    .problem-col h3 {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--white);
+      line-height: 1.4;
+      margin-bottom: 14px;
       letter-spacing: -0.01em;
     }
-    .prim-card p {
-      font-size: 15px; color: var(--text); opacity: 0.85;
-      line-height: 1.65; margin-bottom: 20px;
+    .problem-col p {
+      font-size: 14px;
+      color: var(--gray2);
+      line-height: 1.7;
     }
-    .prim-tech {
-      display: flex; gap: 8px; flex-wrap: wrap;
+
+    /* ── Primitives / Terminal ── */
+    #primitives { background: var(--black2); }
+    .prim-header { margin-bottom: 52px; }
+    .prim-header h2 {
+      font-size: clamp(26px, 3.2vw, 42px);
+      font-weight: 800;
+      color: var(--white);
+      letter-spacing: -0.03em;
+      margin-bottom: 12px;
     }
-    .prim-tech span {
-      font-size: 11px; font-weight: 600; letter-spacing: 0.06em;
+    .prim-header p {
+      font-size: 15px;
+      color: var(--gray2);
+      max-width: 460px;
+    }
+    .terminal-wrap { max-width: 720px; }
+    .terminal {
+      background: var(--black3);
+      border: 1px solid var(--gray4);
       font-family: var(--mono);
-      background: var(--navy3);
-      border: 1px solid var(--slate);
-      color: var(--muted);
-      padding: 4px 10px; border-radius: 6px;
+      font-size: 13px;
+    }
+    .terminal-bar {
+      background: var(--black4);
+      border-bottom: 1px solid var(--gray4);
+      padding: 10px 16px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .tdot { width: 10px; height: 10px; border-radius: 50%; }
+    .tdot-r { background: #3a3a3a; }
+    .tdot-y { background: #3a3a3a; }
+    .tdot-g { background: #3a3a3a; }
+    .tfile {
+      font-size: 11px; color: var(--gray3);
+      margin-left: 8px; letter-spacing: 0.06em;
+    }
+    .terminal-body {
+      padding: 24px 24px 28px;
+      line-height: 1.9;
+    }
+    .tline {
+      display: block;
+      opacity: 0;
+      transform: translateY(3px);
+      transition: opacity 0.18s ease, transform 0.18s ease;
+      white-space: pre;
+    }
+    .tline.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .t-cmd   { color: var(--gray2); }
+    .t-pass  { color: var(--green); font-weight: 600; }
+    .t-label { color: var(--gray3); }
+    .t-check { color: var(--gray1); }
+    .t-ok    { color: var(--green); font-weight: 700; }
+    .t-sub   { color: var(--gray3); }
+    .t-key   { color: var(--white); }
+    .t-val   { color: var(--green); }
+    .t-blank { color: transparent; user-select: none; }
+    .t-cursor {
+      display: inline-block;
+      width: 8px; height: 13px;
+      background: var(--green);
+      vertical-align: middle;
+      margin-left: 2px;
+      opacity: 0;
+    }
+    .t-cursor.blinking {
+      animation: cur-blink 1s step-end infinite;
+    }
+    @keyframes cur-blink {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0; }
+    }
+    @media (max-width: 600px) {
+      .terminal-wrap { overflow-x: auto; }
+      .terminal-body { padding: 16px; }
+      .tline { font-size: 12px; }
     }
 
-    /* ── Trust Stack ── */
-    #truststack { background: var(--navy2); }
-    .trust-chain {
-      max-width: 720px; margin: 0 auto;
+    /* ── Numbers ── */
+    #numbers { background: var(--black); }
+    .numbers-label {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--gray3);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 48px;
     }
-    .trust-layer {
-      display: flex; align-items: flex-start; gap: 20px;
-      background: var(--navy3);
-      border: 1px solid var(--slate);
-      border-radius: 12px;
-      padding: 22px 24px;
-      position: relative;
+    .numbers-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 0;
+      border-top: 1px solid var(--gray4);
+      border-left: 1px solid var(--gray4);
     }
-    .trust-layer--new {
-      border-color: rgba(0,201,167,0.35);
+    @media (max-width: 900px) {
+      .numbers-grid { grid-template-columns: repeat(3, 1fr); }
     }
-    .trust-num {
-      width: 36px; height: 36px; border-radius: 50%;
-      background: var(--navy2); border: 2px solid var(--teal);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 13px; font-weight: 700; color: var(--teal);
-      flex-shrink: 0;
+    @media (max-width: 500px) {
+      .numbers-grid { grid-template-columns: repeat(2, 1fr); }
     }
-    .trust-body { flex: 1; }
-    .trust-body h4 {
-      font-size: 15px; font-weight: 700;
-      color: var(--white); margin-bottom: 5px;
+    .num-cell {
+      padding: 32px 24px;
+      border-right: 1px solid var(--gray4);
+      border-bottom: 1px solid var(--gray4);
     }
-    .trust-body p {
-      font-size: 13px; color: var(--text); opacity: 0.8; line-height: 1.55;
+    .num-val {
+      font-family: var(--mono);
+      font-size: clamp(28px, 2.8vw, 40px);
+      font-weight: 700;
+      color: var(--white);
+      line-height: 1;
+      margin-bottom: 10px;
     }
-    .trust-pill {
-      flex-shrink: 0;
-      font-size: 10px; font-weight: 700;
-      letter-spacing: 0.07em; text-transform: uppercase;
-      padding: 4px 10px; border-radius: 20px;
-      align-self: center;
+    .num-label {
+      font-size: 12px;
+      color: var(--gray3);
+      line-height: 1.4;
     }
-    .trust-pill--teal {
-      background: rgba(0,201,167,0.15);
-      border: 1px solid rgba(0,201,167,0.35);
-      color: var(--teal);
-    }
-    .trust-pill--muted {
-      background: var(--navy2);
-      border: 1px solid var(--slate);
-      color: var(--muted);
-    }
-    .trust-arrow {
-      text-align: center; color: var(--teal);
-      font-size: 20px; line-height: 1;
-      padding: 6px 0;
-      opacity: 0.6;
-    }
+    .num-cell:last-child .num-val { color: var(--green); }
 
-    /* ── How it works ── */
-    #how { background: var(--navy); }
-    .steps { display: flex; flex-direction: column; gap: 0; max-width: 700px; margin: 0 auto; }
-    .step-row {
-      display: flex; gap: 20px; padding: 0 0 32px;
-      position: relative;
+    /* ── Code block ── */
+    #code { background: var(--black2); }
+    .code-header { margin-bottom: 40px; }
+    .code-header h2 {
+      font-size: clamp(22px, 2.8vw, 36px);
+      font-weight: 800;
+      color: var(--white);
+      letter-spacing: -0.02em;
+      margin-bottom: 10px;
     }
-    .step-row:not(:last-child)::before {
-      content: '';
-      position: absolute; left: 19px; top: 44px; bottom: 0;
-      width: 2px; background: var(--slate);
+    .code-header p { font-size: 14px; color: var(--gray2); }
+    .code-block {
+      background: var(--black3);
+      border: 1px solid var(--gray4);
+      max-width: 720px;
     }
-    .step-num {
-      width: 40px; height: 40px; border-radius: 50%;
-      background: var(--navy3); border: 2px solid var(--teal);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 13px; font-weight: 700; color: var(--teal);
-      flex-shrink: 0; position: relative; z-index: 1;
+    .code-bar {
+      background: var(--black4);
+      border-bottom: 1px solid var(--gray4);
+      padding: 10px 16px;
+      display: flex; align-items: center; gap: 8px;
     }
-    .step-content h4 { font-size: 16px; font-weight: 700; color: var(--white); margin-bottom: 6px; }
-    .step-content p  { font-size: 14px; color: var(--text); opacity: 0.8; }
-
-    /* ── Links bar ── */
-    #links { background: var(--navy2); }
-    .links-grid {
-      display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
+    pre {
+      padding: 24px;
+      font-family: var(--mono);
+      font-size: 13px;
+      line-height: 1.85;
+      overflow-x: auto;
+      color: var(--gray1);
     }
-    @media (max-width: 600px) { .links-grid { grid-template-columns: 1fr 1fr; } }
-    .link-card {
-      background: var(--navy3); border: 1px solid var(--slate);
-      border-radius: 10px; padding: 22px 18px;
-      text-align: center; transition: border-color 0.2s, transform 0.2s;
-      display: block; color: var(--text);
-    }
-    .link-card:hover { border-color: var(--teal); transform: translateY(-2px); text-decoration: none; }
-    .link-card .link-icon { font-size: 28px; margin-bottom: 10px; }
-    .link-card .link-label { font-size: 14px; font-weight: 600; color: var(--white); }
-    .link-card .link-sub { font-size: 12px; color: var(--muted); margin-top: 3px; }
-
-    /* ── Signup ── */
-    #signup {
-      background: radial-gradient(ellipse 80% 100% at 50% 100%, rgba(0,201,167,0.10) 0%, transparent 70%);
-    }
-    .signup-box {
-      max-width: 520px; margin: 0 auto; text-align: center;
-    }
-    .signup-box h2 {
-      font-size: clamp(24px, 3vw, 36px);
-      font-weight: 800; color: var(--white);
-      letter-spacing: -0.02em; margin-bottom: 14px;
-    }
-    .signup-box p {
-      font-size: 15px; color: var(--text); opacity: 0.8; margin-bottom: 28px;
-    }
-    .signup-form {
-      display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;
-    }
-    .signup-form input {
-      flex: 1; min-width: 200px;
-      background: var(--navy3);
-      border: 1px solid var(--slate);
-      border-radius: 8px; color: var(--white);
-      font-size: 15px; padding: 13px 16px;
-      outline: none; transition: border-color 0.2s;
-      font-family: var(--sans);
-    }
-    .signup-form input:focus { border-color: var(--teal); }
-    .signup-form input::placeholder { color: var(--muted); }
-    .signup-form button {
-      background: var(--teal); color: var(--navy);
-      font-weight: 700; font-size: 15px;
-      padding: 13px 24px; border-radius: 8px;
-      border: none; cursor: pointer;
-      transition: background 0.2s;
-      white-space: nowrap;
-    }
-    .signup-form button:hover { background: #00e0bc; }
-    .signup-note { font-size: 12px; color: var(--muted); margin-top: 12px; }
-    .signup-success {
-      display: none; padding: 14px 20px;
-      background: rgba(0,201,167,0.12);
-      border: 1px solid rgba(0,201,167,0.35);
-      border-radius: 8px; color: var(--teal);
-      font-size: 14px; font-weight: 600;
-      margin-top: 16px;
-    }
+    .ck  { color: #7ca4d4; }
+    .cs  { color: #98c57a; }
+    .cf  { color: #e5c07b; }
+    .cm  { color: var(--gray3); font-style: italic; }
+    .cn  { color: var(--gray1); }
+    .cop { color: var(--gray3); }
 
     /* ── Footer ── */
     footer {
-      background: var(--navy2);
-      border-top: 1px solid var(--slate);
-      padding: 32px 24px;
-      text-align: center;
-      font-size: 13px; color: var(--muted);
+      border-top: 1px solid var(--gray4);
+      padding: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 20px;
     }
-    footer a { color: var(--teal); }
-    footer .footer-links { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; margin-bottom: 12px; }
+    .footer-links {
+      display: flex; gap: 28px; flex-wrap: wrap; align-items: center;
+    }
+    .footer-links a {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--gray3);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      transition: color 0.15s;
+    }
+    .footer-links a:hover { color: var(--white); text-decoration: none; }
+    .footer-line {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--gray3);
+      letter-spacing: 0.04em;
+    }
+    @media (max-width: 640px) {
+      footer { padding: 32px 20px; flex-direction: column; align-items: flex-start; }
+      .section { padding: 64px 20px; }
+      #hero { padding: 120px 20px 64px; }
+      .section-full .inner { padding: 0 20px; }
+    }
   </style>
 </head>
 <body>
 
 <!-- ── Navigation ── -->
 <nav>
-  <a href="/" class="nav-logo" style="text-decoration:none;">
-    <div class="logo-mark">A</div>
-    AuthProof SDK
-  </a>
-  <button class="nav-hamburger" id="nav-hamburger" aria-label="Toggle menu" onclick="toggleNav()">☰</button>
-  <div class="nav-links" id="nav-links">
-    <a href="#how">How it works</a>
+  <div class="nav-brand">Auth<span>Proof</span></div>
+  <div class="nav-links">
     <a href="https://github.com/Commonguy25/authproof-sdk/blob/main/WHITEPAPER.md">Whitepaper</a>
-    <a href="demo.html">Live Demo</a>
     <a href="https://github.com/Commonguy25/authproof-sdk" target="_blank">GitHub</a>
-    <a href="https://www.npmjs.com/package/authproof-sdk" target="_blank" class="nav-cta">npm install →</a>
+    <a href="demo.html">Demo</a>
+    <a href="https://www.npmjs.com/package/authproof-sdk" target="_blank" class="nav-npm">npm →</a>
   </div>
 </nav>
 
 <!-- ── Hero ── -->
 <section id="hero">
-  <div class="container">
-    <div class="badge"><div class="badge-dot"></div>v1.6.0 — Live on npm</div>
+  <div class="hero-label">Delegation Receipt Protocol v1.6.0</div>
 
-    <h1>
-      Close the <span class="highlight">operator trust gap</span><br/>
-      in AI agent authorization
-    </h1>
+  <h1>The AI agent acted.<br>Can you prove what it<br>was authorized to do?</h1>
 
-    <p class="hero-tagline">Two primitives. Complete accountability. Human authorized it. Hardware verified it.</p>
+  <p class="hero-sub">
+    Authproof gives every agent action a cryptographic receipt that existed before execution started.
+    Not reconstructed from logs. Not the operator's word against yours. Math.
+  </p>
 
-    <p class="lead">
-      AuthProof commits user intent, scope, and operator instruction hashes to a
-      decentralized append-only log before any agent action executes.
-      Now with Model State Attestation: if the model changes after authorization, execution is blocked.
-    </p>
-
-    <div class="hero-ctas">
-      <a href="demo.html" class="btn-primary">⚡ Try Live Demo</a>
-      <a href="https://github.com/Commonguy25/authproof-sdk" target="_blank" class="btn-outline">View on GitHub →</a>
-    </div>
-
-    <div class="stats-row">
-      <div class="stat">
-        <div class="stat-num">ECDSA P-256</div>
-        <div class="stat-label">Signing Algorithm</div>
-      </div>
-      <div class="stat">
-        <div class="stat-num">100%</div>
-        <div class="stat-label">Browser-native crypto</div>
-      </div>
-      <div class="stat">
-        <div class="stat-num">Open source</div>
-        <div class="stat-label">MIT License</div>
-      </div>
-    </div>
-
-    <div class="code-preview">
-      <div class="code-bar">
-        <div class="code-dot code-dot-r"></div>
-        <div class="code-dot code-dot-y"></div>
-        <div class="code-dot code-dot-g"></div>
-        <span class="code-filename">agent.js</span>
-      </div>
-      <pre><span class="t">import</span> <span class="p">{</span> <span class="w">AuthProofClient</span><span class="p">,</span> <span class="w">Scope</span><span class="p">,</span> <span class="w">KeyCustody</span> <span class="p">}</span> <span class="t">from</span> <span class="s">'authproof-sdk'</span><span class="p">;</span>
-
-<span class="c">// User delegates to agent — scope is signed &amp; committed</span>
-<span class="t">const</span> <span class="w">client</span> <span class="p">=</span> <span class="t">new</span> <span class="w">AuthProofClient</span><span class="p">({</span> <span class="w">custody</span><span class="p">:</span> <span class="w">KeyCustody</span><span class="p">.</span><span class="w">HARDWARE</span> <span class="p">});</span>
-
-<span class="t">const</span> <span class="w">receipt</span> <span class="p">=</span> <span class="t">await</span> <span class="w">client</span><span class="p">.</span><span class="w">delegate</span><span class="p">({</span>
-  <span class="w">scope</span><span class="p">:</span> <span class="t">new</span> <span class="w">Scope</span><span class="p">({</span>
-    <span class="w">allow</span><span class="p">:</span> <span class="p">[</span><span class="s">'read:calendar'</span><span class="p">,</span> <span class="s">'send:email'</span><span class="p">],</span>
-    <span class="w">deny</span><span class="p">:</span>  <span class="p">[</span><span class="s">'delete:*'</span><span class="p">,</span> <span class="s">'payment:*'</span><span class="p">]</span>
-  <span class="p">}),</span>
-  <span class="w">operatorInstructions</span><span class="p">:</span> <span class="s">'Schedule meetings only'</span><span class="p">,</span>
-  <span class="w">expiresIn</span><span class="p">:</span> <span class="s">'2h'</span>
-<span class="p">});</span>
-
-<span class="c">// Before any action — verify against the signed receipt</span>
-<span class="t">const</span> <span class="w">ok</span> <span class="p">=</span> <span class="t">await</span> <span class="w">client</span><span class="p">.</span><span class="w">verify</span><span class="p">(</span><span class="w">receipt</span><span class="p">.</span><span class="w">hash</span><span class="p">,</span> <span class="w">action</span><span class="p">);</span>
-<span class="c">// Any deviation is detectable before execution</span></pre>
-    </div>
+  <div class="hero-ctas">
+    <button class="btn-install" id="copy-btn" onclick="copyInstall()">
+      <span id="copy-text">npm install authproof</span>
+      <span class="copy-icon" id="copy-icon">⎘</span>
+    </button>
+    <a href="https://github.com/Commonguy25/authproof-sdk/blob/main/WHITEPAPER.md" class="btn-wp">Read the white paper →</a>
   </div>
 </section>
 
-<!-- ── Problem / Primitive / Trust ── -->
-<section id="problem">
-  <div class="container">
-    <div class="section-header">
-      <div class="section-tag">Why AuthProof</div>
-      <h2>The trust gap IETF frameworks leave open</h2>
-      <p>Current AI authorization standards delegate trust to the operator. AuthProof removes the operator as a trusted party entirely.</p>
-    </div>
+<hr class="divider" />
 
-    <div class="three-col">
-      <div class="col-card">
-        <h3>
-          <div class="col-icon red">⚠️</div>
-          The Problem
-        </h3>
-        <ul>
-          <li>Operators can silently expand agent capabilities</li>
-          <li>No cryptographic record of what the user authorized</li>
-          <li>Agent actions can't be audited against original intent</li>
-          <li>Operator instructions can contradict user scope</li>
-        </ul>
+<!-- ── Problem ── -->
+<section id="problem" class="section-full">
+  <div class="inner">
+    <div class="problem-grid">
+      <div class="problem-col">
+        <div class="problem-num">01 / operator claims</div>
+        <h3>The operator claims you authorized it.</h3>
+        <p>Right now there is no cryptographic record of what you actually told your agent to do. The company running it can say anything.</p>
       </div>
-
-      <div class="col-card">
-        <h3>
-          <div class="col-icon teal">🔏</div>
-          The Primitive
-        </h3>
-        <p>A <strong style="color:var(--white)">Delegation Receipt</strong> is a signed Authorization Object committed to an append-only log before any action. It contains:</p>
-        <ul>
-          <li>User intent hash</li>
-          <li>Explicit allow/deny scope</li>
-          <li>Operator instruction hash</li>
-          <li>ECDSA P-256 signature + timestamp</li>
-        </ul>
+      <div class="problem-col">
+        <div class="problem-num">02 / model substitution</div>
+        <h3>The model was swapped after you signed.</h3>
+        <p>An operator can substitute a modified model after authorization. Standard receipts don't detect this. Ours do.</p>
       </div>
-
-      <div class="col-card">
-        <h3>
-          <div class="col-icon yellow">🏛️</div>
-          The Trust Model
-        </h3>
-        <p>Operators are removed as trusted third parties. The signed receipt is the only authority. Any deviation between operator instructions and the committed hash is detectable by anyone with the public key.</p>
-        <ul>
-          <li>User holds the private key</li>
-          <li>Log is append-only and auditable</li>
-          <li>No trust in the operator required</li>
-        </ul>
+      <div class="problem-col">
+        <div class="problem-num">03 / server-side logs</div>
+        <h3>The audit trail is server-side logs.</h3>
+        <p>Logs can be written after the incident. A Delegation Receipt exists before the first action. That is not the same thing.</p>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ── Core Primitives ── -->
-<section id="primitives">
-  <div class="container">
-    <div class="section-header">
-      <div class="section-tag">Core Primitives</div>
-      <h2>Two primitives. Complete accountability.</h2>
-      <p>Each closes a different layer of the trust gap. Together they make AI agent authorization fully verifiable from intent to output.</p>
-    </div>
+<hr class="divider" />
 
-    <div class="two-col">
-      <div class="prim-card">
-        <span class="prim-icon">🔏</span>
-        <h3>Delegation Receipt</h3>
-        <p>A signed authorization object committing user intent, scope, and operator instruction hash to an append-only log before any agent action executes. The receipt is the only authority — operators cannot exceed what is signed.</p>
-        <div class="prim-tech">
-          <span>ECDSA P-256</span>
-          <span>SHA-256</span>
-          <span>Append-only log</span>
-        </div>
+<!-- ── Primitives / Terminal ── -->
+<section id="primitives" class="section">
+  <div class="prim-header">
+    <h2>Two primitives. One complete chain.</h2>
+    <p>Six verification checks. Every one must pass before execution proceeds.</p>
+  </div>
+
+  <div class="terminal-wrap">
+    <div class="terminal">
+      <div class="terminal-bar">
+        <div class="tdot tdot-r"></div>
+        <div class="tdot tdot-y"></div>
+        <div class="tdot tdot-g"></div>
+        <span class="tfile">authproof-cli</span>
       </div>
-
-      <div class="prim-card prim-card--new">
-        <div class="prim-new-badge">New in v1.6.0</div>
-        <span class="prim-icon">🧬</span>
-        <h3>Model State Attestation</h3>
-        <p>Cryptographically binds the delegation receipt to the specific model instance that acted on it. If an operator swaps the model after authorization, the measurement changes and execution is blocked.</p>
-        <div class="prim-tech">
-          <span>SHA-256 commitment</span>
-          <span>TEE verified</span>
-          <span>Drift detection</span>
-        </div>
+      <div class="terminal-body" id="terminal-body">
+        <span class="tline" id="tl-0"><span class="t-cmd">$ authproof verify --receipt 0x7f3a9c...</span></span>
+        <span class="tline" id="tl-1"><span class="t-blank"> </span></span>
+        <span class="tline" id="tl-2"><span class="t-label">[1/6] </span><span class="t-check">Receipt signature        </span><span class="t-pass"> PASS</span></span>
+        <span class="tline" id="tl-3"><span class="t-label">[2/6] </span><span class="t-check">Revocation check         </span><span class="t-pass"> PASS</span></span>
+        <span class="tline" id="tl-4"><span class="t-label">[3/6] </span><span class="t-check">Time window              </span><span class="t-pass"> PASS</span></span>
+        <span class="tline" id="tl-5"><span class="t-label">[4/6] </span><span class="t-check">Scope validation         </span><span class="t-pass"> PASS</span></span>
+        <span class="tline" id="tl-6"><span class="t-label">[5/6] </span><span class="t-check">Operator instruction hash</span><span class="t-pass"> PASS</span></span>
+        <span class="tline" id="tl-7"><span class="t-label">[6/6] </span><span class="t-check">Model state attestation  </span><span class="t-pass"> PASS</span></span>
+        <span class="tline" id="tl-8"><span class="t-blank"> </span></span>
+        <span class="tline" id="tl-9"><span class="t-ok">✓ Authorization verified. Receipt pre-dates execution.</span></span>
+        <span class="tline" id="tl-10"><span class="t-blank"> </span></span>
+        <span class="tline" id="tl-11"><span class="t-sub">  </span><span class="t-key">Delegation Receipt  </span><span class="t-sub">→ </span><span class="t-val">signed by user</span></span>
+        <span class="tline" id="tl-12"><span class="t-sub">  </span><span class="t-key">Model Commitment    </span><span class="t-sub">→ </span><span class="t-val">bound to receipt</span></span>
+        <span class="tline" id="tl-13"><span class="t-sub">  </span><span class="t-key">Execution Proof     </span><span class="t-sub">→ </span><span class="t-val">hardware attested</span></span>
+        <span class="tline" id="tl-14"><span class="t-sub">  </span><span class="t-key">Action Log          </span><span class="t-sub">→ </span><span class="t-val">tamper evident chain</span></span>
+        <span class="tline" id="tl-15"><span class="t-blank"> </span><span class="t-cursor" id="t-cursor"></span></span>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ── Trust Stack ── -->
-<section id="truststack">
-  <div class="container">
-    <div class="section-header">
-      <div class="section-tag">Architecture</div>
-      <h2>The complete trust stack</h2>
-      <p>Five cryptographic layers from human intent to auditable outcome. Each layer anchors to the one before it.</p>
-    </div>
+<hr class="divider" />
 
-    <div class="trust-chain">
-      <div class="trust-layer">
-        <div class="trust-num">1</div>
-        <div class="trust-body">
-          <h4>Delegation Receipt</h4>
-          <p>ECDSA P-256 signed scope and operator instruction hash. The root of trust — every subsequent layer anchors to this.</p>
-        </div>
-        <div class="trust-pill trust-pill--muted">User signs</div>
-      </div>
-      <div class="trust-arrow">↓</div>
-      <div class="trust-layer trust-layer--new">
-        <div class="trust-num">2</div>
-        <div class="trust-body">
-          <h4>Model State Commitment</h4>
-          <p>SHA-256 measurement of model ID, version, system prompt, runtime config, and receipt hash. Blocks execution if the model drifts after authorization.</p>
-        </div>
-        <div class="trust-pill trust-pill--teal">New · v1.6.0</div>
-      </div>
-      <div class="trust-arrow">↓</div>
-      <div class="trust-layer">
-        <div class="trust-num">3</div>
-        <div class="trust-body">
-          <h4>Execution Attestation</h4>
-          <p>Hardware-backed verification that the authorized model instance is the one executing. TEE simulation available for development environments.</p>
-        </div>
-        <div class="trust-pill trust-pill--muted">TEE verified</div>
-      </div>
-      <div class="trust-arrow">↓</div>
-      <div class="trust-layer">
-        <div class="trust-num">4</div>
-        <div class="trust-body">
-          <h4>Action Log Entry</h4>
-          <p>Tamper-evident chain-linked record of every executed action — signed and appended before the response is returned. Immutable by design.</p>
-        </div>
-        <div class="trust-pill trust-pill--muted">Append-only</div>
-      </div>
-      <div class="trust-arrow">↓</div>
-      <div class="trust-layer">
-        <div class="trust-num">5</div>
-        <div class="trust-body">
-          <h4>Data Flow Receipt</h4>
-          <p>End-to-end cryptographic proof linking user intent through model execution to final output. Auditable by anyone with the public key.</p>
-        </div>
-        <div class="trust-pill trust-pill--muted">Auditable</div>
-      </div>
+<!-- ── Numbers ── -->
+<section id="numbers" class="section">
+  <div class="numbers-label">// by the numbers</div>
+  <div class="numbers-grid">
+    <div class="num-cell">
+      <div class="num-val">771</div>
+      <div class="num-label">Tests passing</div>
+    </div>
+    <div class="num-cell">
+      <div class="num-val">13</div>
+      <div class="num-label">Test suites</div>
+    </div>
+    <div class="num-cell">
+      <div class="num-val">0</div>
+      <div class="num-label">Failures</div>
+    </div>
+    <div class="num-cell">
+      <div class="num-val">6</div>
+      <div class="num-label">Verification checks</div>
+    </div>
+    <div class="num-cell">
+      <div class="num-val">2</div>
+      <div class="num-label">Core primitives</div>
+    </div>
+    <div class="num-cell">
+      <div class="num-val">1</div>
+      <div class="num-label">Trusted party remaining (you)</div>
     </div>
   </div>
 </section>
 
-<!-- ── How it works ── -->
-<section id="how">
-  <div class="container">
-    <div class="section-header">
-      <div class="section-tag">Protocol</div>
-      <h2>How it works</h2>
-      <p>Six deterministic steps from user intent to verifiable delegation.</p>
-    </div>
+<hr class="divider" />
 
-    <div class="steps">
-      <div class="step-row">
-        <div class="step-num">1</div>
-        <div class="step-content">
-          <h4>User specifies intent</h4>
-          <p>The user defines an explicit scope (allow list + deny list), time window, and operator instructions. Nothing is assumed or inferred.</p>
-        </div>
-      </div>
-      <div class="step-row">
-        <div class="step-num">2</div>
-        <div class="step-content">
-          <h4>Scope is structured</h4>
-          <p>Allow and deny lists are parsed into a normalized canonical form. Wildcards (e.g. <code style="font-family:var(--mono);color:var(--teal);font-size:13px">delete:*</code>) are resolved at verification time, not delegation time.</p>
-        </div>
-      </div>
-      <div class="step-row">
-        <div class="step-num">3</div>
-        <div class="step-content">
-          <h4>Operator instructions are hashed</h4>
-          <p>SHA-256 of the operator's stated instructions is embedded in the receipt. Any subsequent modification produces a detectable mismatch.</p>
-        </div>
-      </div>
-      <div class="step-row">
-        <div class="step-num">4</div>
-        <div class="step-content">
-          <h4>Payload is signed (ECDSA P-256)</h4>
-          <p>The full payload — scope, hashes, timestamps, receipt ID — is signed with the user's private key via the Web Crypto API. The key never leaves the hardware enclave.</p>
-        </div>
-      </div>
-      <div class="step-row">
-        <div class="step-num">5</div>
-        <div class="step-content">
-          <h4>Receipt committed to append-only log</h4>
-          <p>The signed receipt and its hash are committed before any agent action executes. The log is immutable — entries can be appended but never modified.</p>
-        </div>
-      </div>
-      <div class="step-row">
-        <div class="step-num">6</div>
-        <div class="step-content">
-          <h4>Every action verified against receipt</h4>
-          <p>Before execution, each agent action is checked against the signed scope. If the action falls outside the allow list or matches the deny list, it is blocked — cryptographically, not by policy.</p>
-        </div>
-      </div>
+<!-- ── Code ── -->
+<section id="code" class="section">
+  <div class="code-header">
+    <h2>Minimal integration surface.</h2>
+    <p>One client. One receipt. Every subsequent action is locked to it.</p>
+  </div>
+
+  <div class="code-block">
+    <div class="code-bar">
+      <div class="tdot tdot-r"></div>
+      <div class="tdot tdot-y"></div>
+      <div class="tdot tdot-g"></div>
+      <span class="tfile">agent.js</span>
     </div>
+    <pre><span class="ck">import</span> <span class="cn">{ AuthProofClient, ScopeSchema }</span> <span class="ck">from</span> <span class="cs">'authproof'</span>
+
+<span class="ck">const</span> <span class="cn">receipt</span> <span class="cop">=</span> <span class="ck">await</span> <span class="cn">client</span><span class="cop">.</span><span class="cf">delegate</span><span class="cop">({</span>
+  <span class="cn">scope</span><span class="cop">:</span> <span class="ck">new</span> <span class="cf">ScopeSchema</span><span class="cop">({</span>
+    <span class="cn">allowedActions</span><span class="cop">: [{</span> <span class="cn">operation</span><span class="cop">:</span> <span class="cs">'read'</span><span class="cop">,</span>   <span class="cn">resource</span><span class="cop">:</span> <span class="cs">'email'</span> <span class="cop">}],</span>
+    <span class="cn">deniedActions</span><span class="cop">:  [{</span> <span class="cn">operation</span><span class="cop">:</span> <span class="cs">'delete'</span><span class="cop">,</span> <span class="cn">resource</span><span class="cop">:</span> <span class="cs">'*'</span>     <span class="cop">}]</span>
+  <span class="cop">}),</span>
+  <span class="cn">operatorInstructions</span><span class="cop">:</span> <span class="cs">'Summarize inbox only'</span><span class="cop">,</span>
+  <span class="cn">expiresIn</span><span class="cop">:</span> <span class="cs">'2h'</span>
+<span class="cop">})</span>
+
+<span class="cm">// Agent cannot act outside this receipt</span>
+<span class="cm">// Operator cannot claim broader authorization</span>
+<span class="cm">// Model substitution is detected automatically</span></pre>
   </div>
 </section>
 
-<!-- ── Links ── -->
-<section id="links">
-  <div class="container">
-    <div class="section-header">
-      <div class="section-tag">Resources</div>
-      <h2>Everything you need</h2>
-    </div>
-
-    <div class="links-grid">
-      <a class="link-card" href="demo.html">
-        <div class="link-icon">⚡</div>
-        <div class="link-label">Live Demo</div>
-        <div class="link-sub">Interactive browser demo</div>
-      </a>
-      <a class="link-card" href="https://github.com/Commonguy25/authproof-sdk/blob/main/WHITEPAPER.md">
-        <div class="link-icon">📄</div>
-        <div class="link-label">Whitepaper</div>
-        <div class="link-sub">Protocol specification</div>
-      </a>
-      <a class="link-card" href="https://github.com/Commonguy25/authproof-sdk" target="_blank">
-        <div class="link-icon">⬡</div>
-        <div class="link-label">GitHub</div>
-        <div class="link-sub">Source code + issues</div>
-      </a>
-      <a class="link-card" href="https://www.npmjs.com/package/authproof-sdk" target="_blank">
-        <div class="link-icon">📦</div>
-        <div class="link-label">npm package</div>
-        <div class="link-sub">authproof-sdk v1.6.0</div>
-      </a>
-    </div>
-  </div>
-</section>
-
-<!-- ── Signup ── -->
-<section id="signup">
-  <div class="container">
-    <div class="signup-box">
-      <div class="section-tag">Stay in the loop</div>
-      <h2>Get notified on updates</h2>
-      <p>Early access to v2.0 features: on-chain log anchoring, multi-party delegation, and WASM verification.</p>
-
-      <form class="signup-form" id="signup-form"
-        action="https://formspree.io/f/xvgojvdn"
-        method="POST"
-        onsubmit="handleSignup(event)">
-        <input type="email" name="email" placeholder="your@email.com" required />
-        <input type="hidden" name="_subject" value="AuthProof SDK — Early Access Signup" />
-        <button type="submit">Notify me →</button>
-      </form>
-
-      <div class="signup-success" id="signup-success">
-        ✓ You're on the list. We'll reach out when v2.0 features are ready.
-      </div>
-      <p class="signup-note">No spam. One email when it ships. Unsubscribe anytime.</p>
-    </div>
-  </div>
-</section>
+<hr class="divider" />
 
 <!-- ── Footer ── -->
 <footer>
   <div class="footer-links">
-    <a href="demo.html">Live Demo</a>
-    <a href="https://github.com/Commonguy25/authproof-sdk/blob/main/WHITEPAPER.md">Whitepaper</a>
+    <a href="https://github.com/Commonguy25/authproof-sdk/blob/main/LICENSE" target="_blank">MIT License</a>
     <a href="https://github.com/Commonguy25/authproof-sdk" target="_blank">GitHub</a>
     <a href="https://www.npmjs.com/package/authproof-sdk" target="_blank">npm</a>
+    <a href="https://github.com/Commonguy25/authproof-sdk/blob/main/WHITEPAPER.md">White Paper</a>
+    <a href="demo.html">Demo</a>
   </div>
-  <p>AuthProof SDK — MIT License · Built by Ryan Nelson · ECDSA P-256 via Web Crypto API</p>
+  <div class="footer-line">Built on cryptographic proof, not operator trust.</div>
 </footer>
 
 <script>
-function toggleNav() {
-  const links = document.getElementById('nav-links');
-  links.classList.toggle('open');
-}
-async function handleSignup(e) {
-  e.preventDefault();
-  const form = e.target;
-  const data = new FormData(form);
-
-  try {
-    const res = await fetch(form.action, {
-      method: 'POST',
-      body: data,
-      headers: { 'Accept': 'application/json' }
+  /* ── Copy npm install ── */
+  function copyInstall() {
+    navigator.clipboard.writeText('npm install authproof').then(() => {
+      const btn  = document.getElementById('copy-btn');
+      const txt  = document.getElementById('copy-text');
+      const ico  = document.getElementById('copy-icon');
+      btn.classList.add('copied');
+      txt.textContent = 'copied to clipboard';
+      ico.textContent = '✓';
+      setTimeout(() => {
+        btn.classList.remove('copied');
+        txt.textContent = 'npm install authproof';
+        ico.textContent = '⎘';
+      }, 2000);
     });
-    if (res.ok) {
-      form.style.display = 'none';
-      document.getElementById('signup-success').style.display = 'block';
-    } else {
-      form.querySelector('button').textContent = 'Try again →';
-    }
-  } catch {
-    form.querySelector('button').textContent = 'Try again →';
   }
-}
+
+  /* ── Terminal animation ── */
+  const DELAYS = [0, 300, 480, 650, 810, 970, 1130, 1290, 1470, 1680, 1880, 2040, 2200, 2360, 2520, 2700];
+
+  function runTerminal() {
+    DELAYS.forEach((delay, i) => {
+      const el = document.getElementById('tl-' + i);
+      if (!el) return;
+      setTimeout(() => {
+        el.classList.add('visible');
+        if (i === DELAYS.length - 1) {
+          setTimeout(() => {
+            const c = document.getElementById('t-cursor');
+            if (c) c.classList.add('blinking');
+          }, 200);
+        }
+      }, delay);
+    });
+  }
+
+  /* Run when terminal scrolls into view */
+  let animated = false;
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting && !animated) {
+        animated = true;
+        runTerminal();
+      }
+    });
+  }, { threshold: 0.25 });
+
+  const termEl = document.getElementById('terminal-body');
+  if (termEl) observer.observe(termEl);
 </script>
 
 </body>
