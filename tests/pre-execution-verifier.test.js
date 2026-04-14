@@ -3,7 +3,7 @@
  * Run: node --experimental-global-webcrypto tests/pre-execution-verifier.test.js
  */
 
-import AuthProof, { RevocationRegistry, ScopeSchema, Canonicalizer } from '../src/authproof.js';
+import AuthProof, { RevocationRegistry, ScopeSchema, Canonicalizer, ActionLog } from '../src/authproof.js';
 import { PreExecutionVerifier, DelegationLog } from '../src/pre-execution-verifier.js';
 import { authproofMiddleware as langchainMiddleware } from '../src/middleware/langchain.js';
 import { authproofMiddleware as expressMiddleware }   from '../src/middleware/express.js';
@@ -592,6 +592,66 @@ async function run() {
   const dynResult = await guardedDynamic(42);
   assert(capturedArgs === 42, 'Wrapped function receives original args');
   assert(dynResult === 84,    'Wrapped function return value preserved');
+
+  // ── ActionLog: only authorized receipts are published ────────────────
+  console.log('\nActionLog: only authorized receipts are published');
+
+  // Build an initialized ActionLog to pass as the authorization log.
+  const { privateKey: alpPriv, publicJwk: alpPub } = await AuthProof.generateKey();
+  const authLog = new ActionLog();
+  await authLog.init({ privateKey: alpPriv, publicJwk: alpPub, tsaUrl: null });
+
+  // Build a PreExecutionVerifier that holds this authorization log.
+  const { privateKey: alpvPriv, publicJwk: alpvPub } = await AuthProof.generateKey();
+  const dlAlp = new DelegationLog();
+  const regAlp = new RevocationRegistry();
+  const { privateKey: alpRegPriv, publicJwk: alpRegPub } = await AuthProof.generateKey();
+  await regAlp.init({ privateKey: alpRegPriv, publicJwk: alpRegPub });
+  const verifierAlp = new PreExecutionVerifier({
+    delegationLog:      dlAlp,
+    revocationRegistry: regAlp,
+    actionLog:          authLog,
+  });
+  await verifierAlp.init({ privateKey: alpvPriv, publicJwk: alpvPub });
+
+  // Create and register a valid receipt.
+  const { receipt: rAlp, receiptId: ridAlp } = await makeReceipt({ privateKey, publicJwk });
+  dlAlp.add(ridAlp, rAlp);
+
+  // Trigger a check-5 failure: operator instructions do not match the receipt.
+  const alpFailResult = await verifierAlp.check({
+    receiptHash:          ridAlp,
+    action:               'Read calendar meetings and summarize',
+    operatorInstructions: 'Completely different instructions — operator drift injected',
+  });
+
+  assert(alpFailResult.allowed === false,
+    'ActionLog test: check() returns allowed=false for instruction mismatch (check 5)');
+  assert(alpFailResult.checks.operatorInstructionsMatch === false,
+    'ActionLog test: check 5 fails — operatorInstructionsMatch is false');
+
+  // The ActionLog must NOT contain any entry for this receipt hash.
+  const alpFailEntries = authLog.getEntries(ridAlp);
+  assert(alpFailEntries.length === 0,
+    'ActionLog has no entry for the receipt hash when check fails — blocked receipt never published');
+
+  // Passing check: a second receipt with correct instructions DOES get published.
+  const { receipt: rAlpPass, receiptId: ridAlpPass } = await makeReceipt({ privateKey, publicJwk });
+  dlAlp.add(ridAlpPass, rAlpPass);
+
+  const alpPassResult = await verifierAlp.check({
+    receiptHash:          ridAlpPass,
+    action:               'Read calendar meetings and summarize',
+    operatorInstructions: 'Summarize clearly. Stay within scope.',
+  });
+
+  assert(alpPassResult.allowed === true,
+    'ActionLog test: passing check returns allowed=true');
+  const alpPassEntries = authLog.getEntries(ridAlpPass);
+  assert(alpPassEntries.length === 1,
+    'ActionLog has exactly one entry after all checks pass');
+  assert(alpPassEntries[0].action.operation === 'receipt_authorized',
+    'ActionLog entry operation is receipt_authorized');
 
   // ── Summary ────────────────────────────────────────────────────────
   console.log(`\n${'─'.repeat(40)}`);

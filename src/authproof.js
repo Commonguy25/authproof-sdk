@@ -1372,6 +1372,23 @@ class ActionLog {
   }
 
   /**
+   * Publish a delegation receipt as fully authorized.
+   *
+   * Called by PreExecutionVerifier only after ALL gate checks pass — never for
+   * blocked or partially-checked receipts. This keeps the log clean: every
+   * entry here corresponds to an execution that was fully authorized.
+   *
+   * @param {string} receiptHash
+   * @returns {Promise<object>} The sealed log entry
+   */
+  async publishReceipt(receiptHash) {
+    return this.record(receiptHash, {
+      operation: 'receipt_authorized',
+      resource:  'delegation/receipt',
+    });
+  }
+
+  /**
    * Diff: compare all recorded actions against the receipt's authorized scope.
    *
    * Scope matching strategy (applied in order):

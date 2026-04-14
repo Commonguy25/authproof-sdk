@@ -182,8 +182,12 @@ class PreExecutionVerifier {
    * @param {RevocationRegistry}   opts.revocationRegistry     — live revocation registry
    * @param {boolean}              [opts.requireTEE=false]     — require hardware attestation
    * @param {ModelStateAttestation} [opts.modelStateAttestation] — when provided, enables check 7
+   * @param {ActionLog}            [opts.actionLog]            — when provided, receives one
+   *                                                             receipt_authorized entry per
+   *                                                             fully-passed check; never written
+   *                                                             when any check fails
    */
-  constructor({ delegationLog, revocationRegistry, requireTEE = false, modelStateAttestation } = {}) {
+  constructor({ delegationLog, revocationRegistry, requireTEE = false, modelStateAttestation, actionLog } = {}) {
     if (!delegationLog)      throw new Error('PreExecutionVerifier: delegationLog is required');
     if (!revocationRegistry) throw new Error('PreExecutionVerifier: revocationRegistry is required');
 
@@ -191,6 +195,7 @@ class PreExecutionVerifier {
     this._registry             = revocationRegistry;
     this._requireTEE           = requireTEE;
     this._modelStateAttestation = modelStateAttestation ?? null;
+    this._actionLog            = actionLog ?? null;
 
     /** @private — internal audit log of every gate decision */
     this._auditLog     = new ActionLog();
@@ -499,6 +504,17 @@ class PreExecutionVerifier {
       );
     } catch {
       // Audit log failure never blocks the gate decision
+    }
+
+    // Publish to the authorization ActionLog only when ALL checks pass.
+    // A blocked receipt must never appear here — the log must only contain
+    // receipts where execution was fully authorized.
+    if (allowed && this._actionLog) {
+      try {
+        await this._actionLog.publishReceipt(receiptHash);
+      } catch {
+        // Best-effort — never block the gate decision
+      }
     }
 
     return {
