@@ -205,6 +205,8 @@ class PreExecutionVerifier {
     this._publicJwk    = null;
     /** @private {boolean} */
     this._initialized  = false;
+    /** @private {Set<string>} receipt hashes with an active check() call — replay detection */
+    this._inFlightChecks = new Set();
   }
 
   /**
@@ -273,6 +275,22 @@ class PreExecutionVerifier {
     if (programHash !== undefined)                               checks.programHashMatch    = false;
     if (this._requireTEE)                                        checks.teeAttestationValid = false;
     if (this._modelStateAttestation && commitmentId !== undefined) checks.modelStateValid    = false;
+
+    // ── Replay attack detection ───────────────────────────────────────
+    // Block a second concurrent check() using the same receipt hash.
+    // Two simultaneous claims on the same receipt indicate a replay attack.
+    if (this._inFlightChecks.has(receiptHash)) {
+      return this._finalize({
+        allowed:       false,
+        checks,
+        blockedReason: 'Replay attack detected: receipt hash already in use by a concurrent check()',
+        receiptHash,
+        action,
+      });
+    }
+    this._inFlightChecks.add(receiptHash);
+
+    try {
 
     // ── Check 1: Receipt signature ─────────────────────────────────────
     const logEntry = this._log.getEntry(receiptHash);
@@ -462,6 +480,10 @@ class PreExecutionVerifier {
     }
 
     return this._finalize({ allowed: true, checks, blockedReason: null, receiptHash, action });
+
+    } finally {
+      this._inFlightChecks.delete(receiptHash);
+    }
   }
 
   /**

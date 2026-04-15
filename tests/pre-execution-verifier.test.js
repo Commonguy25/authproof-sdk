@@ -357,6 +357,41 @@ async function run() {
   assert(teeResult.checks.teeAttestationValid === false,      'teeAttestationValid=false when absent');
   assert(teeResult.blockedReason.toLowerCase().includes('tee'), 'blockedReason mentions TEE');
 
+  // ── [ADVERSARIAL] Replay attack — same receipt hash used concurrently ───
+  console.log('\n[ADVERSARIAL] Replay attack: same receipt hash by two concurrent agents');
+
+  const { verifier: vReplay, delegationLog: dlReplay } = await makeVerifier();
+  const { receipt: rReplay, receiptId: ridReplay } = await makeReceipt({ privateKey, publicJwk });
+  dlReplay.add(ridReplay, rReplay);
+
+  // Two concurrent check() calls with the same receipt hash.
+  // JavaScript executes both synchronously until the first await — the first
+  // call adds the hash to _inFlightChecks; the second finds it there and is blocked.
+  const [replayResult1, replayResult2] = await Promise.all([
+    vReplay.check({
+      receiptHash:          ridReplay,
+      action:               'Read calendar meetings and summarize',
+      operatorInstructions: 'Summarize clearly. Stay within scope.',
+    }),
+    vReplay.check({
+      receiptHash:          ridReplay,
+      action:               'Read calendar meetings and summarize',
+      operatorInstructions: 'Summarize clearly. Stay within scope.',
+    }),
+  ]);
+
+  const replayPassing = [replayResult1, replayResult2].filter(r => r.allowed);
+  const replayBlocked = [replayResult1, replayResult2].filter(r => !r.allowed);
+
+  assert(replayPassing.length === 1,
+    '[ADVERSARIAL] replay attack — exactly one concurrent check passes');
+  assert(replayBlocked.length === 1,
+    '[ADVERSARIAL] replay attack — second concurrent check is blocked');
+  assert(
+    replayBlocked[0].blockedReason.toLowerCase().includes('replay'),
+    '[ADVERSARIAL] replay attack — blocked reason mentions replay'
+  );
+
   // ── Audit log entries ─────────────────────────────────────────────────
   console.log('\nAudit log');
 
