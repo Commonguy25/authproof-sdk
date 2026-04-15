@@ -504,7 +504,110 @@ The distinction also preserves the audit trail. Both event types are recorded wi
 
 ---
 
-## 10. Comparison to Existing Approaches
+## 10. Scope Discovery Protocol — Closing the Upstream Authorization Gap
+
+### 10.1 The Design-Time Problem
+
+The Delegation Receipt solves the *transmission* problem: once a user has defined what an agent may do, the receipt cryptographically binds and verifies that definition. But this solution assumes the user can correctly define scope upfront. In practice, they cannot.
+
+A user deploying an AI agent for the first time does not know which API endpoints it will call, which database tables it will query, how many times it will poll a resource, or whether it will ever attempt a write operation. Asking users to define scope before they observe agent behavior produces one of two failure modes:
+
+- **Over-authorization.** The user grants broad permissions ("access email") to avoid blocking the agent. The agent is now authorized to delete messages, send external communications, or enumerate the entire inbox — operations the user never intended to permit.
+- **Under-authorization.** The user grants narrow permissions and the agent fails mid-task, requiring repeated round-trips to expand scope incrementally. Users respond by granting progressively wider permissions in frustration.
+
+Neither outcome produces a receipt that reflects the user's actual intent. The scope field becomes a legal fiction rather than a genuine authorization boundary. This is the *upstream authorization gap* — the receipt is cryptographically sound but semantically wrong from the moment it is issued.
+
+### 10.2 The Observation Mode Approach
+
+ScopeDiscovery addresses the upstream gap by inverting the authorization sequence. Instead of asking users to define scope before running the agent, it runs the agent first — in a sandboxed simulation — and uses the observed behavior to generate the scope definition.
+
+The protocol proceeds in four stages:
+
+**Stage 1 — Sandboxed observation.** The operator provides the agent function. `ScopeDiscovery.observe()` wraps every supported resource type (email, calendar, payment, files, db, network) in a transparent proxy that intercepts all operation calls. The agent runs to completion inside this sandbox. Every call to `ctx.email.read()`, `ctx.payment.charge()`, `ctx.files.delete()`, or any other operation is intercepted, timestamped, and appended to an observation log. Mock data that matches the expected structure is returned so the agent proceeds normally without knowing it is not executing against real systems. No real I/O occurs. No side effects are produced.
+
+**Stage 2 — Scope generation.** `generateScope()` analyzes the observation log and produces:
+- A `draftScope` object with an `allowedActions` list (de-duplicated observed operations) and conservative `deniedActions` defaults (delete, execute, payment).
+- A `plainSummary` — a human-readable description of what the agent did, written in non-technical language suitable for end-user review.
+- `riskFlags` — a list of specific concerns: delete operations, execute operations, payment operations, external send/write operations, and any operation called more than 50 times (indicating potential unbounded looping behavior).
+- `suggestedDenials` — a list of dangerous operations the agent did not use, with per-entry explanations. These are explicitly recommended for the denied list as a belt-and-suspenders defense.
+
+**Stage 3 — Plain language review.** The operator or user reviews the plain summary, risk flags, and suggested denials before approving. `approve()` accepts `remove` and `add` arrays, allowing surgical modification of the draft scope: stripping operations the user did not intend to permit, or adding operations the sandboxed run did not cover but the operator knows the agent will need. This is the moment of genuine human authorization — grounded in observed behavior rather than speculation.
+
+**Stage 4 — Cryptographic commitment.** `finalize()` embeds the approved scope into a Delegation Receipt using the same cryptographic structure as `AuthProof.create()`. The receipt includes a `scopeSchema` field with the structured allowed and denied action lists, and a `discoveryMetadata` field recording the observation count, any timeout abort, and the risk flags at generation time. The receipt is ECDSA P-256 signed and is immediately verifiable with `AuthProof.verify()`. The scope definition is no longer a user's guess — it is an observation-grounded, cryptographically committed authorization boundary.
+
+### 10.3 Grounded Scope Through Sandboxed Simulation
+
+The critical property of observation-based scope generation is *grounding*: every entry in the `allowedActions` list corresponds to an operation the agent actually performed during a representative run. This is not a user estimating what the agent might need — it is a structural record of what the agent did.
+
+Grounding has three practical consequences:
+
+**Precision.** The allowedActions list contains exactly the resource/operation pairs that appeared in the observation log. An agent that reads email but never writes it gets a receipt authorizing `read` on `email`, not `write`. The permission boundary is as narrow as the agent's actual behavior.
+
+**Defensibility.** When a receipt is later audited, the `discoveryMetadata.observationCount` and `riskFlags` fields provide evidence that scope was derived from observation rather than assumption. The audit trail runs from observation to draft to approval to receipt.
+
+**Ratcheting.** Each time the agent's behavior changes, a new observation session produces a new draft. If the agent begins calling `payment.charge` in a new version, that operation surfaces in the risk flags before any receipt is issued for the updated agent. Drift in agent behavior is detectable before it is authorized.
+
+### 10.4 The Plain Language Review Step
+
+Cryptographic scope schemas are precise but opaque to non-technical users. A user presented with `{ operation: "write", resource: "calendar" }` does not know whether this means "add one event" or "rewrite the entire calendar."
+
+The `plainSummary` field addresses this by translating the observation log into prose. A typical summary reads:
+
+> During the observation session, the agent performed the following operations:
+>   • email: read, list
+>   • calendar: write
+>
+> Frequently called operations: email:read (×12)
+>
+> Total operations observed: 14
+
+Users reviewing this summary can identify immediately that the agent reads email heavily (12 calls), writes to the calendar, and never touches payment or file systems. They can then use `remove` and `add` in `approve()` to reflect their actual intent before the receipt is signed.
+
+Risk flags present specific concerns in plain language: `"delete operation observed on resource db"`, `"high-frequency operation detected: email:read called 87 times (>50)"`. These are not stack traces — they are decision prompts for humans who may not read code.
+
+### 10.5 Integration with the Delegation Receipt
+
+The receipt produced by `finalize()` is structurally identical to one produced by `AuthProof.create()`. It carries all standard fields — `delegationId`, `scope`, `boundaries`, `timeWindow`, `operatorInstructions`, `instructionsHash`, `signerPublicKey`, `signature` — and is verifiable with `AuthProof.verify()` without any modification to the verification protocol.
+
+Two additional fields bridge the discovery protocol to the receipt:
+
+**`scopeSchema`** embeds the structured `allowedActions` and `deniedActions` lists approved by the human reviewer. Where `scope` is a human-readable text field used for semantic matching, `scopeSchema` provides machine-readable, programmatically enforceable action boundaries. PreExecutionVerifier can validate proposed actions against `scopeSchema` before execution begins.
+
+**`discoveryMetadata`** records the observation context: how many operations were seen, whether the session was aborted by timeout, and what risk flags were present at generation time. This makes the authorization chain auditable end-to-end: an auditor can see not just what was authorized, but the process by which the authorization was derived.
+
+### 10.6 Guided Delegation Mode
+
+For operators who trust their agent's behavior in the observation session and do not need manual review, `ScopeDiscovery.guided()` provides a single-call end-to-end flow:
+
+```js
+const { receipt, receiptId, riskFlags, observations } = await ScopeDiscovery.guided({
+  agentFn: async (ctx) => { /* agent implementation */ },
+  operatorInstructions: 'Process the weekly report.',
+  privateKey,
+  publicJwk,
+});
+```
+
+Guided mode runs `observe → generateScope → approve → finalize` automatically. The returned `riskFlags` allow operators to inspect what was flagged even when they choose not to gate on it. `AuthProofClient.delegateGuided()` provides the same capability through the client API.
+
+### 10.7 Closing Both Gaps
+
+The Delegation Receipt closes the *downstream authorization gap*: it proves what the user authorized and makes operator deviation from that authorization cryptographically detectable at runtime. The Scope Discovery Protocol closes the *upstream authorization gap*: it ensures that what the user authorized in the first place reflects the agent's actual behavior rather than an uninformed guess.
+
+Together they form a complete authorization chain:
+
+| Stage | Gap | Primitive | What it provides |
+|---|---|---|---|
+| Before authorization | Upstream | ScopeDiscovery.observe() | Grounded scope derived from actual agent behavior |
+| At authorization | Upstream | ScopeDiscovery.finalize() | Cryptographic commitment to observation-derived scope |
+| During execution | Downstream | AuthProof.verify() + ActionLog | Runtime enforcement and tamper-evident audit trail |
+| After execution | Downstream | ScopeDiscovery.fromReceipt() | Drift detection — compare receipt to new observations |
+
+Automated observation eliminates the guesswork that produces over-broad receipts. Cryptographic commitment to the observation-derived scope eliminates the trust-me assertion that makes receipts unfalsifiable. The result is an authorization system that is both usable — users review behavior they observed, not permissions they invented — and verifiable — every scope boundary is signed, tamper-evident, and auditable.
+
+---
+
+## 11. Comparison to Existing Approaches
 
 | Property | OAuth 2.0 / RAR | WIMSE | AIP | AuthProof |
 |---|---|---|---|---|
@@ -522,7 +625,7 @@ AuthProof is not a replacement for WIMSE, AIP, or OAuth 2.0. It operates at a di
 
 ---
 
-## 11. Multi-Agent Delegation Chains
+## 12. Multi-Agent Delegation Chains
 
 When a delegated agent needs to hand off a subtask to another agent, the chain of authority must remain auditable and bounded. AuthProof's `DelegationChain` primitive enforces three invariants at every hop.
 
@@ -550,7 +653,8 @@ The root receipt is the only trust anchor in the delegation chain. If the root c
 
 ---
 
-## 12. Conclusion
+
+## 13. Conclusion
 
 The agentic AI deployment model creates a trust problem that existing identity and authorization frameworks were not designed to address. The operator sits between the user and the agent with unchecked authority over what the agent is instructed to do. AuthProof makes that authority cryptographically bounded, the user's original intent immutably recorded, and operator deviation provable from a public log. The three-layer trust stack — signed capability manifest, Delegation Receipt, and Safescript execution binding — systematically eliminates trusted intermediaries from the agentic delegation chain.
 

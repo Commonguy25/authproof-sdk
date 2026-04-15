@@ -2852,6 +2852,71 @@ class BatchReceipt {
 }
 
 // ─────────────────────────────────────────────
+// AUTHPROOF CLIENT
+// ─────────────────────────────────────────────
+
+/**
+ * AuthProofClient — convenience wrapper that integrates ScopeDiscovery with the
+ * core AuthProof delegation protocol.
+ *
+ * @example
+ * const client = new AuthProofClient({ guided: true });
+ * const { receipt, receiptId } = await client.delegateGuided({
+ *   agentFn: async (ctx) => { await ctx.email.read(); },
+ *   operatorInstructions: 'Summarize my inbox.',
+ *   privateKey,
+ *   publicJwk,
+ * });
+ */
+class AuthProofClient {
+  /**
+   * @param {object} [opts]
+   * @param {boolean} [opts.guided=false] — Enable guided (observation-based) delegation mode.
+   */
+  constructor({ guided = false } = {}) {
+    this._guided = guided;
+  }
+
+  /**
+   * Run an agent function in sandbox observation mode, generate scope from
+   * observed operations, auto-approve the full draft scope, and produce a
+   * signed Delegation Receipt — all in a single call.
+   *
+   * Internally this is equivalent to:
+   *   ScopeDiscovery.observe → generateScope → approve (no modifications) → finalize
+   *
+   * @param {object}    opts
+   * @param {Function}  opts.agentFn              — async (ctx) => void
+   * @param {string}    [opts.operatorInstructions]
+   * @param {CryptoKey} opts.privateKey
+   * @param {object}    opts.publicJwk
+   * @param {number}    [opts.expiresIn=3600000]  — ms until receipt expiry
+   * @param {number}    [opts.timeout=30000]      — observation timeout in ms
+   * @returns {Promise<{ receipt, receiptId, systemPrompt, scopeSummary, observations, riskFlags }>}
+   */
+  async delegateGuided({
+    agentFn,
+    operatorInstructions,
+    privateKey,
+    publicJwk,
+    expiresIn = 3_600_000,
+    timeout   = 30_000,
+  } = {}) {
+    // Dynamic import avoids circular dependency — scope-discovery.js does not
+    // import from authproof.js, so this is safe.
+    const { ScopeDiscovery } = await import('./scope-discovery.js');
+    return ScopeDiscovery.guided({
+      agentFn,
+      operatorInstructions,
+      privateKey,
+      publicJwk,
+      expiresIn,
+      timeout,
+    });
+  }
+}
+
+// ─────────────────────────────────────────────
 // EXPORTS
 // ─────────────────────────────────────────────
 
@@ -2901,6 +2966,9 @@ const AuthProof = {
   // Batch receipt
   BatchReceipt,
   createBatch: BatchReceipt.create.bind(BatchReceipt),
+
+  // AuthProof client (guided delegation)
+  AuthProofClient,
 };
 
 // ESM + CJS compatible export
@@ -2918,6 +2986,7 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports.TaintTracker       = TaintTracker;
   module.exports.DataFlowReceipt    = DataFlowReceipt;
   module.exports.BatchReceipt       = BatchReceipt;
+  module.exports.AuthProofClient    = AuthProofClient;
 } else if (typeof globalThis !== 'undefined') {
   globalThis.AuthProof            = AuthProof;
   globalThis.ActionLog            = ActionLog;
@@ -2932,6 +3001,7 @@ if (typeof module !== 'undefined' && module.exports) {
   globalThis.TaintTracker         = TaintTracker;
   globalThis.DataFlowReceipt      = DataFlowReceipt;
   globalThis.BatchReceipt         = BatchReceipt;
+  globalThis.AuthProofClient      = AuthProofClient;
 }
 
 export default AuthProof;
@@ -2957,7 +3027,10 @@ export {
   TaintTracker,
   DataFlowReceipt,
   BatchReceipt,
+  AuthProofClient,
 };
 
 // DelegationChain lives in its own module (async crypto primitives require separation)
 export { DelegationChain, ScopeAttenuationError, MaxDepthExceededError } from './delegation-chain.js';
+
+export { ScopeDiscovery } from './scope-discovery.js';
