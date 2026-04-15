@@ -2958,3 +2958,6 @@ export {
   DataFlowReceipt,
   BatchReceipt,
 };
+
+// DelegationChain lives in its own module (async crypto primitives require separation)
+export { DelegationChain, ScopeAttenuationError, MaxDepthExceededError } from './delegation-chain.js';
