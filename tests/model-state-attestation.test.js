@@ -799,6 +799,195 @@ async function run() {
   assert(msaMulti.getCommitment(cm2.commitmentId) === cm2,
     'Second commitment retrievable independently');
 
+  // ── Group 14: providerUpdatePolicy — ProviderUpdate vs MaliciousSubstitution ──
+  console.log('\nGroup 14: providerUpdatePolicy — ProviderUpdate vs MaliciousSubstitution');
+
+  // Test 81: providerUpdatePolicy 'block' — provider version change blocks execution
+  {
+    const msaBlock = new ModelStateAttestation({
+      teeRuntime: await makeTeeRuntime(),
+      actionLog:  await makeActionLog(),
+      providerUpdatePolicy: 'block',
+    });
+    const p = await makeCommitmentParams();
+    const c = await msaBlock.commit(p);
+    const r = await msaBlock.verify({
+      commitmentId:             c.commitmentId,
+      currentModelId:           p.modelId,
+      currentModelVersion:      'new-provider-version-0125',
+      currentSystemPromptHash:  p.systemPromptHash,
+      currentRuntimeConfigHash: p.runtimeConfigHash,
+    });
+    assert(r.valid === false,
+      "providerUpdatePolicy 'block' — valid: false when provider version changes");
+    assert(r.reason !== 'PROVIDER_UPDATE_DETECTED',
+      "providerUpdatePolicy 'block' — does NOT return PROVIDER_UPDATE_DETECTED");
+    assert(r.modelDrift.some(d => d.includes('modelVersion')),
+      "providerUpdatePolicy 'block' — modelDrift includes modelVersion entry");
+  }
+
+  // Test 82: providerUpdatePolicy 'reauthorize' (default) — provider version change
+  //          returns PROVIDER_UPDATE_DETECTED without blocking the current call's reason
+  {
+    const msaReauth = new ModelStateAttestation({
+      teeRuntime: await makeTeeRuntime(),
+      actionLog:  await makeActionLog(),
+      providerUpdatePolicy: 'reauthorize',
+    });
+    const p = await makeCommitmentParams();
+    const c = await msaReauth.commit(p);
+    const r = await msaReauth.verify({
+      commitmentId:             c.commitmentId,
+      currentModelId:           p.modelId,
+      currentModelVersion:      'new-provider-version-0125',
+      currentSystemPromptHash:  p.systemPromptHash,
+      currentRuntimeConfigHash: p.runtimeConfigHash,
+    });
+    assert(r.reason === 'PROVIDER_UPDATE_DETECTED',
+      "providerUpdatePolicy 'reauthorize' — returns PROVIDER_UPDATE_DETECTED for version change");
+    assert(r.requiresReauthorization === true,
+      "providerUpdatePolicy 'reauthorize' — requiresReauthorization: true");
+    assert(r.previousVersion === p.modelVersion,
+      "PROVIDER_UPDATE_DETECTED — previousVersion matches committed version");
+    assert(r.currentVersion === 'new-provider-version-0125',
+      "PROVIDER_UPDATE_DETECTED — currentVersion matches current version");
+    assert(r.valid === false,
+      "PROVIDER_UPDATE_DETECTED — valid: false");
+  }
+
+  // Test 83: reauthorize() clears the pending flag and allows next execution
+  {
+    const msaR = new ModelStateAttestation({
+      teeRuntime: await makeTeeRuntime(),
+      actionLog:  await makeActionLog(),
+    });
+    const p = await makeCommitmentParams();
+    const c = await msaR.commit(p);
+    // Trigger ProviderUpdate → sets pendingReauthorization
+    await msaR.verify({
+      commitmentId:             c.commitmentId,
+      currentModelId:           p.modelId,
+      currentModelVersion:      'updated-by-provider',
+      currentSystemPromptHash:  p.systemPromptHash,
+      currentRuntimeConfigHash: p.runtimeConfigHash,
+    });
+    // Reauthorize
+    await msaR.reauthorize({ userApproval: true });
+    // Next verify with matching model should now pass
+    const r2 = await msaR.verify({
+      commitmentId:             c.commitmentId,
+      currentModelId:           p.modelId,
+      currentModelVersion:      p.modelVersion,
+      currentSystemPromptHash:  p.systemPromptHash,
+      currentRuntimeConfigHash: p.runtimeConfigHash,
+    });
+    assert(r2.valid === true,
+      'reauthorize() clears pendingReauthorization and allows next valid execution');
+  }
+
+  // Test 84: reauthorize() without userApproval throws
+  {
+    const msaNoApproval = new ModelStateAttestation({
+      teeRuntime: await makeTeeRuntime(),
+      actionLog:  await makeActionLog(),
+    });
+    let threw = false;
+    try {
+      await msaNoApproval.reauthorize({ userApproval: false });
+    } catch (e) {
+      threw = true;
+      assert(e.message.includes('userApproval'),
+        'reauthorize() without userApproval throws with userApproval in message');
+    }
+    assert(threw, 'reauthorize() without userApproval throws');
+  }
+
+  // Test 85: operator explicitly changing modelId is always MaliciousSubstitution
+  //          regardless of providerUpdatePolicy
+  {
+    const msaMalicious = new ModelStateAttestation({
+      teeRuntime: await makeTeeRuntime(),
+      actionLog:  await makeActionLog(),
+      providerUpdatePolicy: 'reauthorize',
+    });
+    const p = await makeCommitmentParams();
+    const c = await msaMalicious.commit(p);
+    const r = await msaMalicious.verify({
+      commitmentId:             c.commitmentId,
+      currentModelId:           'completely-different-model',
+      currentModelVersion:      p.modelVersion,
+      currentSystemPromptHash:  p.systemPromptHash,
+      currentRuntimeConfigHash: p.runtimeConfigHash,
+    });
+    assert(r.valid === false,
+      'MaliciousSubstitution — valid: false when modelId changes regardless of policy');
+    assert(r.reason !== 'PROVIDER_UPDATE_DETECTED',
+      'MaliciousSubstitution — does NOT return PROVIDER_UPDATE_DETECTED when modelId changes');
+    assert(r.mismatchType === 'MaliciousSubstitution',
+      'MaliciousSubstitution — mismatchType is MaliciousSubstitution when modelId changes');
+  }
+
+  // Test 86: pendingReauthorization flag blocks subsequent calls until reauthorize() is called
+  {
+    const msaPending = new ModelStateAttestation({
+      teeRuntime: await makeTeeRuntime(),
+      actionLog:  await makeActionLog(),
+    });
+    const p = await makeCommitmentParams();
+    const c = await msaPending.commit(p);
+    // Trigger ProviderUpdate → sets pendingReauthorization
+    await msaPending.verify({
+      commitmentId:             c.commitmentId,
+      currentModelId:           p.modelId,
+      currentModelVersion:      'provider-updated-version',
+      currentSystemPromptHash:  p.systemPromptHash,
+      currentRuntimeConfigHash: p.runtimeConfigHash,
+    });
+    // Subsequent call with a perfectly matching model should still be blocked
+    const blocked = await msaPending.verify({
+      commitmentId:             c.commitmentId,
+      currentModelId:           p.modelId,
+      currentModelVersion:      p.modelVersion,
+      currentSystemPromptHash:  p.systemPromptHash,
+      currentRuntimeConfigHash: p.runtimeConfigHash,
+    });
+    assert(blocked.valid === false,
+      'pendingReauthorization blocks subsequent calls even when model matches');
+    assert(blocked.reason === 'PENDING_REAUTHORIZATION',
+      'pendingReauthorization — blocked result has PENDING_REAUTHORIZATION reason');
+    // After reauthorize, execution is allowed again
+    await msaPending.reauthorize({ userApproval: true });
+    const unblocked = await msaPending.verify({
+      commitmentId:             c.commitmentId,
+      currentModelId:           p.modelId,
+      currentModelVersion:      p.modelVersion,
+      currentSystemPromptHash:  p.systemPromptHash,
+      currentRuntimeConfigHash: p.runtimeConfigHash,
+    });
+    assert(unblocked.valid === true,
+      'pendingReauthorization cleared after reauthorize() — execution allowed again');
+  }
+
+  // Test 87: providerUpdatePolicy defaults to 'reauthorize' when not specified
+  {
+    const msaDefault = new ModelStateAttestation({
+      teeRuntime: await makeTeeRuntime(),
+      actionLog:  await makeActionLog(),
+      // providerUpdatePolicy intentionally omitted
+    });
+    const p = await makeCommitmentParams();
+    const c = await msaDefault.commit(p);
+    const r = await msaDefault.verify({
+      commitmentId:             c.commitmentId,
+      currentModelId:           p.modelId,
+      currentModelVersion:      'silently-updated-version',
+      currentSystemPromptHash:  p.systemPromptHash,
+      currentRuntimeConfigHash: p.runtimeConfigHash,
+    });
+    assert(r.reason === 'PROVIDER_UPDATE_DETECTED',
+      'default providerUpdatePolicy is reauthorize — version change returns PROVIDER_UPDATE_DETECTED');
+  }
+
   // ────────────────────────────────────────────
   console.log(`\nResults: ${passed} passed, ${failed} failed`);
   if (failed === 0) {

@@ -96,17 +96,26 @@ async function _verify(publicJwk, signatureHex, str) {
 class ModelStateAttestation {
   /**
    * @param {object} opts
-   * @param {object} opts.teeRuntime — TEERuntime instance (provides attest())
-   * @param {object} opts.actionLog  — ActionLog instance (for audit trail)
+   * @param {object} opts.teeRuntime            — TEERuntime instance (provides attest())
+   * @param {object} opts.actionLog             — ActionLog instance (for audit trail)
+   * @param {string} [opts.providerUpdatePolicy] — 'reauthorize' (default) or 'block'
+   *
+   * providerUpdatePolicy controls how silent provider version updates are handled:
+   *   'reauthorize' — flag the update, require explicit user re-authorization before
+   *                   the next execution. Returns PROVIDER_UPDATE_DETECTED.
+   *   'block'       — treat like MaliciousSubstitution and block immediately.
    */
-  constructor({ teeRuntime, actionLog } = {}) {
+  constructor({ teeRuntime, actionLog, providerUpdatePolicy = 'reauthorize' } = {}) {
     if (!teeRuntime) throw new Error('ModelStateAttestation: teeRuntime is required');
     if (!actionLog)  throw new Error('ModelStateAttestation: actionLog is required');
 
-    this._teeRuntime   = teeRuntime;
-    this._actionLog    = actionLog;
+    this._teeRuntime              = teeRuntime;
+    this._actionLog               = actionLog;
+    this._providerUpdatePolicy    = providerUpdatePolicy;
+    /** @private {boolean} set when a ProviderUpdate is detected with 'reauthorize' policy */
+    this._pendingReauthorization  = false;
     /** @private {Map<string, object>} commitmentId → sealed commitment */
-    this._commitments  = new Map();
+    this._commitments             = new Map();
   }
 
   // ─────────────────────────────────────────────
@@ -278,22 +287,27 @@ class ModelStateAttestation {
     // Detect per-component drift
     const modelDrift = [];
 
-    if (Canonicalizer.normalize(currentModelId) !== Canonicalizer.normalize(commitment.modelId)) {
+    const modelIdChanged = Canonicalizer.normalize(currentModelId) !== Canonicalizer.normalize(commitment.modelId);
+    const modelVersionChanged = Canonicalizer.normalize(currentModelVersion) !== Canonicalizer.normalize(commitment.modelVersion);
+    const systemPromptChanged = currentSystemPromptHash !== commitment.systemPromptHash;
+    const runtimeConfigChanged = currentRuntimeConfigHash !== commitment.runtimeConfigHash;
+
+    if (modelIdChanged) {
       modelDrift.push(
         `modelId changed: ${commitment.modelId} → ${currentModelId}`
       );
     }
-    if (Canonicalizer.normalize(currentModelVersion) !== Canonicalizer.normalize(commitment.modelVersion)) {
+    if (modelVersionChanged) {
       modelDrift.push(
         `modelVersion changed: ${commitment.modelVersion} → ${currentModelVersion}`
       );
     }
-    if (currentSystemPromptHash !== commitment.systemPromptHash) {
+    if (systemPromptChanged) {
       modelDrift.push(
         `systemPromptHash changed: ${commitment.systemPromptHash.slice(0, 8)}... → ${currentSystemPromptHash.slice(0, 8)}...`
       );
     }
-    if (currentRuntimeConfigHash !== commitment.runtimeConfigHash) {
+    if (runtimeConfigChanged) {
       modelDrift.push(
         `runtimeConfigHash changed: ${commitment.runtimeConfigHash.slice(0, 8)}... → ${currentRuntimeConfigHash.slice(0, 8)}...`
       );
@@ -309,7 +323,6 @@ class ModelStateAttestation {
     });
 
     const commitmentMatches = currentMeasurement === commitment.modelMeasurement;
-    const valid = commitmentMatches && modelDrift.length === 0;
     const verifiedAt = new Date().toISOString();
 
     // Obtain TEE attestation of the verification result
@@ -321,13 +334,100 @@ class ModelStateAttestation {
     }));
     const teeAttestation = await this._teeRuntime.attest(verificationHash);
 
+    if (modelDrift.length > 0 || !commitmentMatches) {
+      // A ProviderUpdate is when only the model version changed and the operator's
+      // configured modelId (operatorSetModelId) is the same — meaning the provider
+      // silently updated the underlying model version without operator action.
+      const isProviderUpdate = modelVersionChanged && !modelIdChanged && !systemPromptChanged && !runtimeConfigChanged;
+
+      if (isProviderUpdate) {
+        if (this._providerUpdatePolicy === 'reauthorize') {
+          // Flag the update and require re-authorization before the next execution.
+          // The current call returns PROVIDER_UPDATE_DETECTED rather than blocking hard.
+          this._pendingReauthorization = true;
+          return {
+            valid:                   false,
+            commitmentMatches,
+            modelDrift,
+            verifiedAt,
+            teeAttestation,
+            allowed:                 false,
+            reason:                  'PROVIDER_UPDATE_DETECTED',
+            requiresReauthorization: true,
+            mismatchType:            'ProviderUpdate',
+            previousVersion:         commitment.modelVersion,
+            currentVersion:          currentModelVersion,
+          };
+        }
+        // providerUpdatePolicy === 'block': fall through and treat like MaliciousSubstitution
+      }
+
+      // MaliciousSubstitution — operator explicitly changed modelId, or system/runtime config
+      // changed, or ProviderUpdate with 'block' policy.
+      const mismatchType = isProviderUpdate ? 'ProviderUpdate' : 'MaliciousSubstitution';
+      return {
+        valid:         false,
+        commitmentMatches,
+        modelDrift,
+        verifiedAt,
+        teeAttestation,
+        mismatchType,
+      };
+    }
+
+    // No drift detected. Check whether a prior ProviderUpdate requires re-authorization.
+    if (this._pendingReauthorization) {
+      return {
+        valid:                   false,
+        commitmentMatches:       true,
+        modelDrift:              [],
+        verifiedAt,
+        teeAttestation,
+        reason:                  'PENDING_REAUTHORIZATION',
+        requiresReauthorization: true,
+      };
+    }
+
     return {
-      valid,
-      commitmentMatches,
-      modelDrift,
+      valid:             true,
+      commitmentMatches: true,
+      modelDrift:        [],
       verifiedAt,
       teeAttestation,
     };
+  }
+
+  // ─────────────────────────────────────────────
+  // REAUTHORIZE
+  // ─────────────────────────────────────────────
+
+  /**
+   * Clear the pendingReauthorization flag after a ProviderUpdate has been acknowledged
+   * by the user. Must be called with explicit user approval before the next execution
+   * is permitted.
+   *
+   * @param {object}  opts
+   * @param {boolean} opts.userApproval    — Must be true; throws otherwise.
+   * @param {string}  [opts.newCommitmentId] — Optional ID of a new commitment created after
+   *                                           the reauthorization (for audit purposes).
+   *
+   * @returns {{ reauthorized: boolean, reauthorizedAt: string }}
+   */
+  async reauthorize({ userApproval, newCommitmentId } = {}) {
+    if (userApproval !== true) {
+      throw new Error('ModelStateAttestation.reauthorize: userApproval must be true');
+    }
+
+    this._pendingReauthorization = false;
+
+    const reauthorizedAt = new Date().toISOString();
+    const result = { reauthorized: true, reauthorizedAt };
+
+    if (newCommitmentId !== undefined) {
+      result.newCommitmentId = newCommitmentId;
+    }
+
+    return result;
   }
 
   // ─────────────────────────────────────────────

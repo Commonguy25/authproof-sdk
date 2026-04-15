@@ -432,6 +432,76 @@ Together, the Delegation Receipt and Model State Attestation form a complete fra
 
 An auditor presented with a chain proof can verify each layer independently and confirm that the action recorded in the log was taken by the model the user authorized, acting within the scope the user defined, under conditions that have not been altered since authorization was granted.
 
+### 9.8 Provider Updates vs. Malicious Substitution
+
+#### The Problem with Uniform Blocking
+
+Section 9.5 defines `ModelDriftDetected` as any divergence between committed and current model state. For self-hosted models, this uniform block is appropriate: any change to `modelId` or `modelVersion` not made by the operator is evidence of a substitution attack.
+
+Hosted model providers (OpenAI, Anthropic, Google, etc.) present a different threat model. A provider may silently update the underlying model that a versioned alias resolves to — for example, `gpt-4` → `gpt-4-0613` → `gpt-4-0125` — without any operator action. The operator did not change their configuration; the provider changed the model behind a stable identifier. Treating this identically to a deliberate operator substitution is too blunt: it would block legitimate executions whenever a provider retires a model version, forcing operators to recommit on every provider maintenance cycle regardless of whether any security-relevant change occurred.
+
+#### Two Distinct Mismatch Types
+
+`ModelStateAttestation` distinguishes two categories of measurement mismatch:
+
+**`MaliciousSubstitution`** — The operator explicitly changed the model identifier or version after the commitment was signed. This is always a hard block. Execution is immediately terminated with `ModelDriftDetected` regardless of any policy setting. Indicators:
+- `currentModelId ≠ committedModelId` (the operator's explicitly configured base model changed), OR
+- `currentSystemPromptHash ≠ committedSystemPromptHash` (system prompt was modified), OR
+- `currentRuntimeConfigHash ≠ committedRuntimeConfigHash` (runtime configuration was modified).
+
+**`ProviderUpdate`** — The model version changed, but the operator's configured `modelId` (the `operatorSetModelId` recorded at commit time) is unchanged. The provider silently updated the model behind a stable alias. Indicators:
+- `currentModelId === committedModelId` (same base model the operator configured), AND
+- `currentModelVersion ≠ committedModelVersion` (only the version changed).
+
+#### The `providerUpdatePolicy` Field
+
+Operators declare how provider updates should be handled at construction time:
+
+```js
+const attestation = new ModelStateAttestation({
+  teeRuntime,
+  actionLog,
+  providerUpdatePolicy: 'reauthorize',  // default
+  // or: 'block'
+});
+```
+
+**`providerUpdatePolicy: 'block'`** — Treat provider updates identically to `MaliciousSubstitution`. Any version change blocks execution immediately. Use this when the deployment requires strict model pinning and any unannounced version change must halt operations.
+
+**`providerUpdatePolicy: 'reauthorize'`** (default) — When a provider update is detected, do not block the current call outright. Instead:
+1. Return `{ allowed: false, reason: 'PROVIDER_UPDATE_DETECTED', requiresReauthorization: true, previousVersion, currentVersion }` from `verify()`.
+2. Set an internal `pendingReauthorization` flag on the attestation instance.
+3. Log the discrepancy with `PROVIDER_UPDATE_DETECTED` status.
+4. Block **all subsequent executions** under this attestation instance until `reauthorize()` is called.
+
+This gives operators and users a recovery path. The provider update is flagged and the system halts, but the cause is clearly identified as a non-malicious provider action, allowing the user to explicitly acknowledge the change and re-authorize rather than treating it as a security incident.
+
+#### The `reauthorize()` Flow
+
+After a `PROVIDER_UPDATE_DETECTED` event, the user must explicitly acknowledge the version change:
+
+```js
+await attestation.reauthorize({ userApproval: true, newCommitmentId });
+```
+
+- `userApproval: true` is required; omitting it or passing `false` throws immediately.
+- `newCommitmentId` is optional — pass the ID of a new commitment created for the updated model version if the operator has re-committed to the new provider version.
+- On success, `pendingReauthorization` is cleared and subsequent `verify()` calls proceed normally.
+
+The `reauthorize()` call is an explicit human-in-the-loop checkpoint: the system will not silently resume execution after a provider update. A human must acknowledge the change, review the new version, and explicitly approve continued operation.
+
+#### Why This Matters for Hosted Model Providers
+
+For deployments against hosted model APIs, the `MaliciousSubstitution` / `ProviderUpdate` distinction separates two meaningfully different security events:
+
+| Event | Threat level | Appropriate response |
+|---|---|---|
+| Operator changes `modelId` to a different base model | High — potential substitution attack | Hard block, security incident |
+| Operator changes system prompt after signing | High — instruction injection risk | Hard block, security incident |
+| Provider retires a model version and updates the alias | Low-medium — capability drift | Flag, require user acknowledgment, allow recovery |
+
+The distinction also preserves the audit trail. Both event types are recorded with their specific `mismatchType` (`MaliciousSubstitution` or `ProviderUpdate`), giving auditors the information needed to distinguish security incidents from routine provider maintenance in the chain proof.
+
 ---
 
 ## 10. Comparison to Existing Approaches
