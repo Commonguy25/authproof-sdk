@@ -433,7 +433,7 @@
 
 <!-- ── Hero ── -->
 <section id="hero">
-  <div class="hero-label">Delegation Receipt Protocol v1.6.0</div>
+  <div class="hero-label">Delegation Receipt Protocol v1.7.0</div>
 
   <h1>The AI agent acted.<br>Can you prove what it<br>was authorized to do?</h1>
 
@@ -443,10 +443,19 @@
   </p>
 
   <div class="hero-ctas">
-    <button class="btn-install" id="copy-btn" onclick="copyInstall()">
-      <span id="copy-text">npm install authproof</span>
-      <span class="copy-icon" id="copy-icon">⎘</span>
-    </button>
+    <div class="code-block" style="display:inline-block; min-width:260px;">
+      <div class="code-bar">
+        <div class="tdot tdot-r"></div>
+        <div class="tdot tdot-y"></div>
+        <div class="tdot tdot-g"></div>
+        <span class="tfile">install</span>
+      </div>
+      <pre style="padding:16px 20px; line-height:1.85;"><span class="cm"># JavaScript</span>
+npm install authproof
+
+<span class="cm"># Python</span>
+pip install authproof-py</pre>
+    </div>
     <a href="https://github.com/Commonguy25/authproof-sdk/blob/main/WHITEPAPER.md" class="btn-wp">Read the white paper →</a>
   </div>
 </section>
@@ -482,7 +491,7 @@
 <section id="primitives" class="section">
   <div class="prim-header">
     <h2>Two primitives. One complete chain.</h2>
-    <p>Six verification checks. Every one must pass before execution proceeds.</p>
+    <p>Seven verification checks. Every one must pass before execution proceeds.</p>
   </div>
 
   <div class="terminal-wrap">
@@ -494,22 +503,24 @@
         <span class="tfile">authproof-cli</span>
       </div>
       <div class="terminal-body" id="terminal-body">
-        <span class="tline" id="tl-0"><span class="t-cmd">$ authproof verify --receipt 0x7f3a9c...</span></span>
+        <span class="tline" id="tl-0"><span class="t-cmd">$ authproof verify --receipt 0x7f3a...</span></span>
         <span class="tline" id="tl-1"><span class="t-blank"> </span></span>
-        <span class="tline" id="tl-2"><span class="t-label">[1/6] </span><span class="t-check">Receipt signature        </span><span class="t-pass"> PASS</span></span>
-        <span class="tline" id="tl-3"><span class="t-label">[2/6] </span><span class="t-check">Revocation check         </span><span class="t-pass"> PASS</span></span>
-        <span class="tline" id="tl-4"><span class="t-label">[3/6] </span><span class="t-check">Time window              </span><span class="t-pass"> PASS</span></span>
-        <span class="tline" id="tl-5"><span class="t-label">[4/6] </span><span class="t-check">Scope validation         </span><span class="t-pass"> PASS</span></span>
-        <span class="tline" id="tl-6"><span class="t-label">[5/6] </span><span class="t-check">Operator instruction hash</span><span class="t-pass"> PASS</span></span>
-        <span class="tline" id="tl-7"><span class="t-label">[6/6] </span><span class="t-check">Model state attestation  </span><span class="t-pass"> PASS</span></span>
-        <span class="tline" id="tl-8"><span class="t-blank"> </span></span>
-        <span class="tline" id="tl-9"><span class="t-ok">✓ Authorization verified. Receipt pre-dates execution.</span></span>
-        <span class="tline" id="tl-10"><span class="t-blank"> </span></span>
-        <span class="tline" id="tl-11"><span class="t-sub">  </span><span class="t-key">Delegation Receipt  </span><span class="t-sub">→ </span><span class="t-val">signed by user</span></span>
-        <span class="tline" id="tl-12"><span class="t-sub">  </span><span class="t-key">Model Commitment    </span><span class="t-sub">→ </span><span class="t-val">bound to receipt</span></span>
-        <span class="tline" id="tl-13"><span class="t-sub">  </span><span class="t-key">Execution Proof     </span><span class="t-sub">→ </span><span class="t-val">hardware attested</span></span>
-        <span class="tline" id="tl-14"><span class="t-sub">  </span><span class="t-key">Action Log          </span><span class="t-sub">→ </span><span class="t-val">tamper evident chain</span></span>
-        <span class="tline" id="tl-15"><span class="t-blank"> </span><span class="t-cursor" id="t-cursor"></span></span>
+        <span class="tline" id="tl-2"><span class="t-label">[1/7] </span><span class="t-check">Receipt signature         </span><span class="t-pass">PASS</span></span>
+        <span class="tline" id="tl-3"><span class="t-label">[2/7] </span><span class="t-check">Revocation check          </span><span class="t-pass">PASS</span></span>
+        <span class="tline" id="tl-4"><span class="t-label">[3/7] </span><span class="t-check">Time window               </span><span class="t-pass">PASS</span></span>
+        <span class="tline" id="tl-5"><span class="t-label">[4/7] </span><span class="t-check">Scope validation          </span><span class="t-pass">PASS</span></span>
+        <span class="tline" id="tl-6"><span class="t-label">[5/7] </span><span class="t-check">Operator instruction hash </span><span class="t-pass">PASS</span></span>
+        <span class="tline" id="tl-7"><span class="t-label">[6/7] </span><span class="t-check">Model state attestation   </span><span class="t-pass">PASS</span></span>
+        <span class="tline" id="tl-8"><span class="t-label">[7/7] </span><span class="t-check">Replay protection         </span><span class="t-pass">PASS</span></span>
+        <span class="tline" id="tl-9"><span class="t-blank"> </span></span>
+        <span class="tline" id="tl-10"><span class="t-ok">✓ Authorization verified. Receipt pre-dates execution.</span></span>
+        <span class="tline" id="tl-11"><span class="t-blank"> </span></span>
+        <span class="tline" id="tl-12"><span class="t-sub">  </span><span class="t-key">Delegation Receipt   </span><span class="t-sub">→ </span><span class="t-val">signed by user</span></span>
+        <span class="tline" id="tl-13"><span class="t-sub">  </span><span class="t-key">Model Commitment     </span><span class="t-sub">→ </span><span class="t-val">bound to receipt</span></span>
+        <span class="tline" id="tl-14"><span class="t-sub">  </span><span class="t-key">Execution Proof      </span><span class="t-sub">→ </span><span class="t-val">hardware attested</span></span>
+        <span class="tline" id="tl-15"><span class="t-sub">  </span><span class="t-key">Action Log           </span><span class="t-sub">→ </span><span class="t-val">tamper evident chain</span></span>
+        <span class="tline" id="tl-16"><span class="t-sub">  </span><span class="t-key">Delegation Chain     </span><span class="t-sub">→ </span><span class="t-val">scope attenuation enforced</span></span>
+        <span class="tline" id="tl-17"><span class="t-blank"> </span><span class="t-cursor" id="t-cursor"></span></span>
       </div>
     </div>
   </div>
@@ -522,11 +533,11 @@
   <div class="numbers-label">// by the numbers</div>
   <div class="numbers-grid">
     <div class="num-cell">
-      <div class="num-val">771</div>
+      <div class="num-val">779</div>
       <div class="num-label">Tests passing</div>
     </div>
     <div class="num-cell">
-      <div class="num-val">13</div>
+      <div class="num-val">14</div>
       <div class="num-label">Test suites</div>
     </div>
     <div class="num-cell">
@@ -534,7 +545,7 @@
       <div class="num-label">Failures</div>
     </div>
     <div class="num-cell">
-      <div class="num-val">6</div>
+      <div class="num-val">7</div>
       <div class="num-label">Verification checks</div>
     </div>
     <div class="num-cell">
@@ -542,8 +553,8 @@
       <div class="num-label">Core primitives</div>
     </div>
     <div class="num-cell">
-      <div class="num-val">1</div>
-      <div class="num-label">Trusted party remaining (you)</div>
+      <div class="num-val">2</div>
+      <div class="num-label">Language SDKs</div>
     </div>
   </div>
 </section>
@@ -592,7 +603,7 @@
     <a href="https://github.com/Commonguy25/authproof-sdk/blob/main/WHITEPAPER.md">White Paper</a>
     <a href="demo.html">Demo</a>
   </div>
-  <div class="footer-line">Built on cryptographic proof, not operator trust.</div>
+  <div class="footer-line">AuthProof v1.7.0 — Built on cryptographic proof, not operator trust.</div>
 </footer>
 
 <script>
@@ -614,7 +625,7 @@
   }
 
   /* ── Terminal animation ── */
-  const DELAYS = [0, 300, 480, 650, 810, 970, 1130, 1290, 1470, 1680, 1880, 2040, 2200, 2360, 2520, 2700];
+  const DELAYS = [0, 300, 480, 640, 800, 960, 1120, 1280, 1440, 1620, 1820, 2020, 2180, 2340, 2500, 2660, 2820, 3000];
 
   function runTerminal() {
     DELAYS.forEach((delay, i) => {
