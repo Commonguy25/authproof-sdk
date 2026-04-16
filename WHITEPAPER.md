@@ -259,9 +259,9 @@ The AuthProof protocol uses SHA-256 throughout: for receipt ID computation, inst
 - Receipt layer: **complete** — `AuthProofClient.delegate()`, `AuthProof.create()`, `verify()`
 - TEE attestation layer: **complete** — `TEEAttestation` class (Intel SGX, ARM TrustZone)
 - TEE enforcement layer: **complete** — `ConfidentialRuntime`, `TokenPreparer`
-- eBPF kernel module: **open for contribution** — see [GitHub issue template](.github/ISSUE_TEMPLATE/ebpf-contribution.md)
+- eBPF kernel module: **open for contribution** — see the [open GitHub issue](https://github.com/Commonguy25/authproof-sdk/issues)
 
-**How to contribute the eBPF module:** See `.github/ISSUE_TEMPLATE/ebpf-contribution.md` for the full specification. Technical requirements: CO-RE eBPF + BTF (no custom kernel modules), Kernel 5.8+ BPF LSM support, must pass the eBPF verifier cleanly, security review required before merge. Reference implementations: Tetragon (Cilium) for syscall-level enforcement, Falco + KubeArmor for eBPF security at scale, and the eBPF Foundation LSM samples.
+**How to contribute the eBPF module:** Open an issue or PR at https://github.com/Commonguy25/authproof-sdk/issues — technical requirements: CO-RE eBPF + BTF (no custom kernel modules), Kernel 5.8+ BPF LSM support, must pass the eBPF verifier cleanly, security review required before merge.
 
 ---
 
