@@ -326,6 +326,107 @@ Always define scope using explicit `allowedActions` arrays. Text-based scope mat
 
 ---
 
+## Confidential Deployment
+
+Run AuthProof agents inside hardware-attested Trusted Execution Environments (TEEs). The `ConfidentialRuntime` class binds delegation receipts to enclave measurements, so any substitution of model weights, verifier code, or platform is detectable before execution.
+
+### Hardware requirements
+
+- **Intel TDX** — Intel Ice Lake Xeon or newer (4th-gen Xeon Scalable). Azure DCdsv3-series, GCP C3 Confidential VMs.
+- **AMD SEV-SNP** — AMD EPYC 3rd-gen (Milan) or newer. Azure DCasv5-series, AWS m6a with Nitro Enclaves.
+
+### Create a receipt with TEE measurement binding
+
+```javascript
+import { AuthProofClient } from 'authproof-sdk';
+
+const client = new AuthProofClient();
+const { receipt } = await client.delegate({
+  scope: 'Summarize calendar events',
+  operatorInstructions: 'Stay within scope.',
+  expiresIn: '2h',
+  privateKey,
+  publicJwk,
+  teeConfig: {
+    platform:     'intel-tdx',
+    verifierHash: verifierCodeHash,   // SHA-256 of your verifier binary
+    modelHash:    modelWeightsHash,   // SHA-256 of model weights
+  },
+});
+// receipt.teeMeasurement.expectedMrenclave is now bound to the receipt
+```
+
+### Deploy on Azure Confidential Computing (Intel TDX)
+
+```javascript
+import { ConfidentialRuntime } from 'authproof-sdk';
+
+// Generate deployment configuration
+const config = ConfidentialRuntime.azureTDXConfig({
+  receiptHash,
+  verifierHash,
+  modelHash,
+  region: 'eastus',
+});
+// config.vmSize === 'Standard_DC4ds_v3'
+// config.attestationEndpoint === 'https://sharedeus.eus.attest.azure.net'
+// config.receiptBinding binds the receipt to the VM measurement
+
+// At runtime inside the VM:
+const runtime = new ConfidentialRuntime({
+  platform:  'intel-tdx',
+  verifier,
+  actionLog,
+});
+const result = await runtime.launch({
+  receiptHash, agentFn, operatorInstructions,
+  verifierHash, modelHash,
+  teeMeasurement: receipt.teeMeasurement,   // mismatch blocks execution
+});
+```
+
+Azure SKU requirements: `Standard_DC4ds_v3` or larger from the DCdsv3-series. Enable Confidential OS disk encryption. Use Microsoft Azure Attestation (MAA) shared endpoint for quote verification.
+
+### Deploy on AWS Nitro Enclaves
+
+```javascript
+const config = ConfidentialRuntime.awsNitroConfig({
+  receiptHash,
+  verifierHash,
+  modelHash,
+  region: 'us-east-1',
+});
+// config.instanceType === 'c6a.xlarge'
+// config.enclaveOptions.enabled === true
+// config.pcr0 is the combined receipt+verifier+model measurement
+```
+
+AWS requirements: `c6a.xlarge` or larger with `--enclave-options Enabled`. Use `nitro-cli` to build and run the enclave image. PCR0 in the attestation document must match `config.pcr0` for the receipt binding to be valid.
+
+### Deploy on Kubernetes
+
+```javascript
+const manifest = ConfidentialRuntime.kubernetesConfig({
+  receiptHash,
+  platform:   'intel-tdx',
+  namespace:  'production',
+});
+// manifest is a full K8s List containing:
+//   - Pod with TDX node selector and attestation sidecar
+//   - ServiceAccount with minimal RBAC
+//   - ConfigMap with receipt binding
+```
+
+Apply with `kubectl apply -f` after serializing to YAML. The node selector `intel.feature.node.kubernetes.io/tdx: "true"` requires the Intel Device Plugin for Kubernetes.
+
+### eBPF kernel module — help wanted
+
+The TEE enforcement layer is complete through the userspace side (`ConfidentialRuntime`, `TokenPreparer`). The final enforcement step — validating the signed capability token on every syscall via an eBPF LSM hook — requires a kernel module that is open for contribution.
+
+See [`.github/ISSUE_TEMPLATE/ebpf-contribution.md`](.github/ISSUE_TEMPLATE/ebpf-contribution.md) for the full specification. Engineers with eBPF LSM experience (Isovalent, Red Canary, or similar) are especially welcome.
+
+---
+
 ## Installation
 
 ```bash

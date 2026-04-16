@@ -2878,6 +2878,92 @@ class AuthProofClient {
   }
 
   /**
+   * Create a signed Delegation Receipt with optional TEE measurement binding.
+   *
+   * When teeConfig is provided the returned receipt includes a `teeMeasurement`
+   * field with a platform identifier, verifier/model hashes, and
+   * expectedMrenclave = SHA-256(effectivePlatform + verifierHash + modelHash).
+   * ConfidentialRuntime.launch() checks this value against its own computed
+   * mrenclave before allowing execution.
+   *
+   * @param {object}    opts
+   * @param {string}    opts.scope                  — What the agent is authorized to do
+   * @param {string}    [opts.boundaries]            — What the agent must never do
+   * @param {string}    [opts.operatorInstructions]  — Instructions locked into the receipt
+   * @param {string|number} [opts.expiresIn='1h']   — Duration string ('2h','30m') or ms
+   * @param {CryptoKey} opts.privateKey
+   * @param {object}    opts.publicJwk
+   * @param {object}    [opts.teeConfig]             — Optional TEE binding
+   * @param {string}    [opts.teeConfig.platform]    — 'intel-tdx'|'amd-sev-snp'|'auto'
+   * @param {string}    opts.teeConfig.verifierHash  — Hash of verifier code/config
+   * @param {string}    opts.teeConfig.modelHash     — Hash of model weights
+   *
+   * @returns {Promise<{ receipt, receiptId, systemPrompt }>}
+   *   receipt.teeMeasurement is present only when teeConfig is supplied.
+   */
+  async delegate({
+    scope,
+    boundaries = 'No boundaries specified.',
+    operatorInstructions,
+    expiresIn = '1h',
+    privateKey,
+    publicJwk,
+    teeConfig,
+  } = {}) {
+    if (!scope)      throw new Error('AuthProofClient.delegate: scope is required');
+    if (!privateKey) throw new Error('AuthProofClient.delegate: privateKey is required');
+    if (!publicJwk)  throw new Error('AuthProofClient.delegate: publicJwk is required');
+
+    // Parse expiresIn — accepts '2h', '30m', '90s', or raw milliseconds
+    let ttlHours;
+    if (typeof expiresIn === 'string') {
+      const m = expiresIn.match(/^([\d.]+)(h|m|s)?$/i);
+      if (m) {
+        const val  = parseFloat(m[1]);
+        const unit = (m[2] ?? 'h').toLowerCase();
+        if (unit === 'h')      ttlHours = val;
+        else if (unit === 'm') ttlHours = val / 60;
+        else if (unit === 's') ttlHours = val / 3600;
+        else                   ttlHours = val;
+      } else {
+        ttlHours = 1;
+      }
+    } else if (typeof expiresIn === 'number') {
+      ttlHours = expiresIn / 3_600_000;
+    } else {
+      ttlHours = 1;
+    }
+
+    const { receipt, receiptId, systemPrompt } = await create({
+      scope,
+      boundaries,
+      instructions: operatorInstructions ?? scope,
+      ttlHours,
+      privateKey,
+      publicJwk,
+    });
+
+    if (teeConfig) {
+      const { platform = 'intel-tdx', verifierHash, modelHash } = teeConfig;
+      if (!verifierHash) throw new Error('AuthProofClient.delegate: teeConfig.verifierHash is required');
+      if (!modelHash)    throw new Error('AuthProofClient.delegate: teeConfig.modelHash is required');
+
+      const effectivePlatform = platform === 'auto' ? 'intel-tdx' : platform;
+      const expectedMrenclave = await _sha256(effectivePlatform + verifierHash + modelHash);
+
+      receipt.teeMeasurement = {
+        platform,
+        verifierHash,
+        modelHash,
+        expectedMrenclave,
+        enforcedAt: new Date().toISOString(),
+      };
+    }
+
+    return { receipt, receiptId, systemPrompt };
+  }
+
+  /**
    * Run an agent function in sandbox observation mode, generate scope from
    * observed operations, auto-approve the full draft scope, and produce a
    * signed Delegation Receipt — all in a single call.
@@ -3034,3 +3120,7 @@ export {
 export { DelegationChain, ScopeAttenuationError, MaxDepthExceededError } from './delegation-chain.js';
 
 export { ScopeDiscovery } from './scope-discovery.js';
+
+// TEE enforcement layer
+export { ConfidentialRuntime } from './confidential-runtime.js';
+export { TokenPreparer }       from './token-preparer.js';

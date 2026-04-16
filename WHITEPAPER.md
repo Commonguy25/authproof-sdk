@@ -235,6 +235,34 @@ The AuthProof protocol uses SHA-256 throughout: for receipt ID computation, inst
 
 **Quantum resistance.** ECDSA P-256 is vulnerable to Shor's algorithm on a sufficiently capable quantum computer. The signing layer of the protocol — receipt signing, action log entry signing, and revocation signing — is therefore not post-quantum secure under current implementations. The migration path is through the FIDO2/WebAuthn credential layer: FIDO2 authenticators are expected to support post-quantum signature schemes (CRYSTALS-Dilithium, FALCON) as NIST PQC standards are finalized and incorporated into platform authenticator firmware. Because all AuthProof signing is abstracted behind the WebAuthn API, a platform-level upgrade to post-quantum FIDO2 authenticators upgrades the protocol's quantum resistance without protocol-layer changes. The append-only log and hash commitment structures are unaffected — SHA-256 preimage resistance is not threatened by known quantum algorithms.
 
+### 7.9 Complete Enforcement Architecture
+
+**Three-layer enforcement model:**
+
+- **Layer 1: Receipt** — Cryptographic proof of user authorization (what). The user signs a Delegation Receipt specifying scope, boundaries, and operator instructions. The signature is ECDSA P-256; the receipt ID is SHA-256 of the full receipt JSON. Any tampering is immediately detectable.
+- **Layer 2: TEE** — Hardware-measured execution environment (where and how). The agent runs inside an attested enclave whose measurement is bound to the receipt via `teeMeasurement.expectedMrenclave`. Any substitution of model weights, verifier code, or platform produces a different `mrenclave` and is detectable before execution.
+- **Layer 3: eBPF** — Kernel-level enforcement that cannot be bypassed (enforced). An eBPF LSM hook validates the signed capability token on every relevant syscall. Scope violations are denied at the kernel level before they reach userspace. This layer is open for contribution — see below.
+
+**Intel TDX and AMD SEV-SNP** provide encrypted memory pages that are inaccessible to the host OS and hypervisor, hardware-rooted attestation quotes signed by the CPU vendor's key, and measured boot that hashes every component loaded into the enclave. AuthProof binds delegation receipts to enclave measurements via `ConfidentialRuntime`: `mrenclave = SHA-256(platform + verifierHash + modelHash)`. This value is committed into the receipt's `teeMeasurement.expectedMrenclave` field at delegation time. At execution time, `ConfidentialRuntime.launch()` recomputes `mrenclave` from its runtime parameters and rejects the execution if there is any mismatch.
+
+**Token injection pattern:** The TEE enforcement layer follows this sequence:
+1. `ConfidentialRuntime.launch()` computes `mrenclave` and verifies the receipt measurement
+2. `PreExecutionVerifier.check()` gates execution — no valid receipt, no run
+3. `TokenPreparer.prepare()` builds a signed capability token binding receipt hash, scope hash, and TEE quote hash
+4. The token is injected into the agent process context via `prctl` (production)
+5. The eBPF LSM validates the token on every `security_file_open`, `security_socket_connect`, and `security_task_execve` syscall
+6. Any operation not covered by the token's scope is denied at the kernel level before it reaches userspace
+
+**Why eBPF closes the final circularity:** Without kernel enforcement, a compromised agent runtime could call `verifier.check()` with a spoofed receipt, receive `allowed: true`, and then ignore the scope. The eBPF LSM runs in kernel space and cannot be disabled by userspace code — including a compromised agent runtime. The three-layer model is complete and non-bypassable only when all three layers are present.
+
+**Current status:**
+- Receipt layer: **complete** — `AuthProofClient.delegate()`, `AuthProof.create()`, `verify()`
+- TEE attestation layer: **complete** — `TEEAttestation` class (Intel SGX, ARM TrustZone)
+- TEE enforcement layer: **complete** — `ConfidentialRuntime`, `TokenPreparer`
+- eBPF kernel module: **open for contribution** — see [GitHub issue template](.github/ISSUE_TEMPLATE/ebpf-contribution.md)
+
+**How to contribute the eBPF module:** See `.github/ISSUE_TEMPLATE/ebpf-contribution.md` for the full specification. Technical requirements: CO-RE eBPF + BTF (no custom kernel modules), Kernel 5.8+ BPF LSM support, must pass the eBPF verifier cleanly, security review required before merge. Reference implementations: Tetragon (Cilium) for syscall-level enforcement, Falco + KubeArmor for eBPF security at scale, and the eBPF Foundation LSM samples.
+
 ---
 
 ## 8. Data Flow Receipt
