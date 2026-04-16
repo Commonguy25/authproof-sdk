@@ -423,7 +423,7 @@ Apply with `kubectl apply -f` after serializing to YAML. The node selector `inte
 
 The TEE enforcement layer is complete through the userspace side (`ConfidentialRuntime`, `TokenPreparer`). The final enforcement step — validating the signed capability token on every syscall via an eBPF LSM hook — requires a kernel module that is open for contribution.
 
-See [`.github/ISSUE_TEMPLATE/ebpf-contribution.md`](.github/ISSUE_TEMPLATE/ebpf-contribution.md) for the full specification. Engineers with eBPF LSM experience (Isovalent, Red Canary, or similar) are especially welcome.
+Engineers with eBPF LSM experience (Isovalent, Red Canary, or similar) are especially welcome. Open an issue or PR at https://github.com/Commonguy25/authproof-sdk/issues
 
 ---
 
