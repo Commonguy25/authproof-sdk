@@ -171,8 +171,11 @@
     #problem { background: var(--black); }
     .problem-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(4, 1fr);
       gap: 0;
+    }
+    @media (max-width: 1000px) {
+      .problem-grid { grid-template-columns: repeat(2, 1fr); }
     }
     @media (max-width: 800px) {
       .problem-grid { grid-template-columns: 1fr; }
@@ -433,7 +436,7 @@
 
 <!-- ── Hero ── -->
 <section id="hero">
-  <div class="hero-label">Delegation Receipt Protocol v1.8.0</div>
+  <div class="hero-label">Delegation Receipt Protocol v1.9.0</div>
 
   <h1>The AI agent acted.<br>Can you prove what it<br>was authorized to do?</h1>
 
@@ -480,6 +483,11 @@ pip install authproof-py</pre>
         <div class="problem-num">03 / server-side logs</div>
         <h3>The audit trail is server-side logs.</h3>
         <p>Logs can be written after the incident. A Delegation Receipt exists before the first action. That is not the same thing.</p>
+      </div>
+      <div class="problem-col">
+        <div class="problem-num">04 / confidential deployment</div>
+        <h3>Confidential Deployment</h3>
+        <p>Azure TDX and AWS Nitro Enclaves supported. Execution happens inside hardware-attested confidential compute — verifiable from outside the operator's stack.</p>
       </div>
     </div>
   </div>
@@ -533,7 +541,7 @@ pip install authproof-py</pre>
   <div class="numbers-label">// by the numbers</div>
   <div class="numbers-grid">
     <div class="num-cell">
-      <div class="num-val">779</div>
+      <div class="num-val">969</div>
       <div class="num-label">Tests passing</div>
     </div>
     <div class="num-cell">
@@ -603,7 +611,7 @@ pip install authproof-py</pre>
     <a href="https://github.com/Commonguy25/authproof-sdk/blob/main/WHITEPAPER.md">White Paper</a>
     <a href="demo.html">Demo</a>
   </div>
-  <div class="footer-line">AuthProof v1.8.0 — Built on cryptographic proof, not operator trust.</div>
+  <div class="footer-line">AuthProof v1.9.0 — Built on cryptographic proof, not operator trust.</div>
 </footer>
 
 <script>
