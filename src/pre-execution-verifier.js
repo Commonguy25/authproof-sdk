@@ -5,14 +5,15 @@
  * this verifier passes. A compromised or malicious agent cannot skip it
  * because it runs before the runtime.
  *
- * Seven sequential checks (stops at first failure):
+ * Eight sequential checks (stops at first failure):
  *   1. Receipt signature valid (ECDSA P-256)
  *   2. Receipt not revoked (RevocationRegistry)
  *   3. Within time window (log timestamp as oracle, not client clock)
  *   4. Action within scope (ScopeSchema.validate or fuzzy fallback)
  *   5. Operator instructions match receipt (Canonicalizer.hash)
  *   6. Program hash match (optional — prevents code substitution attacks)
- *   7. Model state verification (optional — ModelStateAttestation check)
+ *   7. Session risk evaluation (optional — SessionState.evaluate())
+ *   8. Model state verification (optional — ModelStateAttestation check)
  *
  * @module pre-execution-verifier
  */
@@ -181,21 +182,23 @@ class PreExecutionVerifier {
    * @param {DelegationLog}        opts.delegationLog          — append-only receipt store
    * @param {RevocationRegistry}   opts.revocationRegistry     — live revocation registry
    * @param {boolean}              [opts.requireTEE=false]     — require hardware attestation
-   * @param {ModelStateAttestation} [opts.modelStateAttestation] — when provided, enables check 7
+   * @param {SessionState}         [opts.sessionState]         — when provided, enables check 7
+   * @param {ModelStateAttestation} [opts.modelStateAttestation] — when provided, enables check 8
    * @param {ActionLog}            [opts.actionLog]            — when provided, receives one
    *                                                             receipt_authorized entry per
    *                                                             fully-passed check; never written
    *                                                             when any check fails
    */
-  constructor({ delegationLog, revocationRegistry, requireTEE = false, modelStateAttestation, actionLog } = {}) {
+  constructor({ delegationLog, revocationRegistry, requireTEE = false, sessionState, modelStateAttestation, actionLog } = {}) {
     if (!delegationLog)      throw new Error('PreExecutionVerifier: delegationLog is required');
     if (!revocationRegistry) throw new Error('PreExecutionVerifier: revocationRegistry is required');
 
-    this._log                  = delegationLog;
-    this._registry             = revocationRegistry;
-    this._requireTEE           = requireTEE;
+    this._log                   = delegationLog;
+    this._registry              = revocationRegistry;
+    this._requireTEE            = requireTEE;
+    this._sessionState          = sessionState          ?? null;
     this._modelStateAttestation = modelStateAttestation ?? null;
-    this._actionLog            = actionLog ?? null;
+    this._actionLog             = actionLog             ?? null;
 
     /** @private — internal audit log of every gate decision */
     this._auditLog     = new ActionLog();
@@ -274,6 +277,7 @@ class PreExecutionVerifier {
     };
     if (programHash !== undefined)                               checks.programHashMatch    = false;
     if (this._requireTEE)                                        checks.teeAttestationValid = false;
+    if (this._sessionState)                                      checks.sessionRiskValid    = false;
     if (this._modelStateAttestation && commitmentId !== undefined) checks.modelStateValid    = false;
 
     // ── Replay attack detection ───────────────────────────────────────
@@ -452,7 +456,37 @@ class PreExecutionVerifier {
       }
     }
 
-    // ── Check 7: Model state verification (optional) ─────────────────
+    // ── Check 7: Session risk evaluation (optional) ──────────────────
+    if (this._sessionState) {
+      const actionStr = typeof action === 'string'
+        ? action
+        : `${action?.operation ?? ''} ${action?.resource ?? ''}`.trim();
+
+      const sessionResult = await this._sessionState.evaluate({
+        action,
+        operatorInstructions,
+        payload: actionStr,
+      });
+
+      const sessionAllowed = sessionResult.decision !== 'BLOCK';
+      checks.sessionRiskValid = sessionAllowed;
+
+      if (!sessionAllowed) {
+        return this._finalize({
+          allowed:       false,
+          checks,
+          blockedReason: `Session risk evaluation blocked action — riskScore: ${sessionResult.riskScore}, reasons: ${sessionResult.reasons.join('; ')}`,
+          receiptHash,
+          action,
+          sessionRiskResult: sessionResult,
+        });
+      }
+
+      // Attach session result to the finalized response even on pass
+      if (!this._sessionRiskResult) this._sessionRiskResult = sessionResult;
+    }
+
+    // ── Check 8: Model state verification (optional) ─────────────────
     if (this._modelStateAttestation && commitmentId !== undefined) {
       const msaResult = await this._modelStateAttestation.verify({
         commitmentId,
@@ -490,7 +524,7 @@ class PreExecutionVerifier {
    * Build the result object, sign it, and record it in the audit log.
    * @private
    */
-  async _finalize({ allowed, checks, blockedReason, receiptHash, action }) {
+  async _finalize({ allowed, checks, blockedReason, receiptHash, action, sessionRiskResult }) {
     const verifiedAt = new Date().toISOString();
 
     const checkResult = {
@@ -539,7 +573,7 @@ class PreExecutionVerifier {
       }
     }
 
-    return {
+    const result = {
       allowed,
       checks,
       blockedReason: blockedReason ?? null,
@@ -547,6 +581,15 @@ class PreExecutionVerifier {
       verifierSignature,
       verifierPublicKey: this._publicJwk,
     };
+
+    // Attach session risk result when available
+    const sessionResult = sessionRiskResult ?? this._sessionRiskResult ?? null;
+    if (sessionResult) {
+      result.sessionRiskResult = sessionResult;
+      this._sessionRiskResult  = null; // reset for next call
+    }
+
+    return result;
   }
 
   /**

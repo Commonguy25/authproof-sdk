@@ -2871,10 +2871,12 @@ class BatchReceipt {
 class AuthProofClient {
   /**
    * @param {object} [opts]
-   * @param {boolean} [opts.guided=false] — Enable guided (observation-based) delegation mode.
+   * @param {boolean} [opts.guided=false]      — Enable guided (observation-based) delegation mode.
+   * @param {boolean} [opts.sessionAware=false] — Enable session-aware delegation mode.
    */
-  constructor({ guided = false } = {}) {
-    this._guided = guided;
+  constructor({ guided = false, sessionAware = false } = {}) {
+    this._guided       = guided;
+    this._sessionAware = sessionAware;
   }
 
   /**
@@ -2961,6 +2963,53 @@ class AuthProofClient {
     }
 
     return { receipt, receiptId, systemPrompt };
+  }
+
+  /**
+   * Create a signed Delegation Receipt and a live SessionState together.
+   *
+   * Equivalent to calling delegate() and then constructing a SessionState with
+   * the resulting receiptId. Useful when the caller wants per-session adaptive
+   * authorization from the first action.
+   *
+   * @param {object}    opts
+   * @param {string}    opts.scope
+   * @param {string}    [opts.boundaries]
+   * @param {string}    [opts.operatorInstructions]
+   * @param {string|number} [opts.expiresIn='2h']
+   * @param {CryptoKey} opts.privateKey
+   * @param {object}    opts.publicJwk
+   * @param {object}    [opts.policy]             — SessionState policy overrides
+   * @param {object}    [opts.teeConfig]
+   *
+   * @returns {Promise<{ receipt, receiptId, systemPrompt, session: SessionState }>}
+   */
+  async delegateWithSession({
+    scope,
+    boundaries,
+    operatorInstructions,
+    expiresIn = '2h',
+    privateKey,
+    publicJwk,
+    policy,
+    teeConfig,
+  } = {}) {
+    const { receipt, receiptId, systemPrompt } = await this.delegate({
+      scope,
+      boundaries,
+      operatorInstructions,
+      expiresIn,
+      privateKey,
+      publicJwk,
+      teeConfig,
+    });
+
+    // Dynamic import avoids circular dependency — session-state.js does not
+    // import from authproof.js, so this is safe.
+    const { SessionState } = await import('./session-state.js');
+    const session = new SessionState({ receiptHash: receiptId, policy: policy ?? {} });
+
+    return { receipt, receiptId, systemPrompt, session };
   }
 
   /**
@@ -3124,3 +3173,8 @@ export { ScopeDiscovery } from './scope-discovery.js';
 // TEE enforcement layer
 export { ConfidentialRuntime } from './confidential-runtime.js';
 export { TokenPreparer }       from './token-preparer.js';
+
+// Session state and adaptive authorization
+export { SessionState }             from './session-state.js';
+export { RiskScorer }               from './risk-scorer.js';
+export { SensitivityClassifier }    from './sensitivity-classifier.js';

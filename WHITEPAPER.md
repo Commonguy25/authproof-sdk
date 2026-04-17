@@ -635,7 +635,163 @@ Automated observation eliminates the guesswork that produces over-broad receipts
 
 ---
 
-## 11. Comparison to Existing Approaches
+## 11. Session State and Adaptive Authorization
+
+### 11.1 Why Static Scope Is Insufficient for Long-Running Sessions
+
+A Delegation Receipt answers a single question at a single moment in time: "Did this user authorize this agent to do this class of things?" It is a static artifact. It cannot answer "Is this specific action safe to take right now, given everything that has happened in this session?"
+
+Static receipts have three blind spots for long-running sessions:
+
+**The drift problem.** A receipt issued for "manage my calendar" is still technically valid after the agent has sent 400 emails, contacted 12 external APIs, and received a prompt injection payload. The receipt does not know about any of this. Its scope string has not changed.
+
+**The escalation problem.** A receipt with a generous scope becomes progressively more dangerous as the agent accumulates sensitive data, accesses external services, and builds up behavioral history. The risk of a given action is not static — it depends on what came before.
+
+**The injection problem.** A receipt cannot detect that the agent's input pipeline has been compromised mid-session by a prompt injection attack embedded in retrieved content. The receipt was signed before the session began; it has no knowledge of runtime inputs.
+
+SessionState closes these gaps by maintaining a live, stateful view of each session that evolves with every action.
+
+### 11.2 The Trust Decay Model
+
+SessionState tracks a `trustScore` for each session, initialized at 100, bounded between 0 and 100. Trust represents the system's confidence that this session is proceeding legitimately.
+
+**Decay on anomaly.** When an anomaly is detected, trust decreases:
+
+```
+trustScore -= anomaly.severity × trustDecayRate
+```
+
+Anomaly severity levels are:
+
+| Anomaly | Severity |
+|---------|----------|
+| Prompt injection detected | 5 |
+| Sensitive data in external destination | 4 |
+| Frequency spike | 3 |
+| Scope edge usage | 2 |
+| First time action | 1 |
+
+A single prompt injection with `trustDecayRate = 0.05` costs 0.25 trust points. Accumulated over many anomalies, trust degrades to reflect a session that is genuinely behaving suspiciously.
+
+**Recovery on clean action.** Each clean action (no anomalies detected) recovers a small amount of trust:
+
+```
+trustScore += trustRecoveryRate  (default 0.01)
+```
+
+This prevents trust from reaching zero due to isolated incidents in otherwise clean sessions.
+
+**Status thresholds.** Trust score drives session status:
+
+| Trust Score | Status | Effect |
+|-------------|--------|--------|
+| ≥ 30 | ACTIVE | Normal operation |
+| < 30 | DEGRADED | All risk scores amplified by trust multiplier |
+| < 10 | SUSPENDED | All actions blocked unconditionally |
+
+The degraded state is particularly important: it does not block operations, but it causes the risk scorer to apply a multiplier to every score, making previously marginal decisions tip into REQUIRE_APPROVAL or BLOCK territory.
+
+### 11.3 How Sensitivity Classification Changes Decision Thresholds
+
+Not all payloads carry the same risk. Sending a high-risk action with a payload that contains a user's SSN is categorically more dangerous than sending the same action with a payload containing public calendar text.
+
+SensitivityClassifier assigns one of four levels to every payload before evaluation:
+
+| Level | Triggers |
+|-------|----------|
+| RESTRICTED | SSN, credit card, medical record identifiers, API keys |
+| CONFIDENTIAL | Internal email addresses, system prompts, config files, database schemas |
+| INTERNAL | Company domain references, internal project names, user IDs |
+| PUBLIC | Everything else |
+
+Each level adjusts the decision thresholds:
+
+| Level | Threshold Effect |
+|-------|-----------------|
+| RESTRICTED | Block threshold drops to at most 60 (from default 85) |
+| CONFIDENTIAL | Approval threshold drops to at most 40 (from default 70) |
+| INTERNAL | No change |
+| PUBLIC | All thresholds relax by +10 |
+
+A payload classified RESTRICTED with a risk score of 65 would be BLOCKED (threshold ≤ 60), whereas the same risk score on a PUBLIC payload would only require ALLOW (threshold 95 after relaxation).
+
+### 11.4 The Complete Decision Engine
+
+```
+if session.status === 'SUSPENDED':
+    → BLOCK (unconditional)
+
+classify payload → sensitivityLevel
+adjust thresholds by sensitivityLevel
+
+run five risk checks:
+    1. Sensitive data scan   (SSN +35, credit card +35, API key +30,
+                              high entropy +20, prompt injection +40,
+                              password keyword +25)
+    2. External exfiltration (external domain + sensitive data +30,
+                              first-time external domain +15)
+    3. Frequency anomaly     (same type >10× in 60s +25,
+                              >50 total actions in session +15)
+    4. Scope edge usage      (new permission +10, at scope boundary +10)
+    5. Trust multiplier      (finalScore = rawScore × (1 + (100 − trust) / 100))
+
+if finalScore >= blockThreshold:
+    → BLOCK
+elif finalScore >= requireApprovalThreshold:
+    → REQUIRE_APPROVAL
+else:
+    → ALLOW
+```
+
+The checks are deterministic and ordered. The same action, payload, and session state always produce the same score. This is by design: the system is auditable. Every BLOCK or REQUIRE_APPROVAL decision can be explained by pointing at specific findings in specific checks.
+
+### 11.5 Closing the "Is This Safe Right Now" Gap
+
+Static receipts answer: "Was this agent authorized to do things in this category?"
+
+SessionState answers: "Is this specific action, in this specific session, at this specific moment, actually safe to execute?"
+
+These are different questions. A receipt that was valid when issued may cover an action that has become unsafe due to:
+
+- Accumulated sensitive data in the session context
+- A compromised input pipeline (prompt injection in retrieved content)
+- Behavioral patterns that indicate automation or abuse (frequency spikes)
+- Trust decay from prior anomalies in this session
+
+None of these are detectable from the receipt alone. SessionState makes them detectable.
+
+### 11.6 The Stripe Radar Analogy
+
+Stripe Radar is a fraud detection system for payment transactions. Every transaction carries a static authorization (the card is valid, the account has funds, the cardholder approved it) — but Radar evaluates each transaction against hundreds of behavioral signals to answer whether it should proceed.
+
+A valid card is equivalent to a valid receipt. Both establish that the principal was authorized in principle. Neither tells you whether the specific action is safe right now, given everything the system knows about this session's history and context.
+
+SessionState applies the Stripe Radar mental model to AI agent actions:
+
+| Stripe Radar | SessionState |
+|---|---|
+| Transaction | Agent action |
+| Card validity | Delegation Receipt |
+| Behavioral signals | Five risk checks |
+| Fraud score | riskScore |
+| Block / Review / Allow | BLOCK / REQUIRE_APPROVAL / ALLOW |
+| Account history | Session action history |
+| Velocity rules | Frequency anomaly detection |
+| Pattern matching | Sensitive data detection |
+
+The architectural insight is the same: authorization is not binary. "Authorized" is a necessary condition for execution, not a sufficient one. Real-world safety requires a live, stateful layer that observes behavior and adapts its decisions accordingly.
+
+### 11.7 Integration with PreExecutionVerifier
+
+SessionState integrates with `PreExecutionVerifier` as Check 7. When a `sessionState` is provided to the verifier constructor, every `check()` call runs `sessionState.evaluate()` after all static receipt checks pass. If the session evaluation returns `BLOCK`, the verifier blocks the action as if a static check had failed — the `sessionRiskValid` flag is set to `false` and the gate denies execution.
+
+This means SessionState decisions carry the same weight as receipt signature verification or revocation checks. An action that passes all cryptographic checks but fails the session risk evaluation does not execute.
+
+The session risk result is also attached to the verifier response for logging and auditing, so downstream systems can observe not just that an action was blocked, but why — which specific anomalies caused the risk score to exceed the threshold.
+
+---
+
+## 12. Comparison to Existing Approaches
 
 | Property | OAuth 2.0 / RAR | WIMSE | AIP | AuthProof |
 |---|---|---|---|---|
@@ -653,7 +809,7 @@ AuthProof is not a replacement for WIMSE, AIP, or OAuth 2.0. It operates at a di
 
 ---
 
-## 12. Multi-Agent Delegation Chains
+## 13. Multi-Agent Delegation Chains
 
 When a delegated agent needs to hand off a subtask to another agent, the chain of authority must remain auditable and bounded. AuthProof's `DelegationChain` primitive enforces three invariants at every hop.
 
@@ -682,7 +838,7 @@ The root receipt is the only trust anchor in the delegation chain. If the root c
 ---
 
 
-## 13. Conclusion
+## 14. Conclusion
 
 The agentic AI deployment model creates a trust problem that existing identity and authorization frameworks were not designed to address. The operator sits between the user and the agent with unchecked authority over what the agent is instructed to do. AuthProof makes that authority cryptographically bounded, the user's original intent immutably recorded, and operator deviation provable from a public log. The three-layer trust stack — signed capability manifest, Delegation Receipt, and Safescript execution binding — systematically eliminates trusted intermediaries from the agentic delegation chain.
 
