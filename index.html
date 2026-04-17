@@ -385,6 +385,92 @@
     .cn  { color: var(--gray1); }
     .cop { color: var(--gray3); }
 
+    /* ── Demo ── */
+    #demo { background: var(--black); }
+    .demo-header { margin-bottom: 40px; }
+    .demo-header h2 {
+      font-size: clamp(22px, 2.8vw, 36px);
+      font-weight: 800;
+      color: var(--white);
+      letter-spacing: -0.02em;
+      margin-bottom: 10px;
+    }
+    .demo-header p { font-size: 15px; color: var(--gray2); }
+    .demo-buttons {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .demo-btn {
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 600;
+      background: transparent;
+      padding: 10px 20px;
+      cursor: pointer;
+      letter-spacing: 0.02em;
+      transition: background 0.15s;
+    }
+    .demo-btn-normal { border: 1px solid #00FF41; color: #00FF41; }
+    .demo-btn-normal:hover, .demo-btn-normal.active { background: rgba(0,255,65,0.08); }
+    .demo-btn-inject { border: 1px solid #FFB700; color: #FFB700; }
+    .demo-btn-inject:hover, .demo-btn-inject.active { background: rgba(255,183,0,0.08); }
+    .demo-btn-leak   { border: 1px solid #FF4444; color: #FF4444; }
+    .demo-btn-leak:hover, .demo-btn-leak.active   { background: rgba(255,68,68,0.08); }
+    .demo-scenario-label {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--gray3);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      min-height: 18px;
+    }
+    .demo-terminal-wrap { max-width: 720px; }
+    .demo-terminal {
+      background: var(--black3);
+      border: 1px solid rgba(0,255,65,0.35);
+      font-family: var(--mono);
+      font-size: 13px;
+    }
+    .demo-terminal-bar {
+      background: var(--black4);
+      border-bottom: 1px solid var(--gray4);
+      padding: 10px 16px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .demo-terminal-body {
+      padding: 24px 24px 28px;
+      line-height: 1.9;
+      min-height: 220px;
+    }
+    .demo-tline {
+      display: block;
+      opacity: 0;
+      transform: translateY(3px);
+      transition: opacity 0.18s ease, transform 0.18s ease;
+      white-space: pre;
+      color: var(--gray1);
+    }
+    .demo-tline.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .demo-placeholder {
+      display: block;
+      color: var(--gray3);
+      font-family: var(--mono);
+      font-size: 13px;
+    }
+    @media (max-width: 640px) {
+      .demo-buttons { flex-direction: column; }
+      .demo-btn { width: 100%; text-align: left; }
+      .demo-terminal-wrap { overflow-x: auto; }
+      .demo-terminal-body { padding: 16px; }
+      .demo-tline { font-size: 12px; }
+    }
+
     /* ── Footer ── */
     footer {
       border-top: 1px solid var(--gray4);
@@ -575,6 +661,37 @@ pip install authproof-py</pre>
 
 <hr class="divider" />
 
+<!-- ── Demo ── -->
+<section id="demo" class="section">
+  <div class="demo-header">
+    <h2>See it in action</h2>
+    <p>Three scenarios. Watch the decision happen in real time.</p>
+  </div>
+
+  <div class="demo-buttons">
+    <button class="demo-btn demo-btn-normal" onclick="runDemo(0)">Normal action</button>
+    <button class="demo-btn demo-btn-inject" onclick="runDemo(1)">Prompt injection</button>
+    <button class="demo-btn demo-btn-leak"   onclick="runDemo(2)">Sensitive data leak</button>
+  </div>
+
+  <div class="demo-scenario-label" id="demo-scenario-label">&nbsp;</div>
+
+  <div class="demo-terminal-wrap">
+    <div class="demo-terminal">
+      <div class="demo-terminal-bar">
+        <div class="tdot" style="background:#ff5f57;"></div>
+        <div class="tdot" style="background:#febc2e;"></div>
+        <div class="tdot" style="background:#28c840;"></div>
+      </div>
+      <div class="demo-terminal-body" id="demo-terminal-body">
+        <span class="demo-placeholder">// Click a scenario above to begin</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
 <!-- ── Code ── -->
 <section id="code" class="section">
   <div class="code-header">
@@ -670,6 +787,130 @@ pip install authproof-py</pre>
 
   const termEl = document.getElementById('terminal-body');
   if (termEl) observer.observe(termEl);
+
+  /* ── Demo terminal ── */
+  const DEMO_SCENARIOS = [
+    {
+      label: 'Authorized agent action',
+      lines: [
+        { text: '$ authproof verify',                                    color: null },
+        { text: '',                                                       color: null },
+        { text: '[1/7] Receipt signature         PASS',                  color: null },
+        { text: '[2/7] Revocation check          PASS',                  color: null },
+        { text: '[3/7] Time window               PASS',                  color: null },
+        { text: '[4/7] Scope validation          PASS',                  color: null },
+        { text: '[5/7] Operator instruction hash PASS',                  color: null },
+        { text: '[6/7] Model state attestation   PASS',                  color: null },
+        { text: '[7/7] Session risk evaluation   PASS',                  color: null },
+        { text: '',                                                       color: null },
+        { text: 'Session trust:  97.3',                                  color: null },
+        { text: 'Risk score:     12.1',                                  color: null },
+        { text: 'Sensitivity:    INTERNAL',                              color: null },
+        { text: 'Decision:       ALLOW',                                 color: '#00FF41' },
+        { text: '',                                                       color: null },
+        { text: '\u2713 Action authorized. Proceeding.',                 color: '#00FF41' },
+        { text: '  Agent: summarize_inbox',                              color: null },
+        { text: '  Recipient: teammate@company.com',                     color: null },
+      ]
+    },
+    {
+      label: 'Prompt injection attack',
+      lines: [
+        { text: '$ authproof verify',                                                    color: null },
+        { text: '',                                                                       color: null },
+        { text: '[1/7] Receipt signature         PASS',                                  color: null },
+        { text: '[2/7] Revocation check          PASS',                                  color: null },
+        { text: '[3/7] Time window               PASS',                                  color: null },
+        { text: '[4/7] Scope validation          PASS',                                  color: null },
+        { text: '[5/7] Operator instruction hash PASS',                                  color: null },
+        { text: '[6/7] Model state attestation   PASS',                                  color: null },
+        { text: '[7/7] Session risk evaluation   FAIL',                                  color: '#FF4444' },
+        { text: '',                                                                       color: null },
+        { text: 'Session trust:  61.2',                                                  color: null },
+        { text: 'Risk score:     94.7',                                                  color: null },
+        { text: 'Sensitivity:    RESTRICTED',                                            color: null },
+        { text: '',                                                                       color: null },
+        { text: 'Anomalies detected:',                                                   color: null },
+        { text: '  \u2192 Prompt injection pattern: "ignore previous instructions"',    color: '#FFB700' },
+        { text: '  \u2192 External destination: attacker@gmail.com',                    color: '#FFB700' },
+        { text: '  \u2192 Sensitive data in payload',                                   color: '#FFB700' },
+        { text: '',                                                                       color: null },
+        { text: 'Decision:       BLOCK',                                                 color: '#FF4444' },
+        { text: '',                                                                       color: null },
+        { text: '\u2717 Action blocked. Receipt invalidated.',                           color: '#FF4444' },
+        { text: '  Reason: Session risk threshold exceeded',                             color: null },
+        { text: '  Trust decay: -18.4 applied',                                         color: null },
+      ]
+    },
+    {
+      label: 'API key exfiltration attempt',
+      lines: [
+        { text: '$ authproof verify',                                             color: null },
+        { text: '',                                                                color: null },
+        { text: '[1/7] Receipt signature         PASS',                           color: null },
+        { text: '[2/7] Revocation check          PASS',                           color: null },
+        { text: '[3/7] Time window               PASS',                           color: null },
+        { text: '[4/7] Scope validation          PASS',                           color: null },
+        { text: '[5/7] Operator instruction hash PASS',                           color: null },
+        { text: '[6/7] Model state attestation   PASS',                           color: null },
+        { text: '[7/7] Session risk evaluation   FAIL',                           color: '#FF4444' },
+        { text: '',                                                                color: null },
+        { text: 'Session trust:  78.9',                                           color: null },
+        { text: 'Risk score:     88.3',                                           color: null },
+        { text: 'Sensitivity:    RESTRICTED',                                     color: null },
+        { text: '',                                                                color: null },
+        { text: 'Anomalies detected:',                                            color: null },
+        { text: '  \u2192 API key detected in payload: sk-prod-\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022', color: '#FFB700' },
+        { text: '  \u2192 External email recipient',                              color: '#FFB700' },
+        { text: '  \u2192 RESTRICTED content to external destination',            color: '#FFB700' },
+        { text: '',                                                                color: null },
+        { text: 'Decision:       BLOCK',                                          color: '#FF4444' },
+        { text: '',                                                                color: null },
+        { text: '\u2717 Action blocked. Data protected.',                         color: '#FF4444' },
+        { text: '  Reason: RESTRICTED payload to external destination',           color: null },
+        { text: '  HIPAA/SOC2 audit event logged',                                color: null },
+        { text: '  Trust decay: -12.6 applied',                                   color: null },
+      ]
+    }
+  ];
+
+  let demoAnimTimer = null;
+
+  function runDemo(idx) {
+    /* highlight active button */
+    document.querySelectorAll('.demo-btn').forEach((b, i) => {
+      b.classList.toggle('active', i === idx);
+    });
+
+    /* update label */
+    document.getElementById('demo-scenario-label').textContent =
+      '// scenario: ' + DEMO_SCENARIOS[idx].label;
+
+    /* clear any running animation */
+    if (demoAnimTimer !== null) {
+      clearTimeout(demoAnimTimer);
+      demoAnimTimer = null;
+    }
+
+    /* clear terminal */
+    const body = document.getElementById('demo-terminal-body');
+    body.innerHTML = '';
+
+    const scenario = DEMO_SCENARIOS[idx];
+
+    /* animate lines with 80ms delay between each */
+    scenario.lines.forEach(function(line, i) {
+      const span = document.createElement('span');
+      span.className = 'demo-tline';
+      span.textContent = line.text === '' ? '\u00a0' : line.text;
+      if (line.color) span.style.color = line.color;
+      body.appendChild(span);
+
+      demoAnimTimer = setTimeout(function() {
+        span.classList.add('visible');
+      }, 80 * i);
+    });
+  }
 </script>
 
 </body>
