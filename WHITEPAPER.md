@@ -809,7 +809,94 @@ AuthProof is not a replacement for WIMSE, AIP, or OAuth 2.0. It operates at a di
 
 ---
 
-## 13. Multi-Agent Delegation Chains
+## 13. Approval Outcome Logging and Threshold Recalibration
+
+### Why Static Thresholds Are Educated Guesses
+
+Every risk threshold in an authorization system starts as a guess. A team sets a value — "flag actions with a risk score above 40" — and deploys it. Without production data, that threshold is calibrated to intuition rather than to actual operator behavior, actual denial rates, or actual downstream harm. The number may be defensible, but it is not grounded.
+
+Static thresholds have a second problem: they decay. An agent that operates in a new domain, with new operators, or in a new organizational context will generate a different distribution of approval requests than it did six months ago. A threshold that was appropriately calibrated at launch may be generating noise today, or may be under-triggering in a domain that turned out to be riskier than expected.
+
+AuthProof's `ApprovalOutcomeLogger` treats every human decision as a data point, not just a side effect. Over time, those data points reveal whether a rule is producing signal — denials, anomaly correlations — or noise — reflexive approvals, fast decisions that show no genuine deliberation.
+
+### The Approval Fatigue Problem
+
+When operators are presented with too many approval requests, they stop reading them. The research on alert fatigue in security operations centers applies directly to agent authorization: high-volume, low-stakes interruptions cause reviewers to develop a reflexive approval habit. The result is not security — it is a ceremony that provides a paper trail without any genuine human oversight.
+
+The `ApprovalOutcomeLogger` surfaces this explicitly via the **fatigue score**:
+
+```
+fatigueScore = (approvalsInWindow / 20 * 40) + (speedScore * 60)
+```
+
+where `speedScore` is the fraction of decisions made in under two seconds. A reviewer who approves twenty requests per hour, most of them in under two seconds, scores near 100 — indicating that the system is providing false assurance. The recommended response is not to ask the operator to slow down; it is to reduce the volume of interruptions by recalibrating noisy rules upward.
+
+Fatigue scores above 70 flag the next approval for re-signing, forcing the operator to make an active choice rather than a reflex approval.
+
+### How Outcome Logging Surfaces Noise vs. Signal
+
+Two metrics drive the classification:
+
+**Noise score** = (approvalRate × 0.6) + (lowTimeToDecision × 0.4), where `lowTimeToDecision` is the percentage of decisions made in under three seconds. A rule with a high noise score is producing approval interruptions that operators rubber-stamp — it is adding friction without adding safety.
+
+**Signal score** = (denialRate × 0.5) + (subsequentAnomalyRate × 0.5). A rule with a high signal score is catching things that genuinely warrant attention: operators are denying a meaningful fraction of requests, and approvals under this rule correlate with subsequent anomalies.
+
+The four recommendation states reflect a priority ordering:
+
+| Recommendation | Condition | Action |
+|----------------|-----------|--------|
+| `CRITICAL`     | Subsequent anomaly rate > 20% | Immediate review — approvals are correlating with harm |
+| `LIKELY_NOISE` | Noise score > 70 AND > 10 events | Consider raising threshold to reduce interrupt volume |
+| `WORKING`      | Signal score > 40 | Current calibration appears correct |
+| `NEEDS_DATA`   | < 10 events | Insufficient data for judgment |
+
+`CRITICAL` always overrides `LIKELY_NOISE`. A rule that looks noisy but is also producing downstream anomalies is not a candidate for raising — it is a candidate for urgent investigation.
+
+### The ThresholdAdvisor Read-Only Model
+
+`ThresholdAdvisor` is structurally read-only. It has one method: `getAdvice()`. It has no `applyChange` method, no `setThreshold` method, and no mechanism to write to any configuration store. This is not a convention — it is enforced by the class definition.
+
+Every advice object contains two invariant fields:
+
+```js
+{
+  disclaimer:    'These are data-driven suggestions. Human review required before applying any changes.',
+  neverAutoApply: true,
+  suggestions:   [...],
+  generatedAt:   '...',
+}
+```
+
+`neverAutoApply: true` is always present so that any consuming code that reads this field gets an explicit structural reminder that automation is not appropriate here. The `disclaimer` field is always present for the same reason — it is not optional metadata but a required part of the contract.
+
+The rationale for the read-only model is simple: data-driven suggestions are better than pure intuition, but they are not infallible. A rule that looks noisy may be noisy because the threat surface is genuinely low — or because attackers have learned to stay just below the threshold. A human who understands the deployment context must make that judgment. The advisor provides inputs to that judgment; it does not replace it.
+
+### Full Audit Trail for Policy Changes
+
+When a human decides to act on an advisor suggestion, `PolicyManager.applyChange()` records the full decision context:
+
+- **Who** applied the change (`appliedBy`)
+- **When** (`appliedAt` ISO timestamp)
+- **What** changed (`rule`, `field`, `oldValue`, `newValue`)
+- **Why** (`reason` — required, not optional)
+- **What evidence** (`advisorSuggestionId` — links the change to the specific suggestion that motivated it)
+- **Current status** (`ACTIVE` or `REVERTED`)
+
+Every revert is also fully logged, recording `revertedAt` and `revertedBy`. The audit trail is append-only from the API perspective — there is no delete method.
+
+This trail answers the question that will inevitably arise after an incident: "Who changed this threshold, when, why, and based on what data?" Without this record, threshold changes evaporate into undocumented institutional memory. With it, every policy decision is auditable.
+
+### Honesty About Limitations
+
+The system makes no claim to precision. A noise score of 82 does not mean "this rule is 82% noise." It means "the pattern of operator behavior on this rule looks more like reflexive approval than deliberate review." The numbers are directional indicators, not ground truth.
+
+The `LOW` confidence warning — applied to any rule with fewer than 50 events — makes this explicit in the output rather than leaving it as a footnote in documentation. A system that hides uncertainty about its own recommendations is more dangerous than one that is transparent about it.
+
+The correct posture toward these metrics is: use them to ask better questions, not to generate automatic answers.
+
+---
+
+## 14. Multi-Agent Delegation Chains
 
 When a delegated agent needs to hand off a subtask to another agent, the chain of authority must remain auditable and bounded. AuthProof's `DelegationChain` primitive enforces three invariants at every hop.
 
@@ -838,7 +925,7 @@ The root receipt is the only trust anchor in the delegation chain. If the root c
 ---
 
 
-## 14. Conclusion
+## 15. Conclusion
 
 The agentic AI deployment model creates a trust problem that existing identity and authorization frameworks were not designed to address. The operator sits between the user and the agent with unchecked authority over what the agent is instructed to do. AuthProof makes that authority cryptographically bounded, the user's original intent immutably recorded, and operator deviation provable from a public log. The three-layer trust stack — signed capability manifest, Delegation Receipt, and Safescript execution binding — systematically eliminates trusted intermediaries from the agentic delegation chain.
 

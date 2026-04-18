@@ -9,8 +9,12 @@
  * against five deterministic checks. The session accumulates trust (or loses it)
  * as actions succeed or trigger anomalies. Suspended sessions block everything.
  *
+ * Emits 'approvalRequired' when evaluate() returns REQUIRE_APPROVAL, enabling
+ * ApprovalOutcomeLogger and other listeners to react without polling.
+ *
  * @example
  * const session = new SessionState({ receiptHash, policy: { blockThreshold: 85 } });
+ * session.on('approvalRequired', evt => logger.recordOutcome({ ...evt, outcome: 'APPROVED' }));
  * const decision = await session.evaluate({ action, payload });
  * await session.record(action, decision);
  * const state = session.getState();
@@ -94,6 +98,34 @@ class SessionState {
 
     this._scorer     = new RiskScorer();
     this._classifier = new SensitivityClassifier();
+
+    // Event emitter — no external deps
+    /** @private {Map<string, Function[]>} */
+    this._handlers = new Map();
+  }
+
+  // ─── Event emitter ─────────────────────────────────────────────────────────
+
+  /**
+   * Register a listener for a session event.
+   * @param {string}   event
+   * @param {Function} handler
+   * @returns {SessionState}
+   */
+  on(event, handler) {
+    if (!this._handlers.has(event)) this._handlers.set(event, []);
+    this._handlers.get(event).push(handler);
+    return this;
+  }
+
+  /**
+   * Emit a session event to all registered listeners.
+   * @param {string} event
+   * @param {*}      data
+   */
+  emit(event, data) {
+    const handlers = this._handlers.get(event) ?? [];
+    for (const h of handlers) h(data);
   }
 
   // ─── Status ────────────────────────────────────────────────────────────────
@@ -112,6 +144,9 @@ class SessionState {
 
   /**
    * Evaluate whether an action should be allowed.
+   *
+   * Emits 'approvalRequired' when the decision is REQUIRE_APPROVAL, carrying:
+   *   { sessionId, receiptHash, riskScore, decision, timestamp }
    *
    * @param {object} opts
    * @param {string|object} opts.action                — action the agent wants to take
@@ -179,6 +214,17 @@ class SessionState {
       decision = 'REQUIRE_APPROVAL';
     } else {
       decision = 'ALLOW';
+    }
+
+    // Emit event so ApprovalOutcomeLogger and other listeners can act synchronously
+    if (decision === 'REQUIRE_APPROVAL') {
+      this.emit('approvalRequired', {
+        sessionId:   this._sessionId,
+        receiptHash: this._receiptHash,
+        riskScore:   Math.round(riskScore),
+        decision,
+        timestamp:   Date.now(),
+      });
     }
 
     return {
