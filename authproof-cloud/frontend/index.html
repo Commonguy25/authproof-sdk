@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Authproof Cloud — Hosted delegation log for AI agents</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      border-radius: 0 !important;
+    }
+
+    :root {
+      --green: #00FF41;
+      --black: #000000;
+      --surface: #0a0a0a;
+      --border: #222;
+      --gray: #999;
+      --white: #ffffff;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--black);
+      color: var(--white);
+      font-family: 'Inter', sans-serif;
+      font-size: 16px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    /* ── Layout ── */
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    section { padding: 80px 0; border-top: 1px solid var(--border); }
+    section:first-of-type { border-top: none; }
+
+    /* ── Nav ── */
+    nav {
+      border-bottom: 1px solid var(--border);
+      padding: 18px 0;
+    }
+    nav .container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .nav-logo {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      color: var(--green);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .nav-links {
+      display: flex;
+      gap: 32px;
+      list-style: none;
+    }
+    .nav-links a {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--gray);
+      letter-spacing: 0.05em;
+      transition: color 0.15s;
+    }
+    .nav-links a:hover { color: var(--green); }
+
+    /* ── Hero ── */
+    .hero { padding: 96px 0 80px; border-top: none; }
+    .hero-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--green);
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      margin-bottom: 24px;
+    }
+    .hero h1 {
+      font-family: 'Inter', sans-serif;
+      font-size: clamp(32px, 5vw, 56px);
+      font-weight: 700;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+      color: var(--white);
+      max-width: 760px;
+      margin-bottom: 24px;
+    }
+    .hero p {
+      font-size: 18px;
+      color: var(--gray);
+      max-width: 560px;
+      margin-bottom: 40px;
+      line-height: 1.7;
+    }
+    .hero-buttons {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .btn {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      padding: 14px 28px;
+      border: none;
+      cursor: pointer;
+      display: inline-block;
+      transition: opacity 0.15s;
+      text-transform: uppercase;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn-primary { background: var(--green); color: var(--black); }
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--green);
+      color: var(--green);
+    }
+
+    /* ── Features ── */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 48px;
+    }
+    .feature {
+      border-left: 2px solid var(--green);
+      padding-left: 20px;
+    }
+    .feature h3 {
+      font-family: 'Inter', sans-serif;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--white);
+      margin-bottom: 10px;
+    }
+    .feature p {
+      font-size: 14px;
+      color: var(--gray);
+      line-height: 1.7;
+    }
+
+    /* ── Pricing ── */
+    .section-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--green);
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      margin-bottom: 40px;
+    }
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      max-width: 760px;
+    }
+    .pricing-card {
+      border: 1px solid var(--border);
+      padding: 40px;
+    }
+    .pricing-card.pro {
+      border-color: var(--green);
+      background: var(--surface);
+    }
+    .price {
+      font-family: 'Inter', sans-serif;
+      font-size: 36px;
+      font-weight: 700;
+      color: var(--white);
+      margin-bottom: 6px;
+    }
+    .pricing-card.pro .price { color: var(--green); }
+    .price-period {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--gray);
+      margin-bottom: 32px;
+    }
+    .pricing-features {
+      list-style: none;
+      margin-bottom: 36px;
+    }
+    .pricing-features li {
+      font-size: 14px;
+      color: var(--gray);
+      padding: 8px 0;
+      border-bottom: 1px solid #111;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .pricing-features li::before {
+      content: '→';
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--green);
+      flex-shrink: 0;
+    }
+
+    /* ── Quick start ── */
+    .terminal {
+      background: var(--surface);
+      border: 1px solid var(--green);
+      position: relative;
+    }
+    .terminal-bar {
+      background: #111;
+      border-bottom: 1px solid #1a1a1a;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .terminal-dots {
+      display: flex;
+      gap: 6px;
+    }
+    .dot {
+      width: 10px;
+      height: 10px;
+      background: #333;
+    }
+    .copy-btn {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--gray);
+      background: transparent;
+      border: 1px solid #333;
+      padding: 4px 12px;
+      cursor: pointer;
+      letter-spacing: 0.05em;
+      transition: all 0.15s;
+    }
+    .copy-btn:hover { border-color: var(--green); color: var(--green); }
+    .terminal-body {
+      padding: 28px 32px;
+      overflow-x: auto;
+    }
+    .terminal-body pre {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      color: var(--green);
+      line-height: 1.8;
+      white-space: pre;
+    }
+    .terminal-body pre .comment { color: #3a7a4a; }
+    .terminal-body pre .keyword { color: #7dffa0; }
+
+    /* ── Footer ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 40px 0;
+    }
+    .footer-links {
+      display: flex;
+      gap: 32px;
+      list-style: none;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    .footer-links a {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--gray);
+      letter-spacing: 0.05em;
+      transition: color 0.15s;
+    }
+    .footer-links a:hover { color: var(--green); }
+    .footer-tagline {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: #444;
+      letter-spacing: 0.05em;
+    }
+
+    /* ── Responsive ── */
+    .nav-mobile { display: none; }
+
+    @media (max-width: 768px) {
+      .features-grid { grid-template-columns: 1fr; gap: 32px; }
+      .pricing-grid { grid-template-columns: 1fr; }
+      .nav-links { display: none; }
+      .nav-mobile {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .hero h1 { font-size: 30px; }
+      .hero p { font-size: 16px; }
+      .terminal-body { padding: 20px; }
+      .terminal-body pre { font-size: 12px; }
+    }
+
+    @media (max-width: 640px) {
+      /* Nav */
+      nav { padding: 14px 0; }
+
+      /* Hero — reduce vertical padding and font sizes */
+      .hero { padding: 56px 0 40px; }
+      .hero h1 { font-size: 26px; letter-spacing: -0.01em; }
+      .hero p { font-size: 15px; margin-bottom: 24px; }
+      .hero-buttons { gap: 12px; }
+      .btn { font-size: 12px; padding: 12px 22px; }
+
+      /* Sections */
+      section { padding: 56px 0; }
+
+      /* Pricing */
+      .pricing-card { padding: 28px 24px; }
+      .price { font-size: 28px; }
+
+      /* Quick-start terminal */
+      .terminal-body { padding: 16px; }
+      .terminal-body pre { font-size: 11px; }
+
+      /* Footer */
+      .footer-links { gap: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Nav -->
+  <nav>
+    <div class="container">
+      <span class="nav-logo">Authproof Cloud</span>
+      <ul class="nav-links">
+        <li><a href="#pricing">Pricing</a></li>
+        <li><a href="#quickstart">Quick start</a></li>
+        <li><a href="https://github.com/Commonguy25/authproof-sdk">Docs</a></li>
+        <li><a href="/login">Log in</a></li>
+        <li><a href="/signup" class="btn btn-primary" style="padding: 8px 18px; font-size: 11px;">Start free</a></li>
+      </ul>
+      <div class="nav-mobile">
+        <a href="/login" style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gray);letter-spacing:0.05em;">Log in</a>
+        <a href="/signup" class="btn btn-primary" style="padding: 8px 16px; font-size: 11px;">Start free</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="container">
+      <div class="hero-label">Authproof Cloud</div>
+      <h1>Your agents need a log they can't lie about.</h1>
+      <p>Hosted delegation receipts for AI agents. Cryptographic proof of authorization before every action. No infrastructure to run.</p>
+      <div class="hero-buttons">
+        <a href="/signup" class="btn btn-primary">Start free</a>
+        <a href="https://github.com/Commonguy25/authproof-sdk" class="btn btn-outline">Read the docs</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section>
+    <div class="container">
+      <div class="features-grid">
+        <div class="feature">
+          <h3>1,000 receipts free</h3>
+          <p>No credit card. No time limit. Real cryptographic receipts stored on our infrastructure.</p>
+        </div>
+        <div class="feature">
+          <h3>Drop-in SDK config</h3>
+          <p>One line to point authproof at the hosted log. Works with every existing integration.</p>
+        </div>
+        <div class="feature">
+          <h3>HIPAA and SOC2 ready</h3>
+          <p>Tamper-evident log with RFC 3161 timestamps. Independently verifiable audit trail.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing -->
+  <section id="pricing">
+    <div class="container">
+      <div class="section-label">Pricing</div>
+      <div class="pricing-grid">
+        <div class="pricing-card">
+          <div class="price">$0</div>
+          <div class="price-period">/ month</div>
+          <ul class="pricing-features">
+            <li>1,000 receipts</li>
+            <li>Full verification API</li>
+            <li>7-check pre-execution gate</li>
+            <li>Community support</li>
+          </ul>
+          <a href="/signup" class="btn btn-outline" style="width: 100%; text-align: center; display: block;">Start free</a>
+        </div>
+        <div class="pricing-card pro">
+          <div class="price">$49</div>
+          <div class="price-period">/ month</div>
+          <ul class="pricing-features">
+            <li>Unlimited receipts</li>
+            <li>Everything in free</li>
+            <li>Priority support</li>
+            <li>Audit export</li>
+            <li>SLA guarantee</li>
+          </ul>
+          <a href="/signup?plan=pro" class="btn btn-primary" style="width: 100%; text-align: center; display: block;">Upgrade to Pro</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Quick start -->
+  <section id="quickstart">
+    <div class="container">
+      <div class="section-label">Quick start</div>
+      <div class="terminal">
+        <div class="terminal-bar">
+          <div class="terminal-dots">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+          <button class="copy-btn" id="copyBtn" onclick="copyCode()">Copy</button>
+        </div>
+        <div class="terminal-body">
+          <pre id="codeBlock">npm install authproof
+
+import { AuthProofClient } from 'authproof'
+
+const client = new AuthProofClient({
+  logEndpoint: 'https://cloud.authproof.dev',
+  apiKey: process.env.AUTHPROOF_API_KEY
+})
+
+const receipt = await client.delegate({
+  scope,
+  operatorInstructions,
+  expiresIn: '2h'
+})
+<span class="comment">// Receipt stored in hosted log automatically</span>
+<span class="comment">// Verifiable by any third party without trusting you</span></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      <ul class="footer-links">
+        <li><a href="https://github.com/Commonguy25/authproof-sdk">Docs</a></li>
+        <li><a href="https://github.com/Commonguy25/authproof-sdk">GitHub</a></li>
+        <li><a href="https://www.npmjs.com/package/authproof">npm</a></li>
+        <li><a href="https://authproof.dev">authproof.dev</a></li>
+        <li><a href="/support">Support</a></li>
+        <li><a href="/baa">BAA</a></li>
+        <li><a href="/terms">Terms of Service</a></li>
+        <li><a href="/privacy">Privacy Policy</a></li>
+      </ul>
+      <div class="footer-tagline">Built on cryptographic proof, not operator trust.</div>
+    </div>
+  </footer>
+
+  <script>
+    function copyCode() {
+      const code = document.getElementById('codeBlock').innerText;
+      navigator.clipboard.writeText(code).then(() => {
+        const btn = document.getElementById('copyBtn');
+        btn.textContent = 'Copied';
+        setTimeout(() => { btn.textContent = 'Copy'; }, 2000);

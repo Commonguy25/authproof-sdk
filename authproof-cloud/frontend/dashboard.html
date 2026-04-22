@@ -1,0 +1,1212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard — Authproof Cloud</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; border-radius: 0 !important; }
+
+    :root {
+      --bg:       #000000;
+      --surface:  #0a0a0a;
+      --surface2: #111111;
+      --border:   #222;
+      --green:    #00FF41;
+      --green-dim: #00661a;
+      --yellow:   #FFB700;
+      --red:      #ff4444;
+      --text:     #d4d4d4;
+      --muted:    #666;
+      --white:    #ffffff;
+      --mono:     'JetBrains Mono', 'Courier New', monospace;
+      --sans:     'Inter', sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 14px;
+      line-height: 1.6;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    /* ── Nav ── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      padding: 0 40px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .nav-logo {
+      font-family: var(--mono);
+      color: var(--green);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .nav-center {
+      display: flex;
+      gap: 0;
+      list-style: none;
+    }
+    .nav-center a {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: 0.04em;
+      padding: 8px 18px;
+      transition: color 0.15s;
+      border-bottom: 2px solid transparent;
+    }
+    .nav-center a:hover { color: var(--white); }
+    .nav-center a.active { color: var(--green); border-bottom-color: var(--green); }
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .nav-email {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .btn-logout {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      background: transparent;
+      border: 1px solid var(--border);
+      padding: 6px 14px;
+      cursor: pointer;
+      letter-spacing: 0.04em;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .btn-logout:hover { border-color: var(--red); color: var(--red); }
+
+    /* ── Layout ── */
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 40px;
+    }
+
+    /* ── Overview bar ── */
+    .overview-bar {
+      border-bottom: 1px solid var(--border);
+      padding: 24px 0;
+    }
+    .overview-inner {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+      flex-wrap: wrap;
+    }
+    .plan-badge {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      padding: 4px 10px;
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+    .plan-badge.pro { border-color: var(--green); color: var(--green); }
+
+    .usage-wrap {
+      flex: 1;
+      min-width: 200px;
+      max-width: 340px;
+    }
+    .usage-text {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+    .usage-track {
+      height: 3px;
+      background: var(--surface2);
+      width: 100%;
+    }
+    .usage-fill {
+      height: 100%;
+      background: var(--green);
+      width: 0%;
+      transition: width 0.4s ease;
+    }
+    .usage-fill.warn { background: var(--yellow); }
+    .usage-fill.danger { background: var(--red); }
+
+    .apikey-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .apikey-display {
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--green);
+      letter-spacing: 0.02em;
+    }
+    .btn-copy {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      background: transparent;
+      border: 1px solid var(--border);
+      padding: 4px 12px;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .btn-copy:hover { border-color: var(--green); color: var(--green); }
+    .btn-copy.copied { border-color: var(--green); color: var(--green); }
+
+    .btn-upgrade {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      color: #000;
+      background: var(--green);
+      border: none;
+      padding: 8px 18px;
+      cursor: pointer;
+      transition: opacity 0.15s;
+      white-space: nowrap;
+      display: none;
+    }
+    .btn-upgrade:hover { opacity: 0.85; }
+
+    /* ── Sections ── */
+    .section {
+      padding: 40px 0 0;
+    }
+    .section-last { padding-bottom: 60px; }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .section-title {
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--white);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    /* ── Table ── */
+    .tbl-wrap {
+      border: 1px solid var(--border);
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: var(--mono);
+      font-size: 12px;
+    }
+    thead th {
+      padding: 10px 16px;
+      text-align: left;
+      color: var(--muted);
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      font-size: 11px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      white-space: nowrap;
+    }
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--surface); }
+    tbody tr.expanded { background: var(--surface); }
+    tbody td {
+      padding: 12px 16px;
+      color: var(--text);
+      vertical-align: top;
+    }
+    .detail-row { display: none; }
+    .detail-row.open { display: table-row; }
+    .detail-row td {
+      padding: 0 16px 16px;
+      cursor: default;
+    }
+    .detail-row:hover { background: var(--surface) !important; }
+    pre.json-block {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      padding: 14px 16px;
+      color: var(--green);
+      font-size: 11px;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+      font-family: var(--mono);
+    }
+
+    /* status / decision colors */
+    .status-active   { color: var(--green); }
+    .status-revoked  { color: var(--red); }
+    .status-expired  { color: var(--muted); }
+    .decision-allow  { color: var(--green); font-weight: 600; }
+    .decision-block  { color: var(--red); font-weight: 600; }
+    .decision-review { color: var(--yellow); font-weight: 600; }
+
+    /* no-data rows */
+    .empty-row td {
+      padding: 40px 24px;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 12px;
+      cursor: default;
+    }
+    .empty-row:hover { background: transparent !important; }
+    .empty-row code {
+      display: block;
+      margin-top: 12px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      padding: 12px 16px;
+      color: var(--green);
+      font-size: 11px;
+      white-space: pre;
+      cursor: text;
+    }
+
+    /* ── API Key Management ── */
+    .key-mgmt-card {
+      border: 1px solid var(--border);
+      padding: 24px 28px;
+      background: var(--surface);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+    .key-mgmt-left { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .key-label {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-right: 4px;
+    }
+    .key-value {
+      font-family: var(--mono);
+      font-size: 14px;
+      color: var(--green);
+    }
+    .btn-regen {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      background: transparent;
+      border: 1px solid var(--border);
+      padding: 8px 18px;
+      cursor: pointer;
+      letter-spacing: 0.04em;
+      transition: border-color 0.15s, color 0.15s;
+      white-space: nowrap;
+    }
+    .btn-regen:hover { border-color: var(--yellow); color: var(--yellow); }
+
+    /* ── Regenerate modal ── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 32px;
+      max-width: 460px;
+      width: 90%;
+    }
+    .modal-title {
+      font-family: var(--mono);
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--white);
+      margin-bottom: 12px;
+      letter-spacing: 0.04em;
+    }
+    .modal-body {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text);
+      margin-bottom: 8px;
+      line-height: 1.7;
+    }
+    .modal-warn {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--yellow);
+      margin-bottom: 24px;
+    }
+    .modal-actions { display: flex; gap: 12px; }
+    .btn-confirm {
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 700;
+      background: var(--red);
+      color: #fff;
+      border: none;
+      padding: 10px 20px;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .btn-confirm:hover { opacity: 0.85; }
+    .btn-confirm:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-cancel {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--muted);
+      background: transparent;
+      border: 1px solid var(--border);
+      padding: 10px 20px;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .btn-cancel:hover { border-color: var(--white); color: var(--white); }
+
+    .new-key-reveal {
+      display: none;
+      margin-top: 20px;
+    }
+    .new-key-reveal.open { display: block; }
+    .new-key-label {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 8px;
+    }
+    .new-key-value {
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--green);
+      background: var(--surface2);
+      border: 1px solid var(--green-dim);
+      padding: 12px 16px;
+      word-break: break-all;
+      margin-bottom: 12px;
+    }
+
+    /* ── Loading / error states ── */
+    .page-loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: calc(100vh - 56px);
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .page-error {
+      display: none;
+      padding: 40px;
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--red);
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 13px;
+      height: 13px;
+      border: 2px solid currentColor;
+      border-top-color: transparent;
+      border-radius: 50% !important;
+      animation: spin 0.6s linear infinite;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 700px) {
+      nav { padding: 0 20px; }
+      .nav-center { display: none; }
+      .container { padding: 0 20px; }
+      .overview-inner { gap: 16px; }
+      .key-mgmt-card { flex-direction: column; align-items: flex-start; }
+    }
+
+    @media (max-width: 640px) {
+      /* Nav */
+      nav { padding: 0 16px; }
+      .nav-email { display: none; }
+      .btn-logout { font-size: 11px; padding: 5px 10px; }
+
+      /* Layout */
+      .container { padding: 0 16px; }
+
+      /* Overview bar — stack vertically */
+      .overview-inner {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 14px;
+      }
+      .usage-wrap {
+        min-width: unset;
+        max-width: 100%;
+        width: 100%;
+      }
+      .apikey-wrap { width: 100%; }
+      .apikey-display {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: calc(100% - 90px);
+        display: inline-block;
+      }
+      .btn-upgrade { width: 100%; text-align: center; }
+
+      /* Sections */
+      .section { padding: 24px 0 0; }
+      .section-last { padding-bottom: 40px; }
+
+      /* Tables — ensure horizontal scroll */
+      .tbl-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+      /* API key management card */
+      .key-mgmt-card { padding: 16px 20px; }
+      .key-mgmt-left { flex-direction: column; align-items: flex-start; gap: 8px; }
+      .key-value { font-size: 12px; word-break: break-all; }
+      .btn-regen { width: 100%; text-align: center; }
+
+      /* Modal */
+      .modal { padding: 24px 20px; }
+      .modal-actions { flex-direction: column; }
+      .btn-confirm, .btn-cancel { width: 100%; text-align: center; }
+    }
+
+    /* ── Tool call stat cards ── */
+    .stat-cards-row {
+      display: flex;
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      margin-bottom: 20px;
+    }
+    .stat-card {
+      flex: 1;
+      background: var(--surface);
+      padding: 16px 20px;
+      min-width: 0;
+    }
+    .stat-card-label {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 6px;
+    }
+    .stat-card-value {
+      font-family: var(--mono);
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--white);
+    }
+
+    /* decision colors for tool calls table */
+    .tc-allowed { color: var(--green); font-weight: 600; }
+    .tc-blocked  { color: var(--red);  font-weight: 600; }
+    .tc-flagged  { color: var(--yellow); font-weight: 600; }
+
+    /* fix: decision-deny was undefined — map it to red */
+    .decision-deny { color: var(--red); font-weight: 600; }
+
+    /* ── Flash banners ── */
+    .flash-banner {
+      padding: 14px 0;
+      text-align: center;
+      font-family: var(--mono);
+      font-size: 13px;
+      display: none;
+    }
+    .flash-banner.success { background: rgba(0,255,65,0.08); color: var(--green); border-bottom: 1px solid rgba(0,255,65,0.2); }
+    .flash-banner.warning { background: rgba(255,183,0,0.08); color: var(--yellow); border-bottom: 1px solid rgba(255,183,0,0.2); }
+
+    /* ── Export card ── */
+    .export-card {
+      border: 1px solid var(--border);
+      background: var(--surface);
+      padding: 24px 28px;
+    }
+    .export-row {
+      display: flex;
+      align-items: flex-end;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .export-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .export-label {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .form-input, .form-select {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      padding: 8px 12px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .form-input:focus, .form-select:focus { border-color: var(--green); }
+    .form-select { cursor: pointer; }
+    .export-actions { display: flex; gap: 10px; align-items: flex-end; }
+    .btn-export {
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 700;
+      color: #000;
+      background: var(--green);
+      border: none;
+      padding: 9px 20px;
+      cursor: pointer;
+      transition: opacity 0.15s;
+      white-space: nowrap;
+    }
+    .btn-export:hover { opacity: 0.85; }
+    .btn-report {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--muted);
+      background: transparent;
+      border: 1px solid var(--border);
+      padding: 9px 20px;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+      white-space: nowrap;
+    }
+    .btn-report:hover { border-color: var(--white); color: var(--white); }
+
+    @media (max-width: 640px) {
+      .stat-cards-row { flex-direction: column; gap: 1px; }
+      .export-row { flex-direction: column; align-items: flex-start; }
+      .export-field { width: 100%; }
+      .form-input, .form-select { width: 100%; }
+      .export-actions { width: 100%; flex-direction: column; }
+      .btn-export, .btn-report { width: 100%; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav>
+  <a class="nav-logo" href="/">Authproof Cloud</a>
+  <ul class="nav-center">
+    <li><a href="/dashboard" class="active">Dashboard</a></li>
+    <li><a href="https://github.com/Commonguy25/authproof-sdk" target="_blank">Docs</a></li>
+    <li><a href="/support">Support</a></li>
+    <li><a href="/baa">BAA</a></li>
+  </ul>
+  <div class="nav-right">
+    <span class="nav-email" id="navEmail">—</span>
+    <button class="btn-logout" onclick="handleLogout()">Logout</button>
+  </div>
+</nav>
+
+<!-- Flash banners -->
+<div class="flash-banner success" id="upgradedBanner">🎉 You're now on Pro. Welcome aboard.</div>
+<div class="flash-banner warning" id="canceledBanner">Checkout canceled — you're still on the free plan.</div>
+
+<!-- Page content (hidden until data loads) -->
+<div id="pageLoading" class="page-loading">
+  <span class="spinner"></span>Loading dashboard…
+</div>
+<div id="pageError" class="page-error"></div>
+
+<div id="pageContent" style="display:none;">
+
+  <!-- Overview bar -->
+  <div class="overview-bar">
+    <div class="container">
+      <div class="overview-inner">
+        <span class="plan-badge" id="planBadge">FREE</span>
+
+        <div class="usage-wrap">
+          <div class="usage-text" id="usageText">— / — receipts this month</div>
+          <div class="usage-track"><div class="usage-fill" id="usageFill"></div></div>
+        </div>
+
+        <div class="apikey-wrap">
+          <span class="apikey-display" id="apikeyMasked">••••••••••••••••</span>
+          <button class="btn-copy" id="overviewCopyBtn" onclick="copyApiKey('overviewCopyBtn')">Copy</button>
+        </div>
+
+        <button class="btn-upgrade" id="upgradeBtn" onclick="goToCheckout()">
+          Upgrade to Pro →
+        </button>
+        <button class="btn-upgrade" id="billingBtn" style="display:none;background:transparent;color:var(--green);border:1px solid var(--green);" onclick="goToBilling()">
+          Manage billing
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Help strip -->
+  <div style="border-bottom:1px solid var(--border);padding:12px 0;">
+    <div class="container">
+      <div style="display:flex;gap:24px;align-items:center;flex-wrap:wrap;">
+        <span style="font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:0.06em;text-transform:uppercase;">Help</span>
+        <a href="/support" style="font-family:var(--mono);font-size:12px;color:var(--muted);transition:color 0.15s;" onmouseover="this.style.color='#00FF41'" onmouseout="this.style.color='var(--muted)'">Support →</a>
+        <a href="/baa" style="font-family:var(--mono);font-size:12px;color:var(--muted);transition:color 0.15s;" onmouseover="this.style.color='#00FF41'" onmouseout="this.style.color='var(--muted)'">Business Associate Agreement →</a>
+        <a href="https://github.com/Commonguy25/authproof-sdk" target="_blank" style="font-family:var(--mono);font-size:12px;color:var(--muted);transition:color 0.15s;" onmouseover="this.style.color='#00FF41'" onmouseout="this.style.color='var(--muted)'">Docs →</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Receipts -->
+  <div class="section">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-title">Recent Receipts</span>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Receipt Hash</th>
+              <th>Created At</th>
+              <th>Expires At</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="receiptsBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Verifications -->
+  <div class="section">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-title">Recent Verifications</span>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Receipt Hash</th>
+              <th>Decision</th>
+              <th>Risk Score</th>
+              <th>Timestamp</th>
+            </tr>
+          </thead>
+          <tbody id="verificationsBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tool Calls -->
+  <div class="section">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-title">Tool Calls</span>
+      </div>
+      <div class="stat-cards-row">
+        <div class="stat-card">
+          <div class="stat-card-label">Total</div>
+          <div class="stat-card-value" id="tcTotal">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-label">Allowed</div>
+          <div class="stat-card-value tc-allowed" id="tcAllowed">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-label">Blocked</div>
+          <div class="stat-card-value tc-blocked" id="tcBlocked">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-label">Flagged</div>
+          <div class="stat-card-value tc-flagged" id="tcFlagged">—</div>
+        </div>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Tool</th>
+              <th>Decision</th>
+              <th>Risk</th>
+              <th>Session</th>
+            </tr>
+          </thead>
+          <tbody id="toolCallsBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Export & Reports -->
+  <div class="section">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-title">Export &amp; Reports</span>
+      </div>
+      <div class="export-card">
+        <div class="export-row">
+          <div class="export-field">
+            <label class="export-label" for="exportFrom">From</label>
+            <input class="form-input" type="date" id="exportFrom" />
+          </div>
+          <div class="export-field">
+            <label class="export-label" for="exportTo">To</label>
+            <input class="form-input" type="date" id="exportTo" />
+          </div>
+          <div class="export-field">
+            <label class="export-label" for="exportFormat">Format</label>
+            <select class="form-select" id="exportFormat">
+              <option value="json">JSON</option>
+              <option value="csv">CSV</option>
+            </select>
+          </div>
+          <div class="export-actions">
+            <button class="btn-export" onclick="doExport()">Export</button>
+            <button class="btn-report" onclick="openReport()">Printable Report</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- API Key Management -->
+  <div class="section section-last">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-title">API Key</span>
+      </div>
+      <div class="key-mgmt-card">
+        <div class="key-mgmt-left">
+          <span class="key-label">Key</span>
+          <span class="key-value" id="keyMgmtMasked">••••••••••••••••</span>
+          <button class="btn-copy" id="keyMgmtCopyBtn" onclick="copyApiKey('keyMgmtCopyBtn')">Copy</button>
+        </div>
+        <button class="btn-regen" onclick="openRegenModal()">Regenerate key</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Regenerate Key Modal -->
+<div class="modal-overlay" id="regenModal" onclick="closeRegenModal(event)">
+  <div class="modal">
+    <div class="modal-title">Regenerate API key?</div>
+    <p class="modal-body">This will generate a new API key for your account.</p>
+    <p class="modal-warn">Your old API key will stop working immediately. All integrations using it will break.</p>
+
+    <div id="regenActions" class="modal-actions">
+      <button class="btn-confirm" id="regenConfirmBtn" onclick="confirmRegen()">Yes, regenerate</button>
+      <button class="btn-cancel" onclick="closeRegenModal()">Cancel</button>
+    </div>
+
+    <div class="new-key-reveal" id="newKeyReveal">
+      <div class="new-key-label">New API Key — save this now</div>
+      <div class="new-key-value" id="newKeyValue"></div>
+      <button class="btn-copy" id="newKeyCopyBtn" onclick="copyNewKey()">Copy new key</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── Auth guard ──────────────────────────────────────────────────────────────
+  const AP_TOKEN = localStorage.getItem('ap_token');
+  let AP_KEY = localStorage.getItem('ap_key');
+
+  if (!AP_TOKEN) {
+    window.location.href = '/login';
+  }
+
+  function clearAndRedirect() {
+    localStorage.clear();
+    window.location.href = '/login';
+  }
+
+  async function apiFetch(url, opts = {}) {
+    const res = await fetch(url, {
+      ...opts,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + AP_KEY,
+        ...(opts.headers || {}),
+      },
+    });
+    if (res.status === 401) {
+      clearAndRedirect();
+      return null;
+    }
+    return res;
+  }
+
+  // ── Load dashboard ──────────────────────────────────────────────────────────
+  async function loadDashboard() {
+    try {
+      const res = await apiFetch('/api/dashboard');
+      if (!res) return;
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to load dashboard');
+      }
+
+      const data = await res.json();
+      renderOverview(data);
+      renderReceipts(data.recentReceipts || []);
+      renderVerifications(data.recentVerifications || []);
+      renderToolCalls(data.recentToolCalls || [], data.toolCallStats);
+
+      document.getElementById('pageLoading').style.display = 'none';
+      document.getElementById('pageContent').style.display = 'block';
+
+    } catch (err) {
+      document.getElementById('pageLoading').style.display = 'none';
+      const el = document.getElementById('pageError');
+      el.style.display = 'block';
+      el.textContent = 'Error loading dashboard: ' + err.message;
+    }
+  }
+
+  // ── Render overview ─────────────────────────────────────────────────────────
+  function renderOverview({ account }) {
+    document.getElementById('navEmail').textContent = account.email || '';
+
+    const badge = document.getElementById('planBadge');
+    badge.textContent = account.plan.toUpperCase();
+    if (account.plan === 'pro') badge.classList.add('pro');
+
+    const count = (account.receiptCount ?? 0).toLocaleString();
+    const limit = account.monthlyLimit != null ? account.monthlyLimit.toLocaleString() : '∞';
+    document.getElementById('usageText').textContent = `${count} / ${limit} receipts this month`;
+
+    const pct = Math.min(account.usagePercent ?? 0, 100);
+    const fill = document.getElementById('usageFill');
+    fill.style.width = pct + '%';
+    if (pct >= 90) fill.classList.add('danger');
+    else if (pct >= 75) fill.classList.add('warn');
+
+    const masked = AP_KEY ? AP_KEY.slice(0, 8) + '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022' : '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022';
+    document.getElementById('apikeyMasked').textContent = masked;
+    document.getElementById('keyMgmtMasked').textContent = masked;
+
+    if (account.plan === 'free') {
+      document.getElementById('upgradeBtn').style.display = 'inline-block';
+    } else {
+      document.getElementById('billingBtn').style.display = 'inline-block';
+    }
+  }
+
+  // ── Render receipts ─────────────────────────────────────────────────────────
+  function getReceiptStatus(r) {
+    if (r.revoked) return { label: 'Revoked', cls: 'status-revoked' };
+    if (r.expires_at && new Date(r.expires_at) < new Date()) return { label: 'Expired', cls: 'status-expired' };
+    return { label: 'Active', cls: 'status-active' };
+  }
+
+  function fmtDate(iso) {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
+
+  function renderReceipts(receipts) {
+    const tbody = document.getElementById('receiptsBody');
+    if (!receipts.length) {
+      tbody.innerHTML = `<tr class="empty-row"><td colspan="4">No receipts yet. Configure your SDK to start storing receipts.<code>new AuthProofClient({
+  logEndpoint: 'https://cloud.authproof.dev',
+  apiKey: 'YOUR_API_KEY'
+})</code></td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = receipts.map((r, i) => {
+      const { label, cls } = getReceiptStatus(r);
+      const hash = r.receipt_hash || '';
+      const shortHash = hash.slice(0, 16) + (hash.length > 16 ? '\u2026' : '');
+      const json = JSON.stringify(r.receipt_data, null, 2);
+      return `<tr onclick="toggleRow(${i})" id="row-${i}">
+        <td style="font-family:var(--mono);font-size:12px;">${shortHash}</td>
+        <td>${fmtDate(r.created_at)}</td>
+        <td>${r.expires_at ? fmtDate(r.expires_at) : '—'}</td>
+        <td class="${cls}">${label}</td>
+      </tr>
+      <tr class="detail-row" id="detail-${i}">
+        <td colspan="4"><pre class="json-block">${escHtml(json)}</pre></td>
+      </tr>`;
+    }).join('');
+  }
+
+  function toggleRow(i) {
+    const row = document.getElementById('row-' + i);
+    const detail = document.getElementById('detail-' + i);
+    const isOpen = detail.classList.contains('open');
+    detail.classList.toggle('open', !isOpen);
+    row.classList.toggle('expanded', !isOpen);
+  }
+
+  // ── Render verifications ────────────────────────────────────────────────────
+  function getDecisionDisplay(d) {
+    if (d === 'allow')  return { label: 'ALLOW',  cls: 'decision-allow' };
+    if (d === 'deny')   return { label: 'BLOCK',  cls: 'decision-deny' };
+    if (d === 'review') return { label: 'REVIEW', cls: 'decision-review' };
+    return { label: d?.toUpperCase() || '—', cls: '' };
+  }
+
+  function renderVerifications(verifications) {
+    const tbody = document.getElementById('verificationsBody');
+    if (!verifications.length) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="4">No verifications yet.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = verifications.map(v => {
+      const { label, cls } = getDecisionDisplay(v.decision);
+      const hash = v.receipt_hash || '';
+      const shortHash = hash.slice(0, 16) + (hash.length > 16 ? '…' : '');
+      const risk = v.risk_score != null ? v.risk_score.toFixed(3) : '—';
+      return `<tr>
+        <td style="font-family:var(--mono);font-size:12px">${shortHash}</td>
+        <td class="${cls}">${label}</td>
+        <td>${risk}</td>
+        <td>${fmtDate(v.created_at)}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // ── Render tool calls ───────────────────────────────────────────────────────
+  function renderToolCalls(toolCalls, stats) {
+    if (stats) {
+      document.getElementById('tcTotal').textContent   = stats.total   ?? 0;
+      document.getElementById('tcAllowed').textContent = stats.allowed ?? 0;
+      document.getElementById('tcBlocked').textContent = stats.blocked ?? 0;
+      document.getElementById('tcFlagged').textContent = stats.flagged ?? 0;
+    }
+
+    const tbody = document.getElementById('toolCallsBody');
+    if (!toolCalls.length) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="5">No tool calls logged yet. Use POST /tool-calls to start auditing.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = toolCalls.map(tc => {
+      const decisionCls = tc.decision === 'allowed' ? 'tc-allowed'
+                        : tc.decision === 'blocked'  ? 'tc-blocked'
+                        : 'tc-flagged';
+      const risk = tc.risk_score != null ? tc.risk_score.toFixed(2) : '—';
+      const session = tc.session_id ? tc.session_id.slice(0, 12) + (tc.session_id.length > 12 ? '…' : '') : '—';
+      return `<tr>
+        <td>${fmtDate(tc.created_at)}</td>
+        <td style="font-family:var(--mono)">${escHtml(tc.tool_name)}</td>
+        <td class="${decisionCls}" style="font-weight:600">${tc.decision}</td>
+        <td>${risk}</td>
+        <td style="font-family:var(--mono);font-size:12px">${escHtml(session)}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // ── Export ──────────────────────────────────────────────────────────────────
+  async function doExport() {
+    const from   = document.getElementById('exportFrom').value;
+    const to     = document.getElementById('exportTo').value;
+    const format = document.getElementById('exportFormat').value;
+
+    const params = new URLSearchParams({ format });
+    if (from) params.set('from', from);
+    if (to)   params.set('to',   to);
+
+    const res = await apiFetch('/audit/export?' + params.toString());
+    if (!res) return;
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      alert('Export failed: ' + (err.error || res.statusText));
+      return;
+    }
+
+    const blob = await res.blob();
+    const ext  = format === 'csv' ? 'csv' : 'json';
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `audit-export.${ext}`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function openReport() {
+    const from   = document.getElementById('exportFrom').value;
+    const to     = document.getElementById('exportTo').value;
+    const params = new URLSearchParams();
+    if (AP_KEY) params.set('apiKey', AP_KEY);
+    if (from)   params.set('from', from);
+    if (to)     params.set('to',   to);
+    window.open('/audit/report?' + params.toString(), '_blank');
+  }
+
+  // ── Misc helpers ────────────────────────────────────────────────────────────
+  function escHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function copyApiKey(btnId) {
+    if (!AP_KEY) return;
+    navigator.clipboard.writeText(AP_KEY).then(() => {
+      const btn = document.getElementById(btnId);
+      const orig = btn.textContent;
+      btn.textContent = 'Copied!';
+      setTimeout(() => { btn.textContent = orig; }, 2000);
+    });
+  }
+
+  // ── Regen modal ─────────────────────────────────────────────────────────────
+  function openRegenModal()  { document.getElementById('regenModal').classList.add('open'); }
+  function closeRegenModal(e) {
+    if (e && e.target !== document.getElementById('regenModal')) return;
+    document.getElementById('regenModal').classList.remove('open');
+  }
+
+  async function confirmRegen() {
+    const btn = document.getElementById('regenConfirmBtn');
+    btn.disabled = true;
+    btn.textContent = 'Regenerating…';
+
+    const res = await apiFetch('/account/regenerate-key', { method: 'POST' });
+    if (!res) return;
+
+    const data = await res.json();
+    if (!res.ok) {
+      alert(data.error || 'Failed to regenerate key');
+      btn.disabled = false;
+      btn.textContent = 'Yes, regenerate';
+      return;
+    }
+
+    AP_KEY = data.apiKey;
+    localStorage.setItem('ap_key', AP_KEY);
+
+    document.getElementById('regenActions').style.display = 'none';
+    const reveal = document.getElementById('newKeyReveal');
+    reveal.style.display = 'block';
+    document.getElementById('newKeyValue').textContent = AP_KEY;
+
+    const masked = AP_KEY.slice(0, 8) + '••••••••';
+    document.getElementById('apikeyMasked').textContent  = masked;
+    document.getElementById('keyMgmtMasked').textContent = masked;
+  }
+
+  function copyNewKey() {
+    if (!AP_KEY) return;
+    navigator.clipboard.writeText(AP_KEY).then(() => {
+      const btn = document.getElementById('newKeyCopyBtn');
+      btn.textContent = 'Copied!';
+      setTimeout(() => { btn.textContent = 'Copy new key'; }, 2000);
+    });
+  }
+
+  // ── Upgrade button ──────────────────────────────────────────────────────────
+  async function goToCheckout() {
+    const btn = document.getElementById('upgradeBtn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Redirecting…'; }
+    const res = await apiFetch('/billing/checkout');
+    if (!res) return;
+    const data = await res.json();
+    if (data.checkoutUrl) {
+      window.location.href = data.checkoutUrl;
+    } else {
+      alert(data.error || 'Could not start checkout');
+      if (btn) { btn.disabled = false; btn.textContent = 'Upgrade to Pro'; }
+    }
+  }
+
+  // ── Logout ──────────────────────────────────────────────────────────────────
+  function handleLogout() { clearAndRedirect(); }
+
+  // ── Billing portal ──────────────────────────────────────────────────────────
+  async function goToBilling() {
+    const btn = document.getElementById('billingBtn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Redirecting…'; }
+    const res = await apiFetch('/billing/portal');
+    if (!res) return;
+    const data = await res.json();
+    if (data.portalUrl) {
+      window.location.href = data.portalUrl;
+    } else {
+      alert(data.error || 'Could not open billing portal');
+      if (btn) { btn.disabled = false; btn.textContent = 'Manage billing'; }
+    }
+  }
+
+  // ── Flash banners on return from Stripe ─────────────────────────────────────
+  (function checkStripeReturn() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('upgraded') === 'true') {
+      document.getElementById('upgradedBanner').style.display = 'block';
+      window.history.replaceState({}, '', '/dashboard');
+    } else if (params.get('canceled') === 'true') {
+      document.getElementById('canceledBanner').style.display = 'block';
+      window.history.replaceState({}, '', '/dashboard');
+    }
+  })();
+
+  // ── Init ────────────────────────────────────────────────────────────────────
+  loadDashboard();
+
+</script>
+
+<footer style="border-top:1px solid #222;padding:20px 40px;display:flex;gap:24px;align-items:center;flex-wrap:wrap">
+  <a href="/support" style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#666;text-decoration:none" onmouseover="this.style.color='#00FF41'" onmouseout="this.style.color='#666'">Support</a>
+  <a href="/baa" style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#666;text-decoration:none" onmouseover="this.style.color='#00FF41'" onmouseout="this.style.color='#666'">BAA</a>
+  <a href="/terms" style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#666;text-decoration:none" onmouseover="this.style.color='#00FF41'" onmouseout="this.style.color='#666'">Terms of Service</a>
+  <a href="/privacy" style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#666;text-decoration:none" onmouseover="this.style.color='#00FF41'" onmouseout="this.style.color='#666'">Privacy Policy</a>
+  <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#333;margin-left:auto">Built on cryptographic proof, not operator trust.</span>
+</footer>
+
+</body>
+</html>

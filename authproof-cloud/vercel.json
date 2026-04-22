@@ -1,0 +1,39 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "backend/server.js",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "frontend/**",
+      "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    { "src": "/",                "dest": "/frontend/index.html" },
+    { "src": "/auth/(.*)",       "dest": "/backend/server.js" },
+    { "src": "/receipts",        "dest": "/backend/server.js" },
+    { "src": "/receipts/(.*)",   "dest": "/backend/server.js" },
+    { "src": "/account",         "dest": "/backend/server.js" },
+    { "src": "/account/(.*)",    "dest": "/backend/server.js" },
+    { "src": "/api/(.*)",        "dest": "/backend/server.js" },
+    { "src": "/webhooks/(.*)",   "dest": "/backend/server.js" },
+    { "src": "/billing/(.*)",    "dest": "/backend/server.js" },
+    { "src": "/tool-calls",      "dest": "/backend/server.js" },
+    { "src": "/tool-calls/(.*)", "dest": "/backend/server.js" },
+    { "src": "/audit/(.*)",      "dest": "/backend/server.js" },
+    { "src": "/signup",          "dest": "/frontend/signup.html" },
+    { "src": "/signup.html",     "dest": "/frontend/signup.html" },
+    { "src": "/login",           "dest": "/frontend/login.html" },
+    { "src": "/login.html",      "dest": "/frontend/login.html" },
+    { "src": "/dashboard",        "dest": "/frontend/dashboard.html" },
+    { "src": "/dashboard.html",  "dest": "/frontend/dashboard.html" },
+    { "src": "/reset-password",  "dest": "/frontend/reset-password.html" },
+    { "src": "/terms",           "dest": "/frontend/terms.html" },
+    { "src": "/privacy",         "dest": "/frontend/privacy.html" },
+    { "src": "/support",         "dest": "/frontend/support.html" },
+    { "src": "/baa",             "dest": "/frontend/baa.html" },
+    { "src": "/(.*)",            "dest": "/frontend/$1" }
+  ]
+}
