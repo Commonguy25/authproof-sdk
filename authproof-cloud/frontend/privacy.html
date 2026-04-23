@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Privacy Policy — Authproof Cloud</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --blue:     #1a56db;
+      --gray-100: #f1f3f4;
+      --gray-200: #e5e7eb;
+      --gray-400: #9ca3af;
+      --gray-500: #6b7280;
+      --gray-600: #4b5563;
+      --gray-700: #374151;
+      --gray-900: #111111;
+      --white:    #ffffff;
+      --sans:     'Inter', sans-serif;
+      --mono:     'Courier New', monospace;
+    }
+
+    body {
+      background: #f8f9fa;
+      color: var(--gray-700);
+      font-family: var(--sans);
+      font-size: 15px;
+      line-height: 1.75;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    nav {
+      background: var(--white);
+      border-bottom: 1px solid var(--gray-200);
+      padding: 0 48px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .nav-logo { font-size: 17px; font-weight: 700; color: var(--gray-900); text-decoration: none; }
+    .nav-logo span { color: var(--blue); }
+    .nav-back { font-size: 14px; font-weight: 500; color: var(--gray-500); transition: color 0.15s; }
+    .nav-back:hover { color: var(--gray-900); text-decoration: none; }
+
+    main { flex: 1; }
+
+    .page {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 64px 24px 80px;
+    }
+
+    .page-eyebrow {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--blue);
+      margin-bottom: 12px;
+    }
+
+    h1 {
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--gray-900);
+      letter-spacing: -0.02em;
+      margin-bottom: 8px;
+    }
+
+    .updated {
+      font-size: 13px;
+      color: var(--gray-400);
+      margin-bottom: 48px;
+    }
+
+    h2 {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--gray-900);
+      margin-top: 40px;
+      margin-bottom: 12px;
+      padding-top: 40px;
+      border-top: 1px solid var(--gray-200);
+    }
+    h2:first-of-type { border-top: none; padding-top: 0; margin-top: 0; }
+
+    p { margin-bottom: 16px; color: var(--gray-600); }
+    p:last-child { margin-bottom: 0; }
+    strong { color: var(--gray-900); }
+
+    ul {
+      margin: 0 0 16px 20px;
+      padding: 0;
+    }
+    ul li { color: var(--gray-600); margin-bottom: 6px; }
+
+    /* Tables */
+    .tbl-wrap {
+      border: 1px solid var(--gray-200);
+      border-radius: 6px;
+      overflow-x: auto;
+      margin-bottom: 20px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    th {
+      text-align: left;
+      padding: 10px 14px;
+      background: var(--gray-100);
+      border-bottom: 1px solid var(--gray-200);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--gray-500);
+    }
+    td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--gray-200);
+      color: var(--gray-600);
+      vertical-align: top;
+    }
+    tr:last-child td { border-bottom: none; }
+
+    code {
+      font-family: var(--mono);
+      font-size: 13px;
+      background: var(--gray-100);
+      color: var(--blue);
+      padding: 1px 6px;
+      border-radius: 3px;
+    }
+
+    footer {
+      background: var(--white);
+      border-top: 1px solid var(--gray-200);
+      padding: 20px 48px;
+      display: flex;
+      gap: 24px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    footer a { font-size: 13px; color: var(--gray-500); transition: color 0.15s; text-decoration: none; }
+    footer a:hover { color: var(--gray-900); }
+    .footer-tagline { margin-left: auto; font-size: 12px; color: var(--gray-400); }
+
+    @media (max-width: 640px) {
+      nav { padding: 0 20px; }
+      h1 { font-size: 24px; }
+      .page { padding: 40px 20px 60px; }
+      table { font-size: 12px; }
+      th, td { padding: 8px 10px; }
+      footer { padding: 16px 20px; }
+      .footer-tagline { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-logo" href="/">Authproof <span>Cloud</span></a>
+  <a class="nav-back" id="navBack" href="/">← Home</a>
+</nav>
+<script>
+  if (localStorage.getItem('ap_token')) {
+    const el = document.getElementById('navBack');
+    el.href = '/dashboard';
+    el.textContent = '← Dashboard';
+  }
+</script>
+
+<main>
+  <div class="page">
+    <div class="page-eyebrow">Legal</div>
+    <h1>Privacy Policy</h1>
+    <div class="updated">Last updated: April 20, 2026</div>
+
+    <p>This Privacy Policy describes how Authproof Cloud ("we," "us," or "our") collects, uses, and handles your information when you use our service at <a href="https://cloud.authproof.dev">cloud.authproof.dev</a>.</p>
+
+    <h2>1. Information We Collect</h2>
+    <p>We collect the following categories of information:</p>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr><th>Category</th><th>What we collect</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Account information</strong></td>
+            <td>Email address and hashed password (managed by Supabase Auth)</td>
+          </tr>
+          <tr>
+            <td><strong>API usage data</strong></td>
+            <td>Receipt count, plan type, last active timestamp, API key (stored as a random token)</td>
+          </tr>
+          <tr>
+            <td><strong>Receipt data</strong></td>
+            <td>Cryptographic hashes of authorization data, receipt metadata (timestamps, expiry, revocation status). We do not store the raw content of operator instructions or agent actions.</td>
+          </tr>
+          <tr>
+            <td><strong>Verification events</strong></td>
+            <td>Verification requests, decisions (allow/deny/review), risk scores, and reasons — associated with your account</td>
+          </tr>
+          <tr>
+            <td><strong>Tool call audit logs</strong></td>
+            <td>Tool name, hashed arguments and results, decision, risk score, session ID — if you use the tool call auditing feature</td>
+          </tr>
+          <tr>
+            <td><strong>Billing information</strong></td>
+            <td>Stripe customer ID and subscription status. We do not store payment card numbers — those are handled entirely by Stripe.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p>We do not collect IP addresses, browser fingerprints, or behavioral tracking data beyond what is necessary to provide the Service.</p>
+
+    <h2>2. How We Use Your Information</h2>
+    <p>We use the information we collect to:</p>
+    <ul>
+      <li>Provide, operate, and maintain the Service</li>
+      <li>Authenticate your identity and authorize API requests</li>
+      <li>Enforce plan limits and process billing</li>
+      <li>Send transactional emails (account creation, password reset, billing notifications)</li>
+      <li>Respond to support requests</li>
+      <li>Monitor for abuse and enforce our Terms of Service</li>
+      <li>Improve the Service based on aggregate, anonymized usage patterns</li>
+    </ul>
+    <p>We do not use your data for advertising, profiling, or sale to third parties.</p>
+
+    <h2>3. Data Storage</h2>
+    <p>Your data is stored on infrastructure provided by Supabase, hosted in the United States (AWS us-east-1 region). Data is encrypted at rest and in transit using industry-standard TLS.</p>
+    <p>API requests are served via Vercel's edge infrastructure. Vercel may process request metadata transiently but does not store your application data.</p>
+
+    <h2>4. Data Retention</h2>
+    <p>We retain your account data for as long as your account is active. If you delete your account, we will remove your personal data within 30 days, except where retention is required by law or legitimate business necessity (such as billing records).</p>
+    <p>Receipt hashes, verification events, and tool call logs are retained for the life of your account. You may export this data at any time using the audit export feature in your dashboard.</p>
+    <p>To request account deletion, email <a href="mailto:ryan@authproof.dev">ryan@authproof.dev</a>.</p>
+
+    <h2>5. Third-Party Services</h2>
+    <p>We use the following third-party services to operate Authproof Cloud:</p>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr><th>Service</th><th>Purpose</th><th>Privacy Policy</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Supabase</strong></td>
+            <td>Database, authentication, and file storage</td>
+            <td><a href="https://supabase.com/privacy" target="_blank">supabase.com/privacy</a></td>
+          </tr>
+          <tr>
+            <td><strong>Vercel</strong></td>
+            <td>Hosting and serverless API infrastructure</td>
+            <td><a href="https://vercel.com/legal/privacy-policy" target="_blank">vercel.com/legal/privacy-policy</a></td>
+          </tr>
+          <tr>
+            <td><strong>Stripe</strong></td>
+            <td>Payment processing and subscription billing</td>
+            <td><a href="https://stripe.com/privacy" target="_blank">stripe.com/privacy</a></td>
+          </tr>
+          <tr>
+            <td><strong>Resend</strong></td>
+            <td>Transactional email delivery</td>
+            <td><a href="https://resend.com/privacy" target="_blank">resend.com/privacy</a></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p>We share only the minimum data necessary with each provider for the purpose of operating the Service.</p>
+
+    <h2>6. Cookies</h2>
+    <p>Authproof Cloud uses minimal session storage. Specifically:</p>
+    <ul>
+      <li>A session token stored in <code>localStorage</code> to keep you logged in to the dashboard</li>
+      <li>Your API key, also stored in <code>localStorage</code> to authenticate API requests from the dashboard</li>
+    </ul>
+    <p>We do not use third-party advertising cookies, analytics cookies, or cross-site tracking.</p>
+
+    <h2>7. Your Rights</h2>
+    <p>You have the right to:</p>
+    <ul>
+      <li><strong>Access</strong> — request a copy of the data we hold about you</li>
+      <li><strong>Correction</strong> — request correction of inaccurate data</li>
+      <li><strong>Deletion</strong> — request deletion of your account and associated data</li>
+      <li><strong>Export</strong> — download your receipts and audit logs at any time from the dashboard</li>
+      <li><strong>Portability</strong> — receive your data in a machine-readable format (JSON or CSV) via the audit export feature</li>
+    </ul>
+    <p>To exercise any of these rights, email <a href="mailto:ryan@authproof.dev">ryan@authproof.dev</a>. We will respond within 30 days.</p>
+
+    <h2>8. Children</h2>
+    <p>Authproof Cloud is not intended for use by anyone under the age of 13. We do not knowingly collect personal information from children under 13. If we become aware that we have collected such information, we will delete it promptly.</p>
+
+    <h2>9. Changes to This Policy</h2>
+    <p>We may update this Privacy Policy from time to time. We will notify you of material changes by posting a notice on the Service or by emailing the address associated with your account. The current version will always be available at <a href="/privacy">cloud.authproof.dev/privacy</a>.</p>
+    <p>Your continued use of the Service after notice of changes constitutes your acceptance of the updated policy.</p>
+
+    <h2>10. Contact</h2>
+    <p>If you have questions or concerns about this Privacy Policy or our data practices, please contact us at:</p>
+    <p><a href="mailto:ryan@authproof.dev">ryan@authproof.dev</a></p>
+  </div>
+</main>
+
+<footer>
+  <a href="/dashboard" id="footerDash" style="display:none">Dashboard</a>
+  <a href="/support">Support</a>
+  <a href="/baa">BAA</a>
+  <a href="/terms">Terms of Service</a>
+  <a href="/privacy">Privacy Policy</a>
+  <span class="footer-tagline">Built on cryptographic proof, not operator trust.</span>
+</footer>
+<script>
+  if (localStorage.getItem('ap_token')) {
+    document.getElementById('footerDash').style.display = '';
+  }
+</script>
+
+</body>
+</html>

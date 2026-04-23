@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Terms of Service — Authproof Cloud</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --blue:     #1a56db;
+      --gray-200: #e5e7eb;
+      --gray-400: #9ca3af;
+      --gray-500: #6b7280;
+      --gray-600: #4b5563;
+      --gray-700: #374151;
+      --gray-900: #111111;
+      --white:    #ffffff;
+      --sans:     'Inter', sans-serif;
+    }
+
+    body {
+      background: #f8f9fa;
+      color: var(--gray-700);
+      font-family: var(--sans);
+      font-size: 15px;
+      line-height: 1.75;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    nav {
+      background: var(--white);
+      border-bottom: 1px solid var(--gray-200);
+      padding: 0 48px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .nav-logo { font-size: 17px; font-weight: 700; color: var(--gray-900); text-decoration: none; }
+    .nav-logo span { color: var(--blue); }
+    .nav-back { font-size: 14px; font-weight: 500; color: var(--gray-500); transition: color 0.15s; }
+    .nav-back:hover { color: var(--gray-900); text-decoration: none; }
+
+    main { flex: 1; }
+
+    .page {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 64px 24px 80px;
+    }
+
+    .page-eyebrow {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--blue);
+      margin-bottom: 12px;
+    }
+
+    h1 {
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--gray-900);
+      letter-spacing: -0.02em;
+      margin-bottom: 8px;
+    }
+
+    .updated {
+      font-size: 13px;
+      color: var(--gray-400);
+      margin-bottom: 48px;
+    }
+
+    h2 {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--gray-900);
+      margin-top: 40px;
+      margin-bottom: 12px;
+      padding-top: 40px;
+      border-top: 1px solid var(--gray-200);
+    }
+    h2:first-of-type { border-top: none; padding-top: 0; margin-top: 0; }
+
+    p { margin-bottom: 16px; color: var(--gray-600); }
+    p:last-child { margin-bottom: 0; }
+    strong { color: var(--gray-900); }
+
+    ul {
+      margin: 0 0 16px 20px;
+      padding: 0;
+    }
+    ul li { color: var(--gray-600); margin-bottom: 6px; }
+
+    .footer-note {
+      margin-top: 56px;
+      padding-top: 24px;
+      border-top: 1px solid var(--gray-200);
+      font-size: 13px;
+      color: var(--gray-400);
+    }
+
+    footer {
+      background: var(--white);
+      border-top: 1px solid var(--gray-200);
+      padding: 20px 48px;
+      display: flex;
+      gap: 24px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    footer a { font-size: 13px; color: var(--gray-500); transition: color 0.15s; text-decoration: none; }
+    footer a:hover { color: var(--gray-900); }
+    .footer-tagline { margin-left: auto; font-size: 12px; color: var(--gray-400); }
+
+    @media (max-width: 640px) {
+      nav { padding: 0 20px; }
+      h1 { font-size: 24px; }
+      .page { padding: 40px 20px 60px; }
+      footer { padding: 16px 20px; }
+      .footer-tagline { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-logo" href="/">Authproof <span>Cloud</span></a>
+  <a class="nav-back" id="navBack" href="/">← Home</a>
+</nav>
+<script>
+  if (localStorage.getItem('ap_token')) {
+    const el = document.getElementById('navBack');
+    el.href = '/dashboard';
+    el.textContent = '← Dashboard';
+  }
+</script>
+
+<main>
+  <div class="page">
+    <div class="page-eyebrow">Legal</div>
+    <h1>Terms of Service</h1>
+    <div class="updated">Last updated: April 20, 2026</div>
+
+    <h2>1. Acceptance of Terms</h2>
+    <p>By accessing or using Authproof Cloud ("the Service"), you agree to be bound by these Terms of Service ("Terms"). If you do not agree to these Terms, do not use the Service. These Terms constitute a legally binding agreement between you and Authproof Cloud.</p>
+    <p>By creating an account, you confirm that you are at least 18 years old and have the legal capacity to enter into this agreement.</p>
+
+    <h2>2. Description of Service</h2>
+    <p>Authproof Cloud is a hosted delegation log and cryptographic authorization service for AI agents. The Service allows developers to store tamper-evident receipts of AI agent authorization events, verify those receipts programmatically, and maintain an independently auditable record of agent actions.</p>
+    <p>The Service stores cryptographic hashes of authorization data — not the raw content of instructions or actions. Receipts are designed to be verifiable by third parties without requiring trust in the operator.</p>
+    <p>The Service is provided via API and is intended for use by software developers and organizations building AI agent systems.</p>
+
+    <h2>3. Free and Paid Plans</h2>
+    <p><strong>Free Plan.</strong> The Free plan includes up to 1,000 delegation receipts per month at no charge. No credit card is required. Free plan users receive community support and access to the full verification API. No uptime SLA is provided on the Free plan.</p>
+    <p><strong>Pro Plan.</strong> The Pro plan is available for $49 per month, billed monthly via Stripe. Pro plan includes unlimited receipts, priority support, audit export, and an uptime SLA. Billing begins at the time of upgrade and renews monthly until cancelled.</p>
+    <p><strong>Cancellation.</strong> You may cancel your Pro subscription at any time through the billing portal. Cancellation takes effect at the end of the current billing period. No refunds are issued for partial billing periods.</p>
+    <p><strong>Plan Limits.</strong> We reserve the right to throttle or suspend accounts that exceed plan limits or engage in usage patterns that suggest abuse.</p>
+
+    <h2>4. Acceptable Use</h2>
+    <p>You agree to use the Service only for lawful purposes and in accordance with these Terms. You agree not to:</p>
+    <ul>
+      <li>Use the Service in violation of any applicable law or regulation</li>
+      <li>Use the Service to store, transmit, or process protected health information (PHI) as defined under HIPAA without a signed BAA. Note: the Service stores cryptographic hashes of authorization data, not raw data — hash-only usage is acceptable provided you do not store raw PHI in receipt fields</li>
+      <li>Attempt to reverse-engineer, circumvent, or disrupt the Service or its security mechanisms</li>
+      <li>Use the Service to facilitate fraud, unauthorized access to third-party systems, or other malicious activity</li>
+      <li>Resell or redistribute the Service without written permission</li>
+      <li>Use automated scripts to generate artificial traffic or inflate usage metrics</li>
+      <li>Use the Service in any way that could damage, disable, or impair the infrastructure supporting it</li>
+    </ul>
+    <p>Violation of this section may result in immediate account suspension or termination without notice.</p>
+
+    <h2>5. Data and Privacy</h2>
+    <p>We store the data necessary to provide the Service, including your email address, API key, receipt hashes, receipt metadata, verification events, and tool call audit logs. We do not store the raw content of operator instructions or agent actions — only cryptographic hashes of that data.</p>
+    <p>Receipt data and audit logs you create through the Service belong to you. We do not sell, license, or share your data with third parties except as required to operate the Service (see our <a href="/privacy">Privacy Policy</a> for details).</p>
+    <p>You are responsible for the security of your API key. Do not share your API key publicly. If your API key is compromised, you may regenerate it from your dashboard.</p>
+    <p>Our full Privacy Policy is available at <a href="/privacy">cloud.authproof.dev/privacy</a>.</p>
+
+    <h2>6. Service Availability</h2>
+    <p><strong>Free Plan.</strong> No uptime guarantee is provided. The Service is offered on a best-effort basis.</p>
+    <p><strong>Pro Plan.</strong> We target 99.5% monthly uptime for Pro plan users. Scheduled maintenance will be announced in advance where possible.</p>
+    <p>We reserve the right to modify, suspend, or discontinue the Service at any time with reasonable notice. We will make reasonable efforts to notify active users of significant changes.</p>
+
+    <h2>7. Limitation of Liability</h2>
+    <p>THE SERVICE IS PROVIDED "AS IS" AND "AS AVAILABLE" WITHOUT WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR NON-INFRINGEMENT.</p>
+    <p>TO THE FULLEST EXTENT PERMITTED BY LAW, AUTHPROOF CLOUD SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, INCLUDING LOSS OF DATA, LOSS OF REVENUE, OR LOSS OF PROFITS, ARISING OUT OF OR RELATING TO YOUR USE OF THE SERVICE, EVEN IF WE HAVE BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.</p>
+    <p>OUR TOTAL LIABILITY FOR ANY CLAIM ARISING OUT OF THESE TERMS OR YOUR USE OF THE SERVICE SHALL NOT EXCEED THE AMOUNT YOU PAID TO US IN THE TWELVE MONTHS PRECEDING THE CLAIM, OR $100, WHICHEVER IS GREATER.</p>
+
+    <h2>8. Intellectual Property</h2>
+    <p><strong>Open Source SDK.</strong> The Authproof SDK (<a href="https://github.com/Commonguy25/authproof-sdk" target="_blank">github.com/Commonguy25/authproof-sdk</a>) is open source software licensed under the MIT License. Your rights to use the SDK are governed by that license.</p>
+    <p><strong>Hosted Service.</strong> The Authproof Cloud hosted service, including its API, infrastructure, and web application, is proprietary. You are granted a limited, non-exclusive, non-transferable right to access the Service pursuant to these Terms.</p>
+    <p>You retain all rights to the data you submit to the Service. By submitting data, you grant us a limited license to store, process, and transmit that data solely for the purpose of providing the Service.</p>
+
+    <h2>9. Termination</h2>
+    <p>You may delete your account at any time by contacting us at <a href="mailto:ryan@authproof.dev">ryan@authproof.dev</a>. Upon account deletion, your data will be removed within 30 days.</p>
+    <p>We reserve the right to suspend or terminate your account at any time if we determine, in our sole discretion, that you have violated these Terms, engaged in fraudulent or illegal activity, or are causing harm to the Service or other users.</p>
+    <p>Upon termination, your right to use the Service ceases immediately. Provisions that by their nature should survive termination — including limitations of liability, intellectual property rights, and dispute resolution — shall survive.</p>
+
+    <h2>10. Changes to Terms</h2>
+    <p>We may update these Terms at any time. We will notify you of material changes by posting a notice on the Service or by sending an email to the address associated with your account. Your continued use of the Service after notice constitutes acceptance of the updated Terms.</p>
+    <p>We will always maintain the current version of these Terms at <a href="/terms">cloud.authproof.dev/terms</a>.</p>
+
+    <h2>11. Governing Law</h2>
+    <p>These Terms are governed by the laws of the State of Oklahoma, United States, without regard to its conflict of law provisions. Any disputes arising under these Terms shall be resolved in the state or federal courts located in Oklahoma.</p>
+
+    <h2>12. Contact</h2>
+    <p>If you have questions about these Terms, please contact us at:</p>
+    <p><a href="mailto:ryan@authproof.dev">ryan@authproof.dev</a></p>
+
+    <div class="footer-note">Authproof is an independent project. It is not a registered legal entity at this time.</div>
+  </div>
+</main>
+
+<footer>
+  <a href="/dashboard" id="footerDash" style="display:none">Dashboard</a>
+  <a href="/support">Support</a>
+  <a href="/baa">BAA</a>
+  <a href="/terms">Terms of Service</a>
+  <a href="/privacy">Privacy Policy</a>
+  <span class="footer-tagline">Built on cryptographic proof, not operator trust.</span>
+</footer>
+<script>
+  if (localStorage.getItem('ap_token')) {
+    document.getElementById('footerDash').style.display = '';
+  }
+</script>
+
+</body>
+</html>
