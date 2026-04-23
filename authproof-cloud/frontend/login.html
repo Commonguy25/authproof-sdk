@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Log in — Authproof Cloud</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --blue:    #1a56db;
+      --blue-lt: #e8f0fe;
+      --blue-dk: #1340a8;
+      --gray-100: #f1f3f4;
+      --gray-200: #e5e7eb;
+      --gray-400: #9ca3af;
+      --gray-500: #6b7280;
+      --gray-600: #4b5563;
+      --gray-700: #374151;
+      --gray-900: #111111;
+      --red:     #dc2626;
+      --red-lt:  #fef2f2;
+      --red-bd:  #fecaca;
+      --green:   #16a34a;
+      --green-lt: #f0fdf4;
+      --green-bd: #bbf7d0;
+      --white:   #ffffff;
+      --sans:    'Inter', sans-serif;
+      --mono:    'JetBrains Mono', monospace;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: #f8f9fa;
+      color: var(--gray-700);
+      font-family: var(--sans);
+      font-size: 15px;
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    /* Nav */
+    nav {
+      background: var(--white);
+      border-bottom: 1px solid var(--gray-200);
+      padding: 0 48px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .nav-logo {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--gray-900);
+    }
+    .nav-logo span { color: var(--blue); }
+    .nav-back {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--gray-500);
+      transition: color 0.15s;
+    }
+    .nav-back:hover { color: var(--gray-900); }
+
+    /* Main */
+    main {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 48px 24px;
+    }
+
+    .card {
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: 8px;
+      padding: 40px;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    }
+
+    .card-eyebrow {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--blue);
+      margin-bottom: 8px;
+    }
+    .card-title {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--gray-900);
+      letter-spacing: -0.02em;
+      margin-bottom: 6px;
+    }
+    .card-sub {
+      font-size: 14px;
+      color: var(--gray-500);
+      margin-bottom: 28px;
+    }
+
+    /* Form */
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--gray-700);
+      margin-bottom: 6px;
+    }
+    .field-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .field-row label { margin-bottom: 0; }
+    .field-row a {
+      font-size: 13px;
+      color: var(--blue);
+      font-weight: 500;
+      cursor: pointer;
+    }
+    .field-row a:hover { text-decoration: underline; }
+
+    input {
+      display: block;
+      width: 100%;
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: 4px;
+      padding: 10px 14px;
+      font-family: var(--sans);
+      font-size: 14px;
+      color: var(--gray-900);
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      margin-bottom: 18px;
+    }
+    input:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(26,86,219,0.1);
+    }
+    input::placeholder { color: var(--gray-400); }
+
+    .btn {
+      display: block;
+      width: 100%;
+      background: var(--blue);
+      color: var(--white);
+      padding: 11px 20px;
+      font-family: var(--sans);
+      font-size: 15px;
+      font-weight: 600;
+      border: 2px solid var(--blue);
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+      margin-top: 4px;
+      text-align: center;
+    }
+    .btn:hover { background: var(--blue-dk); border-color: var(--blue-dk); }
+    .btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+    .error-box {
+      background: var(--red-lt);
+      border: 1px solid var(--red-bd);
+      border-radius: 4px;
+      padding: 11px 14px;
+      color: var(--red);
+      font-size: 13px;
+      margin-bottom: 18px;
+      display: none;
+    }
+    .success-box {
+      background: var(--green-lt);
+      border: 1px solid var(--green-bd);
+      border-radius: 4px;
+      padding: 11px 14px;
+      color: var(--green);
+      font-size: 13px;
+      margin-bottom: 18px;
+      display: none;
+    }
+
+    .divider {
+      text-align: center;
+      margin-top: 22px;
+      font-size: 14px;
+      color: var(--gray-500);
+    }
+    .divider a { color: var(--blue); font-weight: 600; }
+    .divider a:hover { text-decoration: underline; }
+
+    /* Spinner */
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255,255,255,0.4);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      padding: 24px;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: 8px;
+      padding: 36px;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+    }
+    .modal-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--gray-900);
+      margin-bottom: 6px;
+      letter-spacing: -0.01em;
+    }
+    .modal-sub {
+      font-size: 14px;
+      color: var(--gray-500);
+      margin-bottom: 24px;
+    }
+    .modal-success {
+      font-size: 14px;
+      color: var(--green);
+      display: none;
+      margin-bottom: 16px;
+      background: var(--green-lt);
+      border: 1px solid var(--green-bd);
+      border-radius: 4px;
+      padding: 11px 14px;
+    }
+    .modal-error {
+      font-size: 13px;
+      color: var(--red);
+      display: none;
+      margin-bottom: 14px;
+    }
+    .btn-cancel {
+      display: block;
+      text-align: center;
+      margin-top: 14px;
+      font-size: 13px;
+      color: var(--gray-500);
+      cursor: pointer;
+      background: none;
+      border: none;
+      width: 100%;
+      font-family: var(--sans);
+      transition: color 0.15s;
+    }
+    .btn-cancel:hover { color: var(--gray-900); }
+
+    /* Footer */
+    footer {
+      background: var(--white);
+      border-top: 1px solid var(--gray-200);
+      padding: 20px 48px;
+      display: flex;
+      gap: 24px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    footer a {
+      font-size: 13px;
+      color: var(--gray-500);
+      transition: color 0.15s;
+    }
+    footer a:hover { color: var(--gray-900); }
+    .footer-tagline {
+      margin-left: auto;
+      font-size: 12px;
+      color: var(--gray-400);
+    }
+
+    @media (max-width: 640px) {
+      nav { padding: 0 20px; }
+      main { padding: 32px 16px; align-items: flex-start; padding-top: 40px; }
+      .card { padding: 28px 24px; }
+      footer { padding: 16px 20px; }
+      .footer-tagline { display: none; }
+      .field-row { flex-direction: column; align-items: flex-start; gap: 4px; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-logo" href="/">Authproof <span>Cloud</span></a>
+  <a class="nav-back" href="/">← Back to home</a>
+</nav>
+
+<main>
+  <div class="card">
+    <div class="card-eyebrow">Welcome back</div>
+    <h1 class="card-title">Log in to your account</h1>
+    <p class="card-sub">Enter your credentials to access your dashboard.</p>
+
+    <div class="success-box" id="resetSuccessBox">✓ Password updated — log in with your new password.</div>
+    <div class="error-box" id="errorBox"></div>
+
+    <form id="loginForm" onsubmit="handleLogin(event)">
+      <label for="email">Email address</label>
+      <input type="email" id="email" name="email" placeholder="you@company.com" required autocomplete="email" />
+
+      <div class="field-row">
+        <label for="password">Password</label>
+        <a href="#" onclick="showForgotModal(); return false;">Forgot password?</a>
+      </div>
+      <input type="password" id="password" name="password" placeholder="Your password" required autocomplete="current-password" />
+
+      <button type="submit" class="btn" id="submitBtn">Log in</button>
+    </form>
+
+    <p class="divider">Don't have an account? <a href="/signup">Sign up free</a></p>
+  </div>
+</main>
+
+<!-- Forgot password modal -->
+<div class="modal-overlay" id="forgotModal" onclick="handleOverlayClick(event)">
+  <div class="modal">
+    <div class="modal-title">Reset your password</div>
+    <p class="modal-sub">Enter your email and we'll send you a reset link.</p>
+
+    <div class="modal-error" id="forgotError"></div>
+    <div class="modal-success" id="forgotSuccess">✓ Check your email for a reset link.</div>
+
+    <div id="forgotForm">
+      <label for="forgotEmail">Email address</label>
+      <input type="email" id="forgotEmail" placeholder="you@company.com" autocomplete="email" />
+      <button class="btn" id="forgotBtn" onclick="sendReset()">Send reset link</button>
+    </div>
+
+    <button class="btn-cancel" onclick="closeForgotModal()">Cancel</button>
+  </div>
+</div>
+
+<footer>
+  <a href="/support">Support</a>
+  <a href="/baa">BAA</a>
+  <a href="/terms">Terms of Service</a>
+  <a href="/privacy">Privacy Policy</a>
+  <span class="footer-tagline">Built on cryptographic proof, not operator trust.</span>
+</footer>
+
+<script>
+  if (new URLSearchParams(window.location.search).get('reset') === 'true') {
+    document.getElementById('resetSuccessBox').style.display = 'block';
+  }
+
+  async function handleLogin(e) {
+    e.preventDefault();
+    const btn = document.getElementById('submitBtn');
+    const errorBox = document.getElementById('errorBox');
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+
+    errorBox.style.display = 'none';
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Logging in\u2026';
+
+    try {
+      const res = await fetch('/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Login failed');
+      localStorage.setItem('ap_token', data.token);
+      localStorage.setItem('ap_key', data.apiKey);
+      window.location.href = '/dashboard';
+    } catch (err) {
+      errorBox.textContent = err.message;
+      errorBox.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Log in';
+    }
+  }
+
+  function showForgotModal() {
+    document.getElementById('forgotModal').classList.add('open');
+    setTimeout(() => document.getElementById('forgotEmail').focus(), 50);
+  }
+
+  function closeForgotModal() {
+    document.getElementById('forgotModal').classList.remove('open');
+    document.getElementById('forgotError').style.display = 'none';
+    document.getElementById('forgotSuccess').style.display = 'none';
+    document.getElementById('forgotForm').style.display = 'block';
+    document.getElementById('forgotEmail').value = '';
+    const btn = document.getElementById('forgotBtn');
+    btn.disabled = false;
+    btn.textContent = 'Send reset link';
+  }
+
+  function handleOverlayClick(e) {
+    if (e.target === document.getElementById('forgotModal')) closeForgotModal();
+  }
+
+  async function sendReset() {
+    const email = document.getElementById('forgotEmail').value.trim();
+    const btn   = document.getElementById('forgotBtn');
+    const errEl = document.getElementById('forgotError');
+
+    if (!email) {
+      errEl.textContent = 'Please enter your email address.';
+      errEl.style.display = 'block';
+      return;
+    }
+
+    errEl.style.display = 'none';
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Sending\u2026';
+
+    try {
+      await fetch('/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+    } catch {}
+
+    document.getElementById('forgotForm').style.display = 'none';
+    document.getElementById('forgotSuccess').style.display = 'block';
+  }
+</script>
+
+</body>
+</html>

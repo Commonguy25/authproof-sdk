@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign up — Authproof Cloud</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --blue:     #1a56db;
+      --blue-lt:  #e8f0fe;
+      --blue-dk:  #1340a8;
+      --gray-100: #f1f3f4;
+      --gray-200: #e5e7eb;
+      --gray-400: #9ca3af;
+      --gray-500: #6b7280;
+      --gray-600: #4b5563;
+      --gray-700: #374151;
+      --gray-900: #111111;
+      --red:      #dc2626;
+      --red-lt:   #fef2f2;
+      --red-bd:   #fecaca;
+      --green:    #16a34a;
+      --green-lt: #f0fdf4;
+      --green-bd: #bbf7d0;
+      --white:    #ffffff;
+      --sans:     'Inter', sans-serif;
+      --mono:     'JetBrains Mono', monospace;
+    }
+
+    html { scroll-behavior: smooth; }
+    body {
+      background: #f8f9fa;
+      color: var(--gray-700);
+      font-family: var(--sans);
+      font-size: 15px;
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: inherit; text-decoration: none; }
+
+    nav {
+      background: var(--white);
+      border-bottom: 1px solid var(--gray-200);
+      padding: 0 48px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .nav-logo { font-size: 17px; font-weight: 700; color: var(--gray-900); }
+    .nav-logo span { color: var(--blue); }
+    .nav-back { font-size: 14px; font-weight: 500; color: var(--gray-500); transition: color 0.15s; }
+    .nav-back:hover { color: var(--gray-900); }
+
+    main { flex: 1; display: flex; align-items: center; justify-content: center; padding: 48px 24px; }
+
+    .card {
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: 8px;
+      padding: 40px;
+      width: 100%;
+      max-width: 440px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    }
+
+    .card-eyebrow { font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--blue); margin-bottom: 8px; }
+    .card-title { font-size: 24px; font-weight: 700; color: var(--gray-900); letter-spacing: -0.02em; margin-bottom: 6px; }
+    .card-sub { font-size: 14px; color: var(--gray-500); margin-bottom: 28px; }
+    .card-sub a { color: var(--blue); font-weight: 500; }
+    .card-sub a:hover { text-decoration: underline; }
+
+    label { display: block; font-size: 13px; font-weight: 600; color: var(--gray-700); margin-bottom: 6px; }
+    input {
+      display: block; width: 100%; background: var(--white);
+      border: 1px solid var(--gray-200); border-radius: 4px;
+      padding: 10px 14px; font-family: var(--sans); font-size: 14px;
+      color: var(--gray-900); outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      margin-bottom: 18px;
+    }
+    input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(26,86,219,0.1); }
+    input::placeholder { color: var(--gray-400); }
+
+    .btn {
+      display: block; width: 100%;
+      background: var(--blue); color: var(--white);
+      padding: 11px 20px; font-family: var(--sans); font-size: 15px; font-weight: 600;
+      border: 2px solid var(--blue); border-radius: 4px;
+      cursor: pointer; transition: background 0.15s, border-color 0.15s;
+      margin-top: 4px; text-align: center;
+    }
+    .btn:hover { background: var(--blue-dk); border-color: var(--blue-dk); }
+    .btn:disabled { opacity: 0.55; cursor: not-allowed; }
+    .btn-outline {
+      display: block; width: 100%;
+      background: transparent; color: var(--blue);
+      padding: 11px 20px; font-family: var(--sans); font-size: 15px; font-weight: 600;
+      border: 2px solid var(--blue); border-radius: 4px;
+      cursor: pointer; transition: background 0.15s;
+      text-align: center; text-decoration: none;
+    }
+    .btn-outline:hover { background: var(--blue-lt); }
+
+    .error-box {
+      background: var(--red-lt); border: 1px solid var(--red-bd); border-radius: 4px;
+      padding: 11px 14px; color: var(--red); font-size: 13px;
+      margin-bottom: 18px; display: none;
+    }
+
+    .form-container.hidden { display: none; }
+    .success-box { display: none; }
+    .success-box.visible { display: block; }
+
+    /* API key display */
+    .api-key-box {
+      background: var(--gray-100);
+      border: 1px solid var(--gray-200);
+      border-radius: 6px;
+      padding: 18px 20px;
+      margin-bottom: 24px;
+    }
+    .api-key-label { font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gray-500); margin-bottom: 8px; }
+    .api-key-value { font-family: var(--mono); font-size: 13px; color: var(--gray-900); word-break: break-all; margin-bottom: 12px; }
+    .copy-btn {
+      font-family: var(--sans); font-size: 13px; font-weight: 600;
+      color: var(--blue); background: transparent;
+      border: 1px solid var(--blue); border-radius: 4px;
+      padding: 5px 14px; cursor: pointer; transition: background 0.15s;
+    }
+    .copy-btn:hover { background: var(--blue-lt); }
+    .copy-btn.copied { color: var(--green); border-color: var(--green); }
+
+    .next-steps { margin-top: 24px; }
+    .next-steps h3 { font-size: 14px; font-weight: 700; color: var(--gray-900); margin-bottom: 14px; }
+    .next-steps ol { list-style: none; counter-reset: steps; padding: 0; }
+    .next-steps li {
+      counter-increment: steps;
+      display: flex; gap: 12px; align-items: flex-start;
+      padding: 10px 0; border-bottom: 1px solid var(--gray-200);
+      font-size: 14px; color: var(--gray-600); line-height: 1.5;
+    }
+    .next-steps li:last-child { border-bottom: none; }
+    .next-steps li::before { content: counter(steps); min-width: 22px; height: 22px; background: var(--blue-lt); color: var(--blue); font-size: 12px; font-weight: 700; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+    .next-steps code { font-family: var(--mono); font-size: 12px; background: var(--gray-100); color: var(--blue); padding: 1px 6px; border-radius: 3px; }
+    .next-steps a { color: var(--blue); font-weight: 500; }
+    .next-steps a:hover { text-decoration: underline; }
+
+    .divider { text-align: center; margin-top: 20px; font-size: 13px; color: var(--gray-500); }
+    .divider a { color: var(--blue); font-weight: 600; }
+    .divider a:hover { text-decoration: underline; }
+
+    .spinner {
+      display: inline-block; width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff;
+      border-radius: 50%; animation: spin 0.6s linear infinite;
+      vertical-align: middle; margin-right: 6px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    footer { background: var(--white); border-top: 1px solid var(--gray-200); padding: 20px 48px; display: flex; gap: 24px; align-items: center; flex-wrap: wrap; }
+    footer a { font-size: 13px; color: var(--gray-500); transition: color 0.15s; }
+    footer a:hover { color: var(--gray-900); }
+    .footer-tagline { margin-left: auto; font-size: 12px; color: var(--gray-400); }
+
+    @media (max-width: 640px) {
+      nav { padding: 0 20px; }
+      main { padding: 32px 16px; align-items: flex-start; padding-top: 40px; }
+      .card { padding: 28px 24px; }
+      footer { padding: 16px 20px; }
+      .footer-tagline { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-logo" href="/">Authproof <span>Cloud</span></a>
+  <a class="nav-back" href="/">← Back to home</a>
+</nav>
+
+<main>
+  <div class="card">
+
+    <!-- Form state -->
+    <div class="form-container" id="formContainer">
+      <div class="card-eyebrow">Get started</div>
+      <h1 class="card-title">Create your account</h1>
+      <p class="card-sub">Free forever · 1,000 receipts/month · No credit card required</p>
+
+      <div class="error-box" id="errorBox"></div>
+
+      <form id="signupForm" onsubmit="handleSignup(event)">
+        <label for="email">Email address</label>
+        <input type="email" id="email" name="email" placeholder="you@company.com" required autocomplete="email" />
+
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" placeholder="Min. 8 characters" required minlength="8" autocomplete="new-password" />
+
+        <button type="submit" class="btn" id="submitBtn">Create free account</button>
+      </form>
+
+      <p class="divider">Already have an account? <a href="/login">Log in</a></p>
+    </div>
+
+    <!-- Success: free plan -->
+    <div class="success-box" id="successBox">
+      <div class="card-eyebrow">Account created</div>
+      <h1 class="card-title">You're in. 🎉</h1>
+      <p class="card-sub" style="margin-bottom:24px">Save your API key — it won't be shown again.</p>
+
+      <div class="api-key-box">
+        <div class="api-key-label">Your API key</div>
+        <div class="api-key-value" id="apiKeyValue"></div>
+        <button class="copy-btn" id="copyBtn" onclick="copyKey()">Copy key</button>
+      </div>
+
+      <a href="/login" class="btn" style="margin-bottom:12px;text-decoration:none">Log in to your dashboard →</a>
+
+      <div class="next-steps">
+        <h3>Get started in 3 steps</h3>
+        <ol>
+          <li><span>Install the SDK: <code>npm install authproof</code></span></li>
+          <li><span>Configure: <code>new AuthProofClient({ logEndpoint: 'https://cloud.authproof.dev', apiKey })</code></span></li>
+          <li><span>Read the <a href="https://github.com/Commonguy25/authproof-sdk" target="_blank">full docs on GitHub →</a></span></li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- Success: pro plan -->
+    <div class="success-box" id="successBoxPro">
+      <div class="card-eyebrow">Account created</div>
+      <h1 class="card-title">Almost there</h1>
+      <p class="card-sub" style="margin-bottom:24px">Save your API key, then complete your Pro upgrade via Stripe.</p>
+
+      <div class="api-key-box">
+        <div class="api-key-label">Your API key</div>
+        <div class="api-key-value" id="apiKeyValuePro"></div>
+        <button class="copy-btn" id="copyBtnPro" onclick="copyKeyPro()">Copy key</button>
+      </div>
+
+      <button class="btn" id="checkoutBtn" onclick="goToCheckout()" style="margin-bottom:12px">Upgrade to Pro — $49/month</button>
+      <a href="/login" class="btn-outline" style="font-size:14px;padding:9px 20px">Skip for now — stay on free plan</a>
+    </div>
+
+  </div>
+</main>
+
+<footer>
+  <a href="/support">Support</a>
+  <a href="/baa">BAA</a>
+  <a href="/terms">Terms of Service</a>
+  <a href="/privacy">Privacy Policy</a>
+  <span class="footer-tagline">Built on cryptographic proof, not operator trust.</span>
+</footer>
+
+<script>
+  let savedApiKey = '';
+  const isPro = new URLSearchParams(window.location.search).get('plan') === 'pro';
+
+  async function handleSignup(e) {
+    e.preventDefault();
+    const btn = document.getElementById('submitBtn');
+    const errorBox = document.getElementById('errorBox');
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+
+    errorBox.style.display = 'none';
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Creating account\u2026';
+
+    try {
+      const res = await fetch('/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Something went wrong');
+
+      savedApiKey = data.apiKey;
+      document.getElementById('formContainer').classList.add('hidden');
+
+      if (isPro) {
+        document.getElementById('apiKeyValuePro').textContent = data.apiKey;
+        document.getElementById('successBoxPro').classList.add('visible');
+      } else {
+        document.getElementById('apiKeyValue').textContent = data.apiKey;
+        document.getElementById('successBox').classList.add('visible');
+      }
+    } catch (err) {
+      errorBox.textContent = err.message;
+      errorBox.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Create free account';
+    }
+  }
+
+  async function goToCheckout() {
+    const btn = document.getElementById('checkoutBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Redirecting to Stripe\u2026';
+    try {
+      const res = await fetch('/billing/checkout', {
+        headers: { 'Authorization': 'Bearer ' + savedApiKey }
+      });
+      const data = await res.json();
+      if (data.checkoutUrl) {
+        window.location.href = data.checkoutUrl;
+      } else {
+        throw new Error(data.error || 'Could not create checkout session');
+      }
+    } catch (err) {
+      btn.disabled = false;
+      btn.textContent = 'Upgrade to Pro — $49/month';
+      alert(err.message);
+    }
+  }
+
+  function copyKey() {
+    navigator.clipboard.writeText(savedApiKey).then(() => {
+      const btn = document.getElementById('copyBtn');
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy key'; btn.classList.remove('copied'); }, 2000);
+    });
+  }
+  function copyKeyPro() {
+    navigator.clipboard.writeText(savedApiKey).then(() => {
+      const btn = document.getElementById('copyBtnPro');
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy key'; btn.classList.remove('copied'); }, 2000);
+    });
+  }
+</script>
+
+</body>
+</html>

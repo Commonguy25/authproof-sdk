@@ -1,0 +1,1249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard — Authproof Cloud</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --blue:     #1a56db;
+      --blue-lt:  #e8f0fe;
+      --blue-dk:  #1340a8;
+      --gray-100: #f1f3f4;
+      --gray-200: #e5e7eb;
+      --gray-400: #9ca3af;
+      --gray-500: #6b7280;
+      --gray-600: #4b5563;
+      --gray-700: #374151;
+      --gray-900: #111111;
+      --red:      #dc2626;
+      --red-lt:   #fef2f2;
+      --red-bd:   #fecaca;
+      --yellow:   #d97706;
+      --yellow-lt:#fffbeb;
+      --green:    #16a34a;
+      --green-lt: #f0fdf4;
+      --green-bd: #bbf7d0;
+      --white:    #ffffff;
+      --sans:     'Inter', sans-serif;
+      --mono:     'JetBrains Mono', 'Courier New', monospace;
+    }
+
+    body {
+      background: #f8f9fa;
+      color: var(--gray-700);
+      font-family: var(--sans);
+      font-size: 15px;
+      line-height: 1.6;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    /* ── Nav ── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--white);
+      border-bottom: 1px solid var(--gray-200);
+      padding: 0 40px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .nav-logo { font-size: 17px; font-weight: 700; color: var(--gray-900); }
+    .nav-logo span { color: var(--blue); }
+    .nav-center {
+      display: flex;
+      gap: 0;
+      list-style: none;
+    }
+    .nav-center a {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--gray-500);
+      padding: 8px 16px;
+      transition: color 0.15s;
+      border-bottom: 2px solid transparent;
+    }
+    .nav-center a:hover { color: var(--gray-900); }
+    .nav-center a.active { color: var(--blue); border-bottom-color: var(--blue); }
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .nav-email {
+      font-size: 13px;
+      color: var(--gray-500);
+    }
+    .btn-logout {
+      font-size: 13px;
+      font-weight: 500;
+      font-family: var(--sans);
+      color: var(--gray-500);
+      background: transparent;
+      border: 1px solid var(--gray-200);
+      border-radius: 4px;
+      padding: 6px 14px;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .btn-logout:hover { border-color: var(--red); color: var(--red); }
+
+    /* ── Layout ── */
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 40px;
+    }
+
+    /* ── Flash banners ── */
+    .flash-banner {
+      padding: 14px 0;
+      text-align: center;
+      font-size: 14px;
+      font-weight: 500;
+      display: none;
+    }
+    .flash-banner.success { background: var(--green-lt); color: var(--green); border-bottom: 1px solid var(--green-bd); }
+    .flash-banner.warning { background: var(--yellow-lt); color: var(--yellow); border-bottom: 1px solid #fde68a; }
+
+    /* ── Overview bar ── */
+    .overview-bar {
+      background: var(--white);
+      border-bottom: 1px solid var(--gray-200);
+      padding: 20px 0;
+    }
+    .overview-inner {
+      display: flex;
+      align-items: center;
+      gap: 28px;
+      flex-wrap: wrap;
+    }
+    .plan-badge {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 4px 10px;
+      border-radius: 20px;
+      border: 1px solid var(--gray-200);
+      color: var(--gray-500);
+      background: var(--gray-100);
+    }
+    .plan-badge.pro {
+      border-color: var(--blue);
+      color: var(--blue);
+      background: var(--blue-lt);
+    }
+
+    .usage-wrap {
+      flex: 1;
+      min-width: 200px;
+      max-width: 320px;
+    }
+    .usage-text {
+      font-size: 13px;
+      color: var(--gray-600);
+      margin-bottom: 6px;
+    }
+    .usage-track {
+      height: 4px;
+      background: var(--gray-200);
+      border-radius: 2px;
+      width: 100%;
+    }
+    .usage-fill {
+      height: 100%;
+      background: var(--blue);
+      border-radius: 2px;
+      width: 0%;
+      transition: width 0.4s ease;
+    }
+    .usage-fill.warn    { background: var(--yellow); }
+    .usage-fill.danger  { background: var(--red); }
+
+    .apikey-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .apikey-display {
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--gray-700);
+      letter-spacing: 0.02em;
+    }
+    .btn-copy {
+      font-size: 12px;
+      font-weight: 600;
+      font-family: var(--sans);
+      color: var(--blue);
+      background: transparent;
+      border: 1px solid var(--blue);
+      border-radius: 4px;
+      padding: 4px 12px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-copy:hover { background: var(--blue-lt); }
+    .btn-copy.copied { color: var(--green); border-color: var(--green); }
+
+    .btn-upgrade {
+      font-size: 13px;
+      font-weight: 600;
+      font-family: var(--sans);
+      color: var(--white);
+      background: var(--blue);
+      border: 2px solid var(--blue);
+      border-radius: 4px;
+      padding: 8px 18px;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+      white-space: nowrap;
+      display: none;
+    }
+    .btn-upgrade:hover { background: var(--blue-dk); border-color: var(--blue-dk); }
+    .btn-upgrade:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    /* Help strip */
+    .help-strip {
+      background: var(--white);
+      border-bottom: 1px solid var(--gray-200);
+      padding: 10px 0;
+    }
+    .help-strip-inner {
+      display: flex;
+      gap: 24px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .help-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--gray-400);
+    }
+    .help-link {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--gray-500);
+      transition: color 0.15s;
+    }
+    .help-link:hover { color: var(--blue); }
+
+    /* ── Sections ── */
+    .section { padding: 36px 0 0; }
+    .section-last { padding-bottom: 60px; }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .section-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--gray-900);
+    }
+
+    /* ── Table ── */
+    .tbl-wrap {
+      border: 1px solid var(--gray-200);
+      border-radius: 6px;
+      overflow-x: auto;
+      background: var(--white);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    thead th {
+      padding: 10px 16px;
+      text-align: left;
+      color: var(--gray-500);
+      font-weight: 600;
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--gray-200);
+      background: var(--gray-100);
+      white-space: nowrap;
+    }
+    tbody tr {
+      border-bottom: 1px solid var(--gray-200);
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: #f8f9fa; }
+    tbody tr.expanded { background: #f8f9fa; }
+    tbody td {
+      padding: 12px 16px;
+      color: var(--gray-700);
+      vertical-align: top;
+    }
+    .detail-row { display: none; }
+    .detail-row.open { display: table-row; }
+    .detail-row td {
+      padding: 0 16px 16px;
+      cursor: default;
+    }
+    .detail-row:hover { background: #f8f9fa !important; }
+    pre.json-block {
+      background: var(--gray-100);
+      border: 1px solid var(--gray-200);
+      border-radius: 4px;
+      padding: 14px 16px;
+      color: var(--gray-700);
+      font-size: 12px;
+      font-family: var(--mono);
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    /* status / decision colors */
+    .status-active   { color: var(--green);  font-weight: 600; }
+    .status-revoked  { color: var(--red);    font-weight: 600; }
+    .status-expired  { color: var(--gray-400); }
+    .decision-allow  { color: var(--green);  font-weight: 600; }
+    .decision-block  { color: var(--red);    font-weight: 600; }
+    .decision-deny   { color: var(--red);    font-weight: 600; }
+    .decision-review { color: var(--yellow); font-weight: 600; }
+    .tc-allowed { color: var(--green);  font-weight: 600; }
+    .tc-blocked  { color: var(--red);   font-weight: 600; }
+    .tc-flagged  { color: var(--yellow); font-weight: 600; }
+
+    /* no-data rows */
+    .empty-row td {
+      padding: 36px 24px;
+      color: var(--gray-400);
+      font-size: 13px;
+      cursor: default;
+      text-align: center;
+    }
+    .empty-row:hover { background: transparent !important; }
+    .empty-row code {
+      display: block;
+      margin-top: 12px;
+      text-align: left;
+      background: var(--gray-100);
+      border: 1px solid var(--gray-200);
+      border-radius: 4px;
+      padding: 12px 16px;
+      color: var(--gray-700);
+      font-family: var(--mono);
+      font-size: 12px;
+      white-space: pre;
+      cursor: text;
+    }
+
+    /* ── Stat cards ── */
+    .stat-cards-row {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .stat-card {
+      flex: 1;
+      min-width: 120px;
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: 6px;
+      padding: 16px 20px;
+    }
+    .stat-card-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--gray-500);
+      margin-bottom: 6px;
+    }
+    .stat-card-value {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--gray-900);
+      line-height: 1.1;
+    }
+
+    /* ── Export card ── */
+    .export-card {
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: 6px;
+      padding: 24px 28px;
+    }
+    .export-row {
+      display: flex;
+      align-items: flex-end;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .export-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .export-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--gray-700);
+    }
+    .form-input, .form-select {
+      font-family: var(--sans);
+      font-size: 13px;
+      color: var(--gray-900);
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: 4px;
+      padding: 8px 12px;
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .form-input:focus, .form-select:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(26,86,219,0.1);
+    }
+    .form-select { cursor: pointer; }
+    .export-actions { display: flex; gap: 10px; align-items: flex-end; }
+    .btn-export {
+      font-family: var(--sans);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--white);
+      background: var(--blue);
+      border: 2px solid var(--blue);
+      border-radius: 4px;
+      padding: 8px 20px;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+      white-space: nowrap;
+    }
+    .btn-export:hover { background: var(--blue-dk); border-color: var(--blue-dk); }
+    .btn-report {
+      font-family: var(--sans);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--blue);
+      background: transparent;
+      border: 2px solid var(--blue);
+      border-radius: 4px;
+      padding: 8px 20px;
+      cursor: pointer;
+      transition: background 0.15s;
+      white-space: nowrap;
+    }
+    .btn-report:hover { background: var(--blue-lt); }
+
+    /* ── API Key Management ── */
+    .key-mgmt-card {
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: 6px;
+      padding: 24px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+    .key-mgmt-left { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .key-label {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--gray-500);
+    }
+    .key-value {
+      font-family: var(--mono);
+      font-size: 14px;
+      color: var(--gray-700);
+    }
+    .btn-regen {
+      font-family: var(--sans);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--gray-600);
+      background: transparent;
+      border: 1px solid var(--gray-200);
+      border-radius: 4px;
+      padding: 8px 18px;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+      white-space: nowrap;
+    }
+    .btn-regen:hover { border-color: var(--red); color: var(--red); }
+
+    /* ── Regenerate modal ── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: 8px;
+      padding: 36px;
+      max-width: 460px;
+      width: 100%;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+    }
+    .modal-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--gray-900);
+      margin-bottom: 8px;
+      letter-spacing: -0.01em;
+    }
+    .modal-body {
+      font-size: 14px;
+      color: var(--gray-600);
+      margin-bottom: 6px;
+      line-height: 1.6;
+    }
+    .modal-warn {
+      font-size: 13px;
+      color: var(--red);
+      margin-bottom: 24px;
+      background: var(--red-lt);
+      border: 1px solid var(--red-bd);
+      border-radius: 4px;
+      padding: 10px 14px;
+    }
+    .modal-actions { display: flex; gap: 12px; }
+    .btn-confirm {
+      font-family: var(--sans);
+      font-size: 13px;
+      font-weight: 700;
+      background: var(--red);
+      color: var(--white);
+      border: 2px solid var(--red);
+      border-radius: 4px;
+      padding: 10px 20px;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .btn-confirm:hover { opacity: 0.85; }
+    .btn-confirm:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-cancel {
+      font-family: var(--sans);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--gray-600);
+      background: transparent;
+      border: 1px solid var(--gray-200);
+      border-radius: 4px;
+      padding: 10px 20px;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .btn-cancel:hover { border-color: var(--gray-400); color: var(--gray-900); }
+
+    .new-key-reveal { display: none; margin-top: 20px; }
+    .new-key-reveal.open { display: block; }
+    .new-key-label {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--gray-500);
+      margin-bottom: 8px;
+    }
+    .new-key-value {
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--gray-900);
+      background: var(--gray-100);
+      border: 1px solid var(--gray-200);
+      border-radius: 4px;
+      padding: 12px 16px;
+      word-break: break-all;
+      margin-bottom: 12px;
+    }
+
+    /* ── Loading / error states ── */
+    .page-loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: calc(100vh - 64px);
+      font-size: 14px;
+      color: var(--gray-500);
+    }
+    .page-error {
+      display: none;
+      padding: 40px;
+      font-size: 14px;
+      color: var(--red);
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid var(--gray-200);
+      border-top-color: var(--blue);
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Footer */
+    footer {
+      background: var(--white);
+      border-top: 1px solid var(--gray-200);
+      padding: 20px 40px;
+      display: flex;
+      gap: 24px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    footer a {
+      font-size: 13px;
+      color: var(--gray-500);
+      transition: color 0.15s;
+    }
+    footer a:hover { color: var(--gray-900); }
+    .footer-tagline { margin-left: auto; font-size: 12px; color: var(--gray-400); }
+
+    /* ── Responsive ── */
+    @media (max-width: 700px) {
+      nav { padding: 0 20px; }
+      .nav-center { display: none; }
+      .container { padding: 0 20px; }
+      .overview-inner { gap: 14px; }
+      .key-mgmt-card { flex-direction: column; align-items: flex-start; }
+    }
+    @media (max-width: 640px) {
+      nav { padding: 0 16px; }
+      .nav-email { display: none; }
+      .btn-logout { font-size: 12px; padding: 5px 10px; }
+      .container { padding: 0 16px; }
+      .overview-inner { flex-direction: column; align-items: flex-start; gap: 12px; }
+      .usage-wrap { min-width: unset; max-width: 100%; width: 100%; }
+      .apikey-wrap { width: 100%; }
+      .apikey-display { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: calc(100% - 90px); display: inline-block; }
+      .btn-upgrade { width: 100%; text-align: center; }
+      .section { padding: 24px 0 0; }
+      .section-last { padding-bottom: 40px; }
+      .tbl-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      .stat-cards-row { gap: 10px; }
+      .stat-card { min-width: calc(50% - 5px); }
+      .key-mgmt-card { padding: 16px 20px; }
+      .key-mgmt-left { flex-direction: column; align-items: flex-start; gap: 8px; }
+      .key-value { font-size: 12px; word-break: break-all; }
+      .btn-regen { width: 100%; text-align: center; }
+      .modal { padding: 24px 20px; }
+      .modal-actions { flex-direction: column; }
+      .btn-confirm, .btn-cancel { width: 100%; text-align: center; }
+      .export-row { flex-direction: column; align-items: flex-start; }
+      .export-field { width: 100%; }
+      .form-input, .form-select { width: 100%; }
+      .export-actions { width: 100%; flex-direction: column; }
+      .btn-export, .btn-report { width: 100%; text-align: center; }
+      footer { padding: 16px 20px; }
+      .footer-tagline { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav>
+  <a class="nav-logo" href="/">Authproof <span>Cloud</span></a>
+  <ul class="nav-center">
+    <li><a href="/dashboard" class="active">Dashboard</a></li>
+    <li><a href="https://github.com/Commonguy25/authproof-sdk" target="_blank">Docs</a></li>
+    <li><a href="/support">Support</a></li>
+    <li><a href="/baa">BAA</a></li>
+  </ul>
+  <div class="nav-right">
+    <span class="nav-email" id="navEmail">—</span>
+    <button class="btn-logout" onclick="handleLogout()">Log out</button>
+  </div>
+</nav>
+
+<!-- Flash banners -->
+<div class="flash-banner success" id="upgradedBanner">🎉 You're now on Pro. Welcome aboard.</div>
+<div class="flash-banner warning" id="canceledBanner">Checkout canceled — you're still on the free plan.</div>
+
+<!-- Page content (hidden until data loads) -->
+<div id="pageLoading" class="page-loading">
+  <span class="spinner"></span>Loading dashboard…
+</div>
+<div id="pageError" class="page-error"></div>
+
+<div id="pageContent" style="display:none;">
+
+  <!-- Overview bar -->
+  <div class="overview-bar">
+    <div class="container">
+      <div class="overview-inner">
+        <span class="plan-badge" id="planBadge">FREE</span>
+
+        <div class="usage-wrap">
+          <div class="usage-text" id="usageText">— / — receipts this month</div>
+          <div class="usage-track"><div class="usage-fill" id="usageFill"></div></div>
+        </div>
+
+        <div class="apikey-wrap">
+          <span class="apikey-display" id="apikeyMasked">••••••••••••••••</span>
+          <button class="btn-copy" id="overviewCopyBtn" onclick="copyApiKey('overviewCopyBtn')">Copy</button>
+        </div>
+
+        <button class="btn-upgrade" id="upgradeBtn" onclick="goToCheckout()">
+          Upgrade to Pro →
+        </button>
+        <button class="btn-upgrade" id="billingBtn" style="display:none;background:transparent;color:var(--blue);border:2px solid var(--blue);" onclick="goToBilling()">
+          Manage billing
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Help strip -->
+  <div class="help-strip">
+    <div class="container">
+      <div class="help-strip-inner">
+        <span class="help-label">Help</span>
+        <a href="/support" class="help-link">Support →</a>
+        <a href="/baa" class="help-link">Business Associate Agreement →</a>
+        <a href="https://github.com/Commonguy25/authproof-sdk" target="_blank" class="help-link">Docs →</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Receipts -->
+  <div class="section">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-title">Recent Receipts</span>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Receipt Hash</th>
+              <th>Created At</th>
+              <th>Expires At</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="receiptsBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Verifications -->
+  <div class="section">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-title">Recent Verifications</span>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Receipt Hash</th>
+              <th>Decision</th>
+              <th>Risk Score</th>
+              <th>Timestamp</th>
+            </tr>
+          </thead>
+          <tbody id="verificationsBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tool Calls -->
+  <div class="section">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-title">Tool Calls</span>
+      </div>
+      <div class="stat-cards-row">
+        <div class="stat-card">
+          <div class="stat-card-label">Total</div>
+          <div class="stat-card-value" id="tcTotal">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-label">Allowed</div>
+          <div class="stat-card-value tc-allowed" id="tcAllowed">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-label">Blocked</div>
+          <div class="stat-card-value tc-blocked" id="tcBlocked">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-label">Flagged</div>
+          <div class="stat-card-value tc-flagged" id="tcFlagged">—</div>
+        </div>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Tool</th>
+              <th>Decision</th>
+              <th>Risk</th>
+              <th>Session</th>
+            </tr>
+          </thead>
+          <tbody id="toolCallsBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Export & Reports -->
+  <div class="section">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-title">Export &amp; Reports</span>
+      </div>
+      <div class="export-card">
+        <div class="export-row">
+          <div class="export-field">
+            <label class="export-label" for="exportFrom">From</label>
+            <input class="form-input" type="date" id="exportFrom" />
+          </div>
+          <div class="export-field">
+            <label class="export-label" for="exportTo">To</label>
+            <input class="form-input" type="date" id="exportTo" />
+          </div>
+          <div class="export-field">
+            <label class="export-label" for="exportFormat">Format</label>
+            <select class="form-select" id="exportFormat">
+              <option value="json">JSON</option>
+              <option value="csv">CSV</option>
+            </select>
+          </div>
+          <div class="export-actions">
+            <button class="btn-export" onclick="doExport()">Export</button>
+            <button class="btn-report" onclick="openReport()">Printable Report</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- API Key Management -->
+  <div class="section section-last">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-title">API Key</span>
+      </div>
+      <div class="key-mgmt-card">
+        <div class="key-mgmt-left">
+          <span class="key-label">Key</span>
+          <span class="key-value" id="keyMgmtMasked">••••••••••••••••</span>
+          <button class="btn-copy" id="keyMgmtCopyBtn" onclick="copyApiKey('keyMgmtCopyBtn')">Copy</button>
+        </div>
+        <button class="btn-regen" onclick="openRegenModal()">Regenerate key</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Regenerate Key Modal -->
+<div class="modal-overlay" id="regenModal" onclick="closeRegenModal(event)">
+  <div class="modal">
+    <div class="modal-title">Regenerate API key?</div>
+    <p class="modal-body">This will generate a new API key for your account.</p>
+    <p class="modal-warn">Your old API key will stop working immediately. All integrations using it will break.</p>
+
+    <div id="regenActions" class="modal-actions">
+      <button class="btn-confirm" id="regenConfirmBtn" onclick="confirmRegen()">Yes, regenerate</button>
+      <button class="btn-cancel" onclick="closeRegenModal()">Cancel</button>
+    </div>
+
+    <div class="new-key-reveal" id="newKeyReveal">
+      <div class="new-key-label">New API Key — save this now</div>
+      <div class="new-key-value" id="newKeyValue"></div>
+      <button class="btn-copy" id="newKeyCopyBtn" onclick="copyNewKey()">Copy new key</button>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <a href="/support">Support</a>
+  <a href="/baa">BAA</a>
+  <a href="/terms">Terms of Service</a>
+  <a href="/privacy">Privacy Policy</a>
+  <span class="footer-tagline">Built on cryptographic proof, not operator trust.</span>
+</footer>
+
+<script>
+  // ── Auth guard ──────────────────────────────────────────────────────────────
+  const AP_TOKEN = localStorage.getItem('ap_token');
+  let AP_KEY = localStorage.getItem('ap_key');
+
+  if (!AP_TOKEN) {
+    window.location.href = '/login';
+  }
+
+  function clearAndRedirect() {
+    localStorage.clear();
+    window.location.href = '/login';
+  }
+
+  async function apiFetch(url, opts = {}) {
+    const res = await fetch(url, {
+      ...opts,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + AP_KEY,
+        ...(opts.headers || {}),
+      },
+    });
+    if (res.status === 401) {
+      clearAndRedirect();
+      return null;
+    }
+    return res;
+  }
+
+  // ── Load dashboard ──────────────────────────────────────────────────────────
+  async function loadDashboard() {
+    try {
+      const res = await apiFetch('/api/dashboard');
+      if (!res) return;
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to load dashboard');
+      }
+
+      const data = await res.json();
+      renderOverview(data);
+      renderReceipts(data.recentReceipts || []);
+      renderVerifications(data.recentVerifications || []);
+      renderToolCalls(data.recentToolCalls || [], data.toolCallStats);
+
+      document.getElementById('pageLoading').style.display = 'none';
+      document.getElementById('pageContent').style.display = 'block';
+
+    } catch (err) {
+      document.getElementById('pageLoading').style.display = 'none';
+      const el = document.getElementById('pageError');
+      el.style.display = 'block';
+      el.textContent = 'Error loading dashboard: ' + err.message;
+    }
+  }
+
+  // ── Render overview ─────────────────────────────────────────────────────────
+  function renderOverview({ account }) {
+    document.getElementById('navEmail').textContent = account.email || '';
+
+    const badge = document.getElementById('planBadge');
+    badge.textContent = account.plan.toUpperCase();
+    if (account.plan === 'pro') badge.classList.add('pro');
+
+    const count = (account.receiptCount ?? 0).toLocaleString();
+    const limit = account.monthlyLimit != null ? account.monthlyLimit.toLocaleString() : '∞';
+    document.getElementById('usageText').textContent = `${count} / ${limit} receipts this month`;
+
+    const pct = Math.min(account.usagePercent ?? 0, 100);
+    const fill = document.getElementById('usageFill');
+    fill.style.width = pct + '%';
+    if (pct >= 90) fill.classList.add('danger');
+    else if (pct >= 75) fill.classList.add('warn');
+
+    const masked = AP_KEY ? AP_KEY.slice(0, 8) + '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022' : '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022';
+    document.getElementById('apikeyMasked').textContent = masked;
+    document.getElementById('keyMgmtMasked').textContent = masked;
+
+    if (account.plan === 'free') {
+      document.getElementById('upgradeBtn').style.display = 'inline-block';
+    } else {
+      document.getElementById('billingBtn').style.display = 'inline-block';
+    }
+  }
+
+  // ── Render receipts ─────────────────────────────────────────────────────────
+  function getReceiptStatus(r) {
+    if (r.revoked) return { label: 'Revoked', cls: 'status-revoked' };
+    if (r.expires_at && new Date(r.expires_at) < new Date()) return { label: 'Expired', cls: 'status-expired' };
+    return { label: 'Active', cls: 'status-active' };
+  }
+
+  function fmtDate(iso) {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
+
+  function renderReceipts(receipts) {
+    const tbody = document.getElementById('receiptsBody');
+    if (!receipts.length) {
+      tbody.innerHTML = `<tr class="empty-row"><td colspan="4">No receipts yet. Configure your SDK to start storing receipts.<code>new AuthProofClient({
+  logEndpoint: 'https://cloud.authproof.dev',
+  apiKey: 'YOUR_API_KEY'
+})</code></td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = receipts.map((r, i) => {
+      const { label, cls } = getReceiptStatus(r);
+      const hash = r.receipt_hash || '';
+      const shortHash = hash.slice(0, 16) + (hash.length > 16 ? '\u2026' : '');
+      const json = JSON.stringify(r.receipt_data, null, 2);
+      return `<tr onclick="toggleRow(${i})" id="row-${i}">
+        <td style="font-family:var(--mono);font-size:12px;">${shortHash}</td>
+        <td>${fmtDate(r.created_at)}</td>
+        <td>${r.expires_at ? fmtDate(r.expires_at) : '—'}</td>
+        <td class="${cls}">${label}</td>
+      </tr>
+      <tr class="detail-row" id="detail-${i}">
+        <td colspan="4"><pre class="json-block">${escHtml(json)}</pre></td>
+      </tr>`;
+    }).join('');
+  }
+
+  function toggleRow(i) {
+    const row = document.getElementById('row-' + i);
+    const detail = document.getElementById('detail-' + i);
+    const isOpen = detail.classList.contains('open');
+    detail.classList.toggle('open', !isOpen);
+    row.classList.toggle('expanded', !isOpen);
+  }
+
+  // ── Render verifications ────────────────────────────────────────────────────
+  function getDecisionDisplay(d) {
+    if (d === 'allow')  return { label: 'ALLOW',  cls: 'decision-allow' };
+    if (d === 'deny')   return { label: 'BLOCK',  cls: 'decision-deny' };
+    if (d === 'review') return { label: 'REVIEW', cls: 'decision-review' };
+    return { label: d?.toUpperCase() || '—', cls: '' };
+  }
+
+  function renderVerifications(verifications) {
+    const tbody = document.getElementById('verificationsBody');
+    if (!verifications.length) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="4">No verifications yet.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = verifications.map(v => {
+      const { label, cls } = getDecisionDisplay(v.decision);
+      const hash = v.receipt_hash || '';
+      const shortHash = hash.slice(0, 16) + (hash.length > 16 ? '…' : '');
+      const risk = v.risk_score != null ? v.risk_score.toFixed(3) : '—';
+      return `<tr>
+        <td style="font-family:var(--mono);font-size:12px">${shortHash}</td>
+        <td class="${cls}">${label}</td>
+        <td>${risk}</td>
+        <td>${fmtDate(v.created_at)}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // ── Render tool calls ───────────────────────────────────────────────────────
+  function renderToolCalls(toolCalls, stats) {
+    if (stats) {
+      document.getElementById('tcTotal').textContent   = stats.total   ?? 0;
+      document.getElementById('tcAllowed').textContent = stats.allowed ?? 0;
+      document.getElementById('tcBlocked').textContent = stats.blocked ?? 0;
+      document.getElementById('tcFlagged').textContent = stats.flagged ?? 0;
+    }
+
+    const tbody = document.getElementById('toolCallsBody');
+    if (!toolCalls.length) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="5">No tool calls logged yet. Use POST /tool-calls to start auditing.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = toolCalls.map(tc => {
+      const decisionCls = tc.decision === 'allowed' ? 'tc-allowed'
+                        : tc.decision === 'blocked'  ? 'tc-blocked'
+                        : 'tc-flagged';
+      const risk = tc.risk_score != null ? tc.risk_score.toFixed(2) : '—';
+      const session = tc.session_id ? tc.session_id.slice(0, 12) + (tc.session_id.length > 12 ? '…' : '') : '—';
+      return `<tr>
+        <td>${fmtDate(tc.created_at)}</td>
+        <td style="font-family:var(--mono)">${escHtml(tc.tool_name)}</td>
+        <td class="${decisionCls}" style="font-weight:600">${tc.decision}</td>
+        <td>${risk}</td>
+        <td style="font-family:var(--mono);font-size:12px">${escHtml(session)}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // ── Export ──────────────────────────────────────────────────────────────────
+  async function doExport() {
+    const from   = document.getElementById('exportFrom').value;
+    const to     = document.getElementById('exportTo').value;
+    const format = document.getElementById('exportFormat').value;
+
+    const params = new URLSearchParams({ format });
+    if (from) params.set('from', from);
+    if (to)   params.set('to',   to);
+
+    const res = await apiFetch('/audit/export?' + params.toString());
+    if (!res) return;
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      alert('Export failed: ' + (err.error || res.statusText));
+      return;
+    }
+
+    const blob = await res.blob();
+    const ext  = format === 'csv' ? 'csv' : 'json';
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `audit-export.${ext}`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function openReport() {
+    const from   = document.getElementById('exportFrom').value;
+    const to     = document.getElementById('exportTo').value;
+    const params = new URLSearchParams();
+    if (AP_KEY) params.set('apiKey', AP_KEY);
+    if (from)   params.set('from', from);
+    if (to)     params.set('to',   to);
+    window.open('/audit/report?' + params.toString(), '_blank');
+  }
+
+  // ── Misc helpers ────────────────────────────────────────────────────────────
+  function escHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function copyApiKey(btnId) {
+    if (!AP_KEY) return;
+    navigator.clipboard.writeText(AP_KEY).then(() => {
+      const btn = document.getElementById(btnId);
+      const orig = btn.textContent;
+      btn.textContent = 'Copied!';
+      setTimeout(() => { btn.textContent = orig; }, 2000);
+    });
+  }
+
+  // ── Regen modal ─────────────────────────────────────────────────────────────
+  function openRegenModal()  { document.getElementById('regenModal').classList.add('open'); }
+  function closeRegenModal(e) {
+    if (e && e.target !== document.getElementById('regenModal')) return;
+    document.getElementById('regenModal').classList.remove('open');
+  }
+
+  async function confirmRegen() {
+    const btn = document.getElementById('regenConfirmBtn');
+    btn.disabled = true;
+    btn.textContent = 'Regenerating…';
+
+    const res = await apiFetch('/account/regenerate-key', { method: 'POST' });
+    if (!res) return;
+
+    const data = await res.json();
+    if (!res.ok) {
+      alert(data.error || 'Failed to regenerate key');
+      btn.disabled = false;
+      btn.textContent = 'Yes, regenerate';
+      return;
+    }
+
+    AP_KEY = data.apiKey;
+    localStorage.setItem('ap_key', AP_KEY);
+
+    document.getElementById('regenActions').style.display = 'none';
+    const reveal = document.getElementById('newKeyReveal');
+    reveal.style.display = 'block';
+    document.getElementById('newKeyValue').textContent = AP_KEY;
+
+    const masked = AP_KEY.slice(0, 8) + '••••••••';
+    document.getElementById('apikeyMasked').textContent  = masked;
+    document.getElementById('keyMgmtMasked').textContent = masked;
+  }
+
+  function copyNewKey() {
+    if (!AP_KEY) return;
+    navigator.clipboard.writeText(AP_KEY).then(() => {
+      const btn = document.getElementById('newKeyCopyBtn');
+      btn.textContent = 'Copied!';
+      setTimeout(() => { btn.textContent = 'Copy new key'; }, 2000);
+    });
+  }
+
+  // ── Upgrade button ──────────────────────────────────────────────────────────
+  async function goToCheckout() {
+    const btn = document.getElementById('upgradeBtn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Redirecting…'; }
+    const res = await apiFetch('/billing/checkout');
+    if (!res) return;
+    const data = await res.json();
+    if (data.checkoutUrl) {
+      window.location.href = data.checkoutUrl;
+    } else {
+      alert(data.error || 'Could not start checkout');
+      if (btn) { btn.disabled = false; btn.textContent = 'Upgrade to Pro'; }
+    }
+  }
+
+  // ── Logout ──────────────────────────────────────────────────────────────────
+  function handleLogout() { clearAndRedirect(); }
+
+  // ── Billing portal ──────────────────────────────────────────────────────────
+  async function goToBilling() {
+    const btn = document.getElementById('billingBtn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Redirecting…'; }
+    const res = await apiFetch('/billing/portal');
+    if (!res) return;
+    const data = await res.json();
+    if (data.portalUrl) {
+      window.location.href = data.portalUrl;
+    } else {
+      alert(data.error || 'Could not open billing portal');
+      if (btn) { btn.disabled = false; btn.textContent = 'Manage billing'; }
+    }
+  }
+
+  // ── Flash banners on return from Stripe ─────────────────────────────────────
+  (function checkStripeReturn() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('upgraded') === 'true') {
+      document.getElementById('upgradedBanner').style.display = 'block';
+      window.history.replaceState({}, '', '/dashboard');
+    } else if (params.get('canceled') === 'true') {
+      document.getElementById('canceledBanner').style.display = 'block';
+      window.history.replaceState({}, '', '/dashboard');
+    }
+  })();
+
+  // ── Init ────────────────────────────────────────────────────────────────────
+  loadDashboard();
+
+</script>
+
+</body>
+</html>
