@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Business Associate Agreement — Authproof Cloud</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --blue:     #1a56db;
+      --blue-lt:  #e8f0fe;
+      --blue-dk:  #1340a8;
+      --gray-200: #e5e7eb;
+      --gray-400: #9ca3af;
+      --gray-500: #6b7280;
+      --gray-600: #4b5563;
+      --gray-700: #374151;
+      --gray-900: #111111;
+      --white:    #ffffff;
+      --sans:     'Inter', sans-serif;
+    }
+
+    body {
+      background: #f8f9fa;
+      color: var(--gray-700);
+      font-family: var(--sans);
+      font-size: 15px;
+      line-height: 1.75;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    nav {
+      background: var(--white);
+      border-bottom: 1px solid var(--gray-200);
+      padding: 0 48px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .nav-logo { font-size: 17px; font-weight: 700; color: var(--gray-900); text-decoration: none; }
+    .nav-logo span { color: var(--blue); }
+    .nav-back { font-size: 14px; font-weight: 500; color: var(--gray-500); transition: color 0.15s; }
+    .nav-back:hover { color: var(--gray-900); text-decoration: none; }
+
+    main { flex: 1; }
+
+    .page {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 64px 24px 80px;
+    }
+
+    .page-eyebrow {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--blue);
+      margin-bottom: 12px;
+    }
+
+    h1 {
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--gray-900);
+      letter-spacing: -0.02em;
+      margin-bottom: 14px;
+    }
+
+    .subtitle {
+      font-size: 16px;
+      color: var(--gray-500);
+      margin-bottom: 56px;
+      max-width: 580px;
+      line-height: 1.7;
+    }
+
+    /* ── Sections ── */
+    .section {
+      padding-top: 40px;
+      border-top: 1px solid var(--gray-200);
+      margin-bottom: 0;
+    }
+    .section:first-of-type { border-top: none; padding-top: 0; }
+    .section + .section { margin-top: 40px; }
+
+    h2 {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--gray-900);
+      margin-bottom: 16px;
+    }
+
+    p { color: var(--gray-600); margin-bottom: 16px; }
+    p:last-child { margin-bottom: 0; }
+
+    /* ── Info cards ── */
+    .card {
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: 6px;
+      padding: 24px 28px;
+      margin-bottom: 12px;
+    }
+    .card:last-child { margin-bottom: 0; }
+
+    .card-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--blue);
+      margin-bottom: 10px;
+    }
+    .card p {
+      color: var(--gray-600);
+      font-size: 14px;
+      line-height: 1.7;
+      margin: 0;
+    }
+
+    /* ── Covered list ── */
+    .covered-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .covered-list li {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--gray-200);
+      font-size: 14px;
+      color: var(--gray-600);
+    }
+    .covered-list li:last-child { border-bottom: none; }
+    .covered-list li::before {
+      content: '→';
+      color: var(--blue);
+      font-size: 13px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    /* ── CTA section ── */
+    .cta-section {
+      margin-top: 56px;
+      padding: 40px;
+      background: var(--blue-lt);
+      border: 1px solid #c3d5fb;
+      border-radius: 8px;
+    }
+    .cta-section h2 {
+      font-size: 20px;
+      margin-bottom: 10px;
+    }
+    .cta-section p {
+      font-size: 14px;
+      color: var(--gray-600);
+      margin-bottom: 28px;
+    }
+    .btn {
+      display: inline-block;
+      background: var(--blue);
+      color: var(--white);
+      padding: 13px 28px;
+      font-family: var(--sans);
+      font-weight: 600;
+      font-size: 14px;
+      border-radius: 4px;
+      text-decoration: none;
+      transition: background 0.15s;
+    }
+    .btn:hover { background: var(--blue-dk); text-decoration: none; }
+
+    /* ── Attorney note ── */
+    .attorney-note {
+      margin-top: 40px;
+      padding: 16px 20px;
+      border-left: 3px solid var(--gray-200);
+      font-size: 13px;
+      color: var(--gray-400);
+      line-height: 1.6;
+    }
+
+    footer {
+      background: var(--white);
+      border-top: 1px solid var(--gray-200);
+      padding: 20px 48px;
+      display: flex;
+      gap: 24px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    footer a {
+      font-size: 13px;
+      color: var(--gray-500);
+      transition: color 0.15s;
+      text-decoration: none;
+    }
+    footer a:hover { color: var(--gray-900); }
+    .footer-tagline { margin-left: auto; font-size: 12px; color: var(--gray-400); }
+
+    @media (max-width: 640px) {
+      nav { padding: 0 20px; }
+      h1 { font-size: 24px; }
+      .page { padding: 40px 20px 60px; }
+      .cta-section { padding: 28px 20px 24px; }
+      .card { padding: 20px; }
+      footer { padding: 16px 20px; }
+      .footer-tagline { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-logo" href="/">Authproof <span>Cloud</span></a>
+  <a class="nav-back" href="/support">← Support</a>
+</nav>
+
+<main>
+  <div class="page">
+    <div class="page-eyebrow">Compliance</div>
+    <h1>Business Associate Agreement</h1>
+    <p class="subtitle">If your organization is a HIPAA Covered Entity or works with protected health information, you need a signed BAA before using Authproof Cloud in PHI-adjacent workflows.</p>
+
+    <!-- What is a BAA -->
+    <div class="section">
+      <h2>What is a BAA?</h2>
+      <p>A Business Associate Agreement (BAA) is a contract required by HIPAA between a Covered Entity — such as a hospital, clinic, health plan, or healthcare clearinghouse — and any vendor that handles Protected Health Information (PHI) on their behalf.</p>
+      <p>Under 45 CFR § 164.504(e), Covered Entities must obtain satisfactory assurances from Business Associates that PHI will be appropriately safeguarded before sharing it. A signed BAA is that assurance.</p>
+    </div>
+
+    <!-- Do I need one -->
+    <div class="section">
+      <h2>Do I need a BAA?</h2>
+      <div class="card">
+        <div class="card-label">You need a BAA if</div>
+        <p>Your organization is a HIPAA Covered Entity or Business Associate, and you intend to use Authproof Cloud to log, verify, or audit AI agent actions that involve PHI — for example, clinical decision agents, patient-facing AI, or healthcare operations automation.</p>
+      </div>
+      <div class="card">
+        <div class="card-label">You may not need a BAA if</div>
+        <p>You are using Authproof Cloud exclusively for non-healthcare workflows where no PHI is involved. Authproof Cloud stores cryptographic hashes of authorization data — not raw content — so many healthcare-adjacent workflows may not constitute PHI processing. When in doubt, consult a healthcare attorney.</p>
+      </div>
+    </div>
+
+    <!-- What the BAA covers -->
+    <div class="section">
+      <h2>What the BAA covers</h2>
+      <ul class="covered-list">
+        <li>Permitted uses and disclosures of PHI in connection with the Service</li>
+        <li>Prohibition on unauthorized use or disclosure of PHI</li>
+        <li>Appropriate administrative, physical, and technical safeguards</li>
+        <li>Breach notification within required timeframes (60 days for Unsecured PHI)</li>
+        <li>Subcontractor obligations (Supabase, Vercel)</li>
+        <li>Individual access and amendment rights</li>
+        <li>Accounting of disclosures</li>
+        <li>Return or destruction of PHI on termination</li>
+        <li>Termination rights for material breach</li>
+      </ul>
+    </div>
+
+    <!-- CTA -->
+    <div class="cta-section">
+      <h2>Request a BAA</h2>
+      <p>Send us your organization name and contact information and we will send you a BAA for review and execution within 2 business days.</p>
+      <a class="btn" href="mailto:ryan@authproof.dev?subject=BAA%20Request%20%E2%80%94%20Authproof%20Cloud&body=Organization%20name%3A%0AContact%20name%3A%0AContact%20email%3A%0A%0APlease%20send%20us%20a%20Business%20Associate%20Agreement%20for%20Authproof%20Cloud.">Request a BAA →</a>
+    </div>
+
+    <div class="attorney-note">
+      This page is provided for informational purposes only and does not constitute legal advice. Consult a qualified healthcare attorney to determine your HIPAA obligations before using Authproof Cloud with PHI.
+    </div>
+
+  </div>
+</main>
+
+<footer>
+  <a href="/support">Support</a>
+  <a href="/baa">BAA</a>
+  <a href="/terms">Terms of Service</a>
+  <a href="/privacy">Privacy Policy</a>
+  <span class="footer-tagline">Built on cryptographic proof, not operator trust.</span>
+</footer>
+
+</body>
+</html>

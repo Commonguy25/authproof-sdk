@@ -6,63 +6,56 @@
   <title>Support — Authproof Cloud</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg:     #000000;
-      --surface: #0a0a0a;
-      --border: #222;
-      --green:  #00FF41;
-      --text:   #c8c8c8;
-      --muted:  #666;
-      --white:  #ffffff;
-      --mono:   'JetBrains Mono', 'Courier New', monospace;
-      --sans:   'Inter', sans-serif;
+      --blue:     #1a56db;
+      --blue-lt:  #e8f0fe;
+      --gray-200: #e5e7eb;
+      --gray-400: #9ca3af;
+      --gray-500: #6b7280;
+      --gray-600: #4b5563;
+      --gray-700: #374151;
+      --gray-900: #111111;
+      --green:    #16a34a;
+      --green-lt: #f0fdf4;
+      --green-bd: #bbf7d0;
+      --white:    #ffffff;
+      --sans:     'Inter', sans-serif;
     }
 
     body {
-      background: var(--bg);
-      color: var(--text);
+      background: #f8f9fa;
+      color: var(--gray-700);
       font-family: var(--sans);
       font-size: 15px;
       line-height: 1.75;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
       -webkit-font-smoothing: antialiased;
     }
 
-    a { color: var(--green); text-decoration: none; }
+    a { color: var(--blue); text-decoration: none; }
     a:hover { text-decoration: underline; }
 
     nav {
-      border-bottom: 1px solid var(--border);
-      padding: 18px 0;
-    }
-    nav .inner {
-      max-width: 760px;
-      margin: 0 auto;
-      padding: 0 24px;
+      background: var(--white);
+      border-bottom: 1px solid var(--gray-200);
+      padding: 0 48px;
+      height: 64px;
       display: flex;
       align-items: center;
       justify-content: space-between;
     }
-    .logo {
-      font-family: var(--mono);
-      color: var(--green);
-      font-weight: 700;
-      font-size: 13px;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      text-decoration: none;
-    }
-    nav a.back {
-      font-family: var(--mono);
-      color: var(--muted);
-      font-size: 12px;
-      letter-spacing: 0.04em;
-      transition: color 0.15s;
-    }
-    nav a.back:hover { color: var(--green); }
+    .nav-logo { font-size: 17px; font-weight: 700; color: var(--gray-900); text-decoration: none; }
+    .nav-logo span { color: var(--blue); }
+    .nav-back { font-size: 14px; font-weight: 500; color: var(--gray-500); transition: color 0.15s; }
+    .nav-back:hover { color: var(--gray-900); text-decoration: none; }
+
+    main { flex: 1; }
 
     .page {
       max-width: 760px;
@@ -70,85 +63,80 @@
       padding: 64px 24px 80px;
     }
 
-    .page-label {
-      font-family: var(--mono);
-      font-size: 11px;
-      color: var(--green);
-      letter-spacing: 0.2em;
+    .page-eyebrow {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
       text-transform: uppercase;
-      margin-bottom: 16px;
+      color: var(--blue);
+      margin-bottom: 12px;
     }
 
     h1 {
-      font-family: var(--sans);
       font-size: 32px;
       font-weight: 700;
-      color: var(--white);
+      color: var(--gray-900);
       letter-spacing: -0.02em;
       margin-bottom: 48px;
     }
 
-    /* ── Section ── */
     .section {
       padding-top: 40px;
-      border-top: 1px solid var(--border);
+      border-top: 1px solid var(--gray-200);
       margin-bottom: 0;
     }
     .section:first-of-type { border-top: none; padding-top: 0; }
+    .section + .section { margin-top: 40px; }
 
     h2 {
-      font-family: var(--sans);
       font-size: 17px;
-      font-weight: 600;
-      color: var(--white);
+      font-weight: 700;
+      color: var(--gray-900);
       margin-bottom: 20px;
     }
 
-    /* ── Get Help card ── */
+    /* ── Help card ── */
     .help-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: 6px;
       padding: 28px 32px;
     }
     .help-card p {
-      color: var(--text);
+      color: var(--gray-600);
       font-size: 15px;
       margin: 0;
     }
 
     /* ── FAQ ── */
-    .faq {
-      display: flex;
-      flex-direction: column;
-      gap: 0;
-    }
+    .faq { display: flex; flex-direction: column; gap: 0; }
     .faq-item {
-      border-bottom: 1px solid var(--border);
+      border-bottom: 1px solid var(--gray-200);
       padding: 20px 0;
     }
     .faq-item:first-child { padding-top: 0; }
     .faq-q {
-      font-family: var(--sans);
       font-size: 15px;
       font-weight: 600;
-      color: var(--white);
+      color: var(--gray-900);
       margin-bottom: 8px;
     }
     .faq-a {
       font-size: 14px;
-      color: var(--text);
+      color: var(--gray-600);
       line-height: 1.7;
       margin: 0;
     }
 
     /* ── Status card ── */
     .status-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      padding: 28px 32px;
+      background: var(--green-lt);
+      border: 1px solid var(--green-bd);
+      border-radius: 6px;
+      padding: 24px 28px;
       display: flex;
       align-items: center;
-      gap: 16px;
+      gap: 14px;
     }
     .status-dot {
       width: 10px;
@@ -156,141 +144,130 @@
       border-radius: 50%;
       background: var(--green);
       flex-shrink: 0;
-      box-shadow: 0 0 6px var(--green);
     }
     .status-card p {
-      color: var(--text);
+      color: var(--gray-700);
       font-size: 15px;
       margin: 0;
     }
 
     footer {
-      border-top: 1px solid var(--border);
-      padding: 32px 0;
-    }
-    footer .inner {
-      max-width: 760px;
-      margin: 0 auto;
-      padding: 0 24px;
+      background: var(--white);
+      border-top: 1px solid var(--gray-200);
+      padding: 20px 48px;
       display: flex;
       gap: 24px;
       align-items: center;
       flex-wrap: wrap;
     }
     footer a {
-      font-family: var(--mono);
-      font-size: 12px;
-      color: var(--muted);
-      letter-spacing: 0.04em;
+      font-size: 13px;
+      color: var(--gray-500);
       transition: color 0.15s;
+      text-decoration: none;
     }
-    footer a:hover { color: var(--green); text-decoration: none; }
-    .footer-tagline {
-      font-family: var(--mono);
-      font-size: 11px;
-      color: #333;
-      margin-left: auto;
-    }
+    footer a:hover { color: var(--gray-900); }
+    .footer-tagline { margin-left: auto; font-size: 12px; color: var(--gray-400); }
 
     @media (max-width: 640px) {
+      nav { padding: 0 20px; }
       h1 { font-size: 24px; margin-bottom: 32px; }
       .page { padding: 40px 20px 60px; }
       .help-card, .status-card { padding: 20px; }
-      .footer-tagline { margin-left: 0; }
+      footer { padding: 16px 20px; }
+      .footer-tagline { display: none; }
     }
   </style>
 </head>
 <body>
 
 <nav>
-  <div class="inner">
-    <a class="logo" href="/">Authproof Cloud</a>
-    <a class="back" href="/">← Home</a>
-  </div>
+  <a class="nav-logo" href="/">Authproof <span>Cloud</span></a>
+  <a class="nav-back" href="/">← Home</a>
 </nav>
 
-<div class="page">
-  <div class="page-label">Support</div>
-  <h1>How can we help?</h1>
+<main>
+  <div class="page">
+    <div class="page-eyebrow">Support</div>
+    <h1>How can we help?</h1>
 
-  <!-- Get Help -->
-  <div class="section">
-    <h2>Get Help</h2>
-    <div class="help-card">
-      <p>Email us at <a href="mailto:ryan@authproof.dev">ryan@authproof.dev</a>. We respond within 24 hours on business days.</p>
+    <!-- Get Help -->
+    <div class="section">
+      <h2>Get Help</h2>
+      <div class="help-card">
+        <p>Email us at <a href="mailto:ryan@authproof.dev">ryan@authproof.dev</a>. We respond within 24 hours on business days.</p>
+      </div>
     </div>
-  </div>
 
-  <!-- Common Questions -->
-  <div class="section" style="margin-top:40px">
-    <h2>Common Questions</h2>
-    <div class="faq">
+    <!-- Common Questions -->
+    <div class="section">
+      <h2>Common Questions</h2>
+      <div class="faq">
 
-      <div class="faq-item">
-        <div class="faq-q">How do I get my API key?</div>
-        <p class="faq-a">Your API key is shown once when you sign up. If you lost it, you can regenerate it from your dashboard under <strong style="color:var(--white)">API Key Management</strong>. Note: regenerating invalidates your old key immediately.</p>
+        <div class="faq-item">
+          <div class="faq-q">How do I get my API key?</div>
+          <p class="faq-a">Your API key is shown once when you sign up. If you lost it, you can regenerate it from your dashboard under <strong>API Key Management</strong>. Note: regenerating invalidates your old key immediately.</p>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-q">What happens when I hit the free tier limit?</div>
+          <p class="faq-a">Your account will be paused until the next month resets, or you can upgrade to Pro for unlimited receipts.</p>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-q">How do I upgrade to Pro?</div>
+          <p class="faq-a">Click <strong>Upgrade to Pro</strong> in your dashboard. You will be redirected to Stripe checkout to complete your subscription.</p>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-q">Can I export my audit data?</div>
+          <p class="faq-a">Yes. Go to your dashboard and use the <strong>Export &amp; Reports</strong> section to download your complete receipt and verification history as signed JSON or CSV.</p>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-q">How do I cancel my subscription?</div>
+          <p class="faq-a">Email <a href="mailto:ryan@authproof.dev">ryan@authproof.dev</a> or use the billing portal link in your dashboard.</p>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-q">Is my data deleted if I cancel?</div>
+          <p class="faq-a">Your data is retained for 30 days after cancellation, then permanently deleted per our <a href="/privacy">Privacy Policy</a>.</p>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-q">What is the difference between authproof and Authproof Cloud?</div>
+          <p class="faq-a"><a href="https://authproof.dev" target="_blank">authproof</a> is the open source SDK at authproof.dev — free forever, MIT licensed. Authproof Cloud is the hosted infrastructure service. The SDK handles the cryptographic receipts; the Cloud handles the log infrastructure so you don't have to run your own.</p>
+        </div>
+
       </div>
-
-      <div class="faq-item">
-        <div class="faq-q">What happens when I hit the free tier limit?</div>
-        <p class="faq-a">Your account will be paused until the next month resets, or you can upgrade to Pro for unlimited receipts.</p>
-      </div>
-
-      <div class="faq-item">
-        <div class="faq-q">How do I upgrade to Pro?</div>
-        <p class="faq-a">Click <strong style="color:var(--white)">Upgrade to Pro</strong> in your dashboard. You will be redirected to Stripe checkout to complete your subscription.</p>
-      </div>
-
-      <div class="faq-item">
-        <div class="faq-q">Can I export my audit data?</div>
-        <p class="faq-a">Yes. Go to your dashboard and use the <strong style="color:var(--white)">Export &amp; Reports</strong> section to download your complete receipt and verification history as signed JSON or CSV.</p>
-      </div>
-
-      <div class="faq-item">
-        <div class="faq-q">How do I cancel my subscription?</div>
-        <p class="faq-a">Email <a href="mailto:ryan@authproof.dev">ryan@authproof.dev</a> or use the billing portal link in your dashboard.</p>
-      </div>
-
-      <div class="faq-item">
-        <div class="faq-q">Is my data deleted if I cancel?</div>
-        <p class="faq-a">Your data is retained for 30 days after cancellation, then permanently deleted per our <a href="/privacy">Privacy Policy</a>.</p>
-      </div>
-
-      <div class="faq-item">
-        <div class="faq-q">What is the difference between authproof and Authproof Cloud?</div>
-        <p class="faq-a"><a href="https://authproof.dev" target="_blank">authproof</a> is the open source SDK at authproof.dev — free forever, MIT licensed. Authproof Cloud is the hosted infrastructure service. The SDK handles the cryptographic receipts; the Cloud handles the log infrastructure so you don't have to run your own.</p>
-      </div>
-
     </div>
-  </div>
 
-  <!-- BAA -->
-  <div class="section" style="margin-top:40px">
-    <h2>Healthcare &amp; HIPAA</h2>
-    <div class="help-card">
-      <p>If your organization is a HIPAA Covered Entity, you need a signed Business Associate Agreement before using Authproof Cloud with PHI-adjacent workflows. <a href="/baa">Learn more and request a BAA →</a></p>
+    <!-- BAA -->
+    <div class="section">
+      <h2>Healthcare &amp; HIPAA</h2>
+      <div class="help-card">
+        <p>If your organization is a HIPAA Covered Entity, you need a signed Business Associate Agreement before using Authproof Cloud with PHI-adjacent workflows. <a href="/baa">Learn more and request a BAA →</a></p>
+      </div>
     </div>
-  </div>
 
-  <!-- Status -->
-  <div class="section" style="margin-top:40px">
-    <h2>Status</h2>
-    <div class="status-card">
-      <div class="status-dot"></div>
-      <p>For service status and incidents, email <a href="mailto:ryan@authproof.dev">ryan@authproof.dev</a>.</p>
+    <!-- Status -->
+    <div class="section">
+      <h2>Status</h2>
+      <div class="status-card">
+        <div class="status-dot"></div>
+        <p>For service status and incidents, email <a href="mailto:ryan@authproof.dev">ryan@authproof.dev</a>.</p>
+      </div>
     </div>
-  </div>
 
-</div>
+  </div>
+</main>
 
 <footer>
-  <div class="inner">
-    <a href="/support">Support</a>
-    <a href="/baa">BAA</a>
-    <a href="/terms">Terms of Service</a>
-    <a href="/privacy">Privacy Policy</a>
-    <span class="footer-tagline">Built on cryptographic proof, not operator trust.</span>
-  </div>
+  <a href="/support">Support</a>
+  <a href="/baa">BAA</a>
+  <a href="/terms">Terms of Service</a>
+  <a href="/privacy">Privacy Policy</a>
+  <span class="footer-tagline">Built on cryptographic proof, not operator trust.</span>
 </footer>
 
 </body>
