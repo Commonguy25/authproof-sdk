@@ -183,8 +183,15 @@
 
 <nav>
   <a class="nav-logo" href="/">Authproof <span>Cloud</span></a>
-  <a class="nav-back" href="/">← Home</a>
+  <a class="nav-back" id="navBack" href="/">← Home</a>
 </nav>
+<script>
+  if (localStorage.getItem('ap_token')) {
+    const el = document.getElementById('navBack');
+    el.href = '/dashboard';
+    el.textContent = '← Dashboard';
+  }
+</script>
 
 <main>
   <div class="page">
@@ -263,12 +270,18 @@
 </main>
 
 <footer>
+  <a href="/dashboard" id="footerDash" style="display:none">Dashboard</a>
   <a href="/support">Support</a>
   <a href="/baa">BAA</a>
   <a href="/terms">Terms of Service</a>
   <a href="/privacy">Privacy Policy</a>
   <span class="footer-tagline">Built on cryptographic proof, not operator trust.</span>
 </footer>
+<script>
+  if (localStorage.getItem('ap_token')) {
+    document.getElementById('footerDash').style.display = '';
+  }
+</script>
 
 </body>
 </html>
