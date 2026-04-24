@@ -37,8 +37,20 @@
       justify-content: center;
     }
 
-    @media (max-aspect-ratio: 2.35/1) {
-      #cinema { width: calc(100vh * 2.35 * 0.7); height: calc(100vh * 0.7); }
+    /* ── Mobile / portrait: fill the whole viewport ── */
+    @media (max-aspect-ratio: 1/1), (max-width: 768px) {
+      #top-bar, #bot-bar { height: 0 !important; }
+
+      #line { max-width: 85%; }
+      #line.lora    { font-size: clamp(22px, 5.5vw, 34px); }
+      #line.product { font-size: clamp(20px, 4.8vw, 30px); }
+      #line.brand   { font-size: clamp(30px, 7.5vw, 50px); }
+
+      .reveal-logo    { font-size: clamp(28px, 7vw, 44px); }
+      .reveal-tagline { font-size: clamp(13px, 3.2vw, 16px); }
+      .reveal-url     { font-size: clamp(16px, 3.8vw, 20px); }
+      .badge          { font-size: clamp(9px, 2.2vw, 11px); padding: 5px 12px; }
+      .reveal-badges  { flex-wrap: wrap; justify-content: center; gap: 8px; }
     }
 
     /* Film grain — multiply blend, very low alpha on white */
@@ -236,16 +248,26 @@
   window.addEventListener('resize', resize);
 })();
 
-/* ── Letterbox ──────────────────────────────── */
+/* ── Letterbox / full-screen ────────────────── */
 function layout() {
   const vw = window.innerWidth, vh = window.innerHeight;
-  const ch = vw / 2.35;
-  const barH = Math.max(0, (vh - ch) / 2);
-  document.getElementById('top-bar').style.height = barH + 'px';
-  document.getElementById('bot-bar').style.height = barH + 'px';
-  const c = document.getElementById('cinema');
-  c.style.width  = vw + 'px';
-  c.style.height = ch + 'px';
+  const isMobile = vw <= 768 || vh > vw; // portrait or narrow
+  const top = document.getElementById('top-bar');
+  const bot = document.getElementById('bot-bar');
+  const c   = document.getElementById('cinema');
+  if (isMobile) {
+    top.style.height = '0px';
+    bot.style.height = '0px';
+    c.style.width  = vw + 'px';
+    c.style.height = vh + 'px';
+  } else {
+    const ch   = vw / 2.35;
+    const barH = Math.max(0, (vh - ch) / 2);
+    top.style.height = barH + 'px';
+    bot.style.height = barH + 'px';
+    c.style.width  = vw + 'px';
+    c.style.height = ch + 'px';
+  }
 }
 layout();
 window.addEventListener('resize', layout);
