@@ -51,6 +51,7 @@
     { "src": "/film",               "dest": "/frontend/film.html" },
     { "src": "/orgs",               "dest": "/frontend/orgs.html" },
     { "src": "/services",           "dest": "/frontend/services.html" },
+    { "src": "/managed-ai",         "dest": "/frontend/managed-ai.html" },
     { "src": "/(.*)",               "dest": "/frontend/$1" }
   ]
 }
