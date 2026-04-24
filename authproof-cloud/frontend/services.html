@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Professional Services — Authproof Cloud</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --blue:     #1a56db;
+      --blue-lt:  #e8f0fe;
+      --blue-dk:  #1246b5;
+      --gray-100: #f5f5f7;
+      --gray-200: #d2d2d7;
+      --gray-400: #86868b;
+      --gray-500: #6e6e73;
+      --gray-700: #1d1d1f;
+      --gray-900: #1d1d1f;
+      --white:    #ffffff;
+      --sans:     'Inter', sans-serif;
+    }
+
+    body {
+      background: var(--white);
+      color: var(--gray-700);
+      font-family: var(--sans);
+      font-size: 17px;
+      line-height: 1.7;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    nav {
+      background: rgba(255,255,255,0.85);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border-bottom: 1px solid rgba(0,0,0,0.08);
+      padding: 0 48px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .nav-logo { font-size: 17px; font-weight: 700; color: var(--gray-900); text-decoration: none; }
+    .nav-logo span { color: var(--blue); }
+    .nav-back { font-size: 14px; font-weight: 400; color: var(--gray-500); transition: color 0.15s; }
+    .nav-back:hover { color: var(--blue); text-decoration: none; }
+
+    main { flex: 1; }
+
+    .page {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 80px 24px 96px;
+    }
+
+    .page-eyebrow {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--blue);
+      margin-bottom: 12px;
+    }
+
+    h1 {
+      font-size: 36px;
+      font-weight: 800;
+      color: var(--gray-900);
+      letter-spacing: -0.03em;
+      margin-bottom: 14px;
+      line-height: 1.1;
+    }
+
+    .subtitle {
+      font-size: 17px;
+      color: var(--gray-500);
+      margin-bottom: 56px;
+      max-width: 560px;
+      line-height: 1.65;
+    }
+
+    /* Service cards */
+    .services-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 56px;
+    }
+
+    .service-card {
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: 18px;
+      padding: 32px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: box-shadow 0.2s, border-color 0.2s;
+    }
+    .service-card:hover {
+      box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+      border-color: #c3c3c8;
+    }
+
+    .service-icon {
+      width: 44px;
+      height: 44px;
+      background: var(--blue-lt);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+    }
+
+    .service-name {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--gray-900);
+      letter-spacing: -0.02em;
+    }
+
+    .service-price {
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--blue);
+      letter-spacing: -0.03em;
+      line-height: 1;
+    }
+    .service-price span {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--gray-400);
+      letter-spacing: 0;
+    }
+
+    .service-desc {
+      font-size: 15px;
+      color: var(--gray-500);
+      line-height: 1.65;
+      flex: 1;
+    }
+
+    /* CTA */
+    .cta-section {
+      padding: 40px;
+      background: var(--blue-lt);
+      border: 1px solid #c3d5fb;
+      border-radius: 18px;
+    }
+    .cta-section h2 {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--gray-900);
+      letter-spacing: -0.02em;
+      margin-bottom: 10px;
+    }
+    .cta-section p {
+      font-size: 15px;
+      color: var(--gray-500);
+      margin-bottom: 28px;
+      line-height: 1.65;
+    }
+    .btn {
+      display: inline-block;
+      background: var(--blue);
+      color: var(--white);
+      padding: 13px 28px;
+      font-family: var(--sans);
+      font-weight: 600;
+      font-size: 15px;
+      border-radius: 980px;
+      text-decoration: none;
+      transition: background 0.2s;
+    }
+    .btn:hover { background: var(--blue-dk); text-decoration: none; }
+
+    .note {
+      margin-top: 32px;
+      padding: 16px 20px;
+      border-left: 3px solid var(--gray-200);
+      font-size: 14px;
+      color: var(--gray-400);
+      line-height: 1.6;
+    }
+
+    footer {
+      background: var(--white);
+      border-top: 1px solid rgba(0,0,0,0.08);
+      padding: 20px 48px;
+      display: flex;
+      gap: 24px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    footer a { font-size: 13px; color: var(--gray-500); transition: color 0.15s; text-decoration: none; }
+    footer a:hover { color: var(--gray-900); }
+    .footer-tagline { margin-left: auto; font-size: 12px; color: var(--gray-400); }
+
+    @media (max-width: 640px) {
+      nav { padding: 0 20px; }
+      h1 { font-size: 28px; }
+      .page { padding: 48px 20px 64px; }
+      .services-grid { grid-template-columns: 1fr; }
+      .cta-section { padding: 28px 20px 24px; }
+      footer { padding: 16px 20px; }
+      .footer-tagline { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-logo" href="/">Authproof <span>Cloud</span></a>
+  <a class="nav-back" id="navBack" href="/">← Home</a>
+</nav>
+<script>
+  if (localStorage.getItem('ap_token')) {
+    const el = document.getElementById('navBack');
+    el.href = '/dashboard';
+    el.textContent = '← Dashboard';
+  }
+</script>
+
+<main>
+  <div class="page">
+    <div class="page-eyebrow">Professional Services</div>
+    <h1>Expert help, when you need it</h1>
+    <p class="subtitle">Hands-on professional services to get you integrated, compliant, and production-ready faster. All services are delivered by the Authproof team.</p>
+
+    <div class="services-grid">
+
+      <div class="service-card">
+        <div class="service-icon">🔌</div>
+        <div class="service-name">Integration Support</div>
+        <div class="service-price">$500 <span>/ engagement</span></div>
+        <p class="service-desc">Hands-on help integrating the Authproof SDK into your agent stack. Includes a scoping call, implementation review, and up to 4 hours of async support until you're live in production.</p>
+      </div>
+
+      <div class="service-card">
+        <div class="service-icon">📋</div>
+        <div class="service-name">BAA Review</div>
+        <div class="service-price">$200 <span>/ engagement</span></div>
+        <p class="service-desc">Review and execution of a Business Associate Agreement for HIPAA-covered workflows. Includes legal review turnaround within 3 business days and countersigned BAA delivered by email.</p>
+      </div>
+
+      <div class="service-card">
+        <div class="service-icon">🗂️</div>
+        <div class="service-name">Custom Scope Schema</div>
+        <div class="service-price">$300 <span>/ engagement</span></div>
+        <p class="service-desc">Design a custom authorization scope schema tailored to your agent's capabilities and your compliance requirements. Delivered as a versioned JSON schema with documentation and SDK integration guidance.</p>
+      </div>
+
+      <div class="service-card">
+        <div class="service-icon">🏢</div>
+        <div class="service-name">Multi-tenant Setup</div>
+        <div class="service-price">$400 <span>/ engagement</span></div>
+        <p class="service-desc">Configure Authproof Cloud for multi-tenant deployments — separate receipt namespaces, per-tenant API keys, and audit log isolation. Includes architecture review and setup verification.</p>
+      </div>
+
+    </div>
+
+    <div class="cta-section">
+      <h2>Ready to get started?</h2>
+      <p>Email us with your use case and we'll scope the engagement and send you an invoice. Most engagements begin within 2–3 business days of payment.</p>
+      <a class="btn" href="mailto:ryan@authproof.dev?subject=Professional%20Services%20Inquiry%20%E2%80%94%20Authproof%20Cloud&body=Service%20needed%3A%0AUse%20case%3A%0AOrganization%3A%0AContact%20name%3A%0A">Contact us →</a>
+    </div>
+
+    <div class="note">
+      All services are scoped engagements billed at a flat rate. Payment is processed via Stripe invoice. Engagements begin after receipt of payment.
+    </div>
+
+  </div>
+</main>
+
+<footer>
+  <a href="/dashboard" id="footerDash" style="display:none">Dashboard</a>
+  <a href="/support">Support</a>
+  <a href="/baa">BAA</a>
+  <a href="/terms">Terms of Service</a>
+  <a href="/privacy">Privacy Policy</a>
+  <span class="footer-tagline">Built on cryptographic proof, not operator trust.</span>
+</footer>
+<script>
+  if (localStorage.getItem('ap_token')) {
+    document.getElementById('footerDash').style.display = '';
+  }
+</script>
+
+</body>
+</html>

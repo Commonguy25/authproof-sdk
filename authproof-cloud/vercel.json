@@ -34,6 +34,7 @@
     { "src": "/privacy",         "dest": "/frontend/privacy.html" },
     { "src": "/support",         "dest": "/frontend/support.html" },
     { "src": "/baa",             "dest": "/frontend/baa.html" },
+    { "src": "/services",        "dest": "/frontend/services.html" },
     { "src": "/(.*)",            "dest": "/frontend/$1" }
   ]
 }
