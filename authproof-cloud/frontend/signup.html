@@ -13,14 +13,14 @@
     :root {
       --blue:     #1a56db;
       --blue-lt:  #e8f0fe;
-      --blue-dk:  #1340a8;
-      --gray-100: #f1f3f4;
-      --gray-200: #e5e7eb;
-      --gray-400: #9ca3af;
-      --gray-500: #6b7280;
-      --gray-600: #4b5563;
-      --gray-700: #374151;
-      --gray-900: #111111;
+      --blue-dk:  #1246b5;
+      --gray-100: #f5f5f7;
+      --gray-200: #d2d2d7;
+      --gray-400: #86868b;
+      --gray-500: #6e6e73;
+      --gray-600: #6e6e73;
+      --gray-700: #1d1d1f;
+      --gray-900: #1d1d1f;
       --red:      #dc2626;
       --red-lt:   #fef2f2;
       --red-bd:   #fecaca;
@@ -34,10 +34,10 @@
 
     html { scroll-behavior: smooth; }
     body {
-      background: #f8f9fa;
+      background: var(--gray-100);
       color: var(--gray-700);
       font-family: var(--sans);
-      font-size: 15px;
+      font-size: 17px;
       line-height: 1.6;
       min-height: 100vh;
       display: flex;
@@ -47,8 +47,10 @@
     a { color: inherit; text-decoration: none; }
 
     nav {
-      background: var(--white);
-      border-bottom: 1px solid var(--gray-200);
+      background: rgba(255,255,255,0.85);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border-bottom: 1px solid rgba(0,0,0,0.08);
       padding: 0 48px;
       height: 64px;
       display: flex;
@@ -57,15 +59,15 @@
     }
     .nav-logo { font-size: 17px; font-weight: 700; color: var(--gray-900); }
     .nav-logo span { color: var(--blue); }
-    .nav-back { font-size: 14px; font-weight: 500; color: var(--gray-500); transition: color 0.15s; }
-    .nav-back:hover { color: var(--gray-900); }
+    .nav-back { font-size: 14px; font-weight: 400; color: var(--gray-500); transition: color 0.15s; }
+    .nav-back:hover { color: var(--blue); }
 
     main { flex: 1; display: flex; align-items: center; justify-content: center; padding: 48px 24px; }
 
     .card {
       background: var(--white);
       border: 1px solid var(--gray-200);
-      border-radius: 8px;
+      border-radius: 18px;
       padding: 40px;
       width: 100%;
       max-width: 440px;
@@ -73,16 +75,16 @@
     }
 
     .card-eyebrow { font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--blue); margin-bottom: 8px; }
-    .card-title { font-size: 24px; font-weight: 700; color: var(--gray-900); letter-spacing: -0.02em; margin-bottom: 6px; }
-    .card-sub { font-size: 14px; color: var(--gray-500); margin-bottom: 28px; }
+    .card-title { font-size: 26px; font-weight: 800; color: var(--gray-900); letter-spacing: -0.03em; margin-bottom: 6px; }
+    .card-sub { font-size: 15px; color: var(--gray-500); margin-bottom: 28px; }
     .card-sub a { color: var(--blue); font-weight: 500; }
     .card-sub a:hover { text-decoration: underline; }
 
     label { display: block; font-size: 13px; font-weight: 600; color: var(--gray-700); margin-bottom: 6px; }
     input {
       display: block; width: 100%; background: var(--white);
-      border: 1px solid var(--gray-200); border-radius: 4px;
-      padding: 10px 14px; font-family: var(--sans); font-size: 14px;
+      border: 1px solid var(--gray-200); border-radius: 8px;
+      padding: 11px 14px; font-family: var(--sans); font-size: 15px;
       color: var(--gray-900); outline: none;
       transition: border-color 0.15s, box-shadow 0.15s;
       margin-bottom: 18px;
@@ -93,9 +95,9 @@
     .btn {
       display: block; width: 100%;
       background: var(--blue); color: var(--white);
-      padding: 11px 20px; font-family: var(--sans); font-size: 15px; font-weight: 600;
-      border: 2px solid var(--blue); border-radius: 4px;
-      cursor: pointer; transition: background 0.15s, border-color 0.15s;
+      padding: 12px 20px; font-family: var(--sans); font-size: 15px; font-weight: 600;
+      border: 2px solid var(--blue); border-radius: 980px;
+      cursor: pointer; transition: background 0.2s, border-color 0.2s;
       margin-top: 4px; text-align: center;
     }
     .btn:hover { background: var(--blue-dk); border-color: var(--blue-dk); }
@@ -104,15 +106,15 @@
       display: block; width: 100%;
       background: transparent; color: var(--blue);
       padding: 11px 20px; font-family: var(--sans); font-size: 15px; font-weight: 600;
-      border: 2px solid var(--blue); border-radius: 4px;
-      cursor: pointer; transition: background 0.15s;
+      border: 1.5px solid var(--blue); border-radius: 980px;
+      cursor: pointer; transition: background 0.2s;
       text-align: center; text-decoration: none;
     }
     .btn-outline:hover { background: var(--blue-lt); }
 
     .error-box {
-      background: var(--red-lt); border: 1px solid var(--red-bd); border-radius: 4px;
-      padding: 11px 14px; color: var(--red); font-size: 13px;
+      background: var(--red-lt); border: 1px solid var(--red-bd); border-radius: 8px;
+      padding: 11px 14px; color: var(--red); font-size: 14px;
       margin-bottom: 18px; display: none;
     }
 
@@ -124,8 +126,8 @@
     .api-key-box {
       background: var(--gray-100);
       border: 1px solid var(--gray-200);
-      border-radius: 6px;
-      padding: 18px 20px;
+      border-radius: 12px;
+      padding: 20px;
       margin-bottom: 24px;
     }
     .api-key-label { font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gray-500); margin-bottom: 8px; }
@@ -133,14 +135,14 @@
     .copy-btn {
       font-family: var(--sans); font-size: 13px; font-weight: 600;
       color: var(--blue); background: transparent;
-      border: 1px solid var(--blue); border-radius: 4px;
-      padding: 5px 14px; cursor: pointer; transition: background 0.15s;
+      border: 1.5px solid var(--blue); border-radius: 980px;
+      padding: 5px 16px; cursor: pointer; transition: background 0.15s;
     }
     .copy-btn:hover { background: var(--blue-lt); }
     .copy-btn.copied { color: var(--green); border-color: var(--green); }
 
     .next-steps { margin-top: 24px; }
-    .next-steps h3 { font-size: 14px; font-weight: 700; color: var(--gray-900); margin-bottom: 14px; }
+    .next-steps h3 { font-size: 15px; font-weight: 700; color: var(--gray-900); margin-bottom: 14px; letter-spacing: -0.01em; }
     .next-steps ol { list-style: none; counter-reset: steps; padding: 0; }
     .next-steps li {
       counter-increment: steps;
@@ -150,11 +152,11 @@
     }
     .next-steps li:last-child { border-bottom: none; }
     .next-steps li::before { content: counter(steps); min-width: 22px; height: 22px; background: var(--blue-lt); color: var(--blue); font-size: 12px; font-weight: 700; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
-    .next-steps code { font-family: var(--mono); font-size: 12px; background: var(--gray-100); color: var(--blue); padding: 1px 6px; border-radius: 3px; }
+    .next-steps code { font-family: var(--mono); font-size: 12px; background: var(--gray-100); color: var(--blue); padding: 1px 6px; border-radius: 4px; }
     .next-steps a { color: var(--blue); font-weight: 500; }
     .next-steps a:hover { text-decoration: underline; }
 
-    .divider { text-align: center; margin-top: 20px; font-size: 13px; color: var(--gray-500); }
+    .divider { text-align: center; margin-top: 20px; font-size: 15px; color: var(--gray-500); }
     .divider a { color: var(--blue); font-weight: 600; }
     .divider a:hover { text-decoration: underline; }
 
@@ -166,7 +168,7 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    footer { background: var(--white); border-top: 1px solid var(--gray-200); padding: 20px 48px; display: flex; gap: 24px; align-items: center; flex-wrap: wrap; }
+    footer { background: var(--white); border-top: 1px solid rgba(0,0,0,0.08); padding: 20px 48px; display: flex; gap: 24px; align-items: center; flex-wrap: wrap; }
     footer a { font-size: 13px; color: var(--gray-500); transition: color 0.15s; }
     footer a:hover { color: var(--gray-900); }
     .footer-tagline { margin-left: auto; font-size: 12px; color: var(--gray-400); }
