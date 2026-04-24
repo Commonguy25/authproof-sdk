@@ -13,14 +13,14 @@
     :root {
       --blue:     #1a56db;
       --blue-lt:  #e8f0fe;
-      --blue-dk:  #1340a8;
-      --gray-100: #f1f3f4;
-      --gray-200: #e5e7eb;
-      --gray-400: #9ca3af;
-      --gray-500: #6b7280;
-      --gray-600: #4b5563;
-      --gray-700: #374151;
-      --gray-900: #111111;
+      --blue-dk:  #1246b5;
+      --gray-100: #f5f5f7;
+      --gray-200: #d2d2d7;
+      --gray-400: #86868b;
+      --gray-500: #6e6e73;
+      --gray-600: #6e6e73;
+      --gray-700: #1d1d1f;
+      --gray-900: #1d1d1f;
       --red:      #dc2626;
       --red-lt:   #fef2f2;
       --red-bd:   #fecaca;
@@ -35,7 +35,7 @@
     }
 
     body {
-      background: #f8f9fa;
+      background: #f5f5f7;
       color: var(--gray-700);
       font-family: var(--sans);
       font-size: 15px;
@@ -1015,6 +1015,56 @@
     </div>
   </div>
 
+  <!-- Upgrade / Pricing Section (shown based on plan) -->
+  <div class="section" id="upgradeSectionWrap" style="display:none;">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-title">Your Plan</span>
+      </div>
+      <!-- Free tier: show Pro + Enterprise cards -->
+      <div id="freePricingCards" style="display:none;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:16px;">
+          <div style="background:#fff;border:1px solid #d2d2d7;border-radius:18px;padding:28px;box-shadow:0 2px 12px rgba(0,0,0,0.06);">
+            <div style="font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#1a56db;margin-bottom:8px;">Most Popular</div>
+            <div style="font-size:22px;font-weight:800;letter-spacing:-0.03em;color:#1d1d1f;margin-bottom:4px;">Pro</div>
+            <div style="font-size:28px;font-weight:800;color:#1d1d1f;letter-spacing:-0.03em;">$49<span style="font-size:16px;font-weight:500;color:#6e6e73;">/mo</span></div>
+            <ul style="list-style:none;margin:16px 0 24px;display:flex;flex-direction:column;gap:8px;font-size:14px;color:#1d1d1f;">
+              <li>✓ Unlimited receipts</li>
+              <li>✓ Multi-tenant org management</li>
+              <li>✓ Webhook notifications</li>
+              <li>✓ Compliance reports (HIPAA, SOC2)</li>
+              <li>✓ Email support (24hr)</li>
+            </ul>
+            <button onclick="goToCheckout()" style="display:block;width:100%;background:#1a56db;color:#fff;border:none;border-radius:980px;padding:13px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;">Upgrade to Pro →</button>
+          </div>
+          <div style="background:#1a56db;border-radius:18px;padding:28px;box-shadow:0 4px 20px rgba(26,86,219,0.25);">
+            <div style="font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(255,255,255,0.7);margin-bottom:8px;">Enterprise</div>
+            <div style="font-size:22px;font-weight:800;letter-spacing:-0.03em;color:#fff;margin-bottom:4px;">Enterprise</div>
+            <div style="font-size:20px;font-weight:700;color:rgba(255,255,255,0.9);margin-bottom:4px;">Custom pricing</div>
+            <ul style="list-style:none;margin:16px 0 24px;display:flex;flex-direction:column;gap:8px;font-size:14px;color:rgba(255,255,255,0.9);">
+              <li>✓ Everything in Pro</li>
+              <li>✓ BAA included</li>
+              <li>✓ 4-hour priority SLA</li>
+              <li>✓ Custom retention (6 years)</li>
+              <li>✓ Dedicated onboarding</li>
+            </ul>
+            <a href="mailto:ryan@authproof.dev?subject=Enterprise%20Plan%20Inquiry" style="display:block;width:100%;background:#fff;color:#1a56db;border-radius:980px;padding:13px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;text-align:center;">Talk to us →</a>
+          </div>
+        </div>
+        <p style="text-align:center;font-size:13px;color:#6e6e73;">All plans include MIT-licensed open source SDK access. No vendor lock-in ever.</p>
+      </div>
+      <!-- Pro tier: show Enterprise upsell only -->
+      <div id="proPricingCards" style="display:none;">
+        <div style="background:#1a56db;border-radius:18px;padding:28px;box-shadow:0 4px 20px rgba(26,86,219,0.25);max-width:480px;">
+          <div style="font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(255,255,255,0.7);margin-bottom:8px;">Upgrade Available</div>
+          <div style="font-size:22px;font-weight:800;color:#fff;margin-bottom:8px;">Move to Enterprise</div>
+          <p style="font-size:14px;color:rgba(255,255,255,0.85);margin-bottom:20px;line-height:1.6;">Get a pre-executed BAA, 4-hour SLA, custom retention up to 6 years, dedicated onboarding, and SIEM integration.</p>
+          <a href="mailto:ryan@authproof.dev?subject=Enterprise%20Plan%20Inquiry" style="display:inline-block;background:#fff;color:#1a56db;border-radius:980px;padding:12px 28px;font-size:14px;font-weight:600;font-family:inherit;">Talk to us about Enterprise →</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- API Key Management -->
   <div class="section section-last">
     <div class="container">
@@ -1144,7 +1194,12 @@
 
     if (account.plan === 'free') {
       document.getElementById('upgradeBtn').style.display = 'inline-block';
-      document.getElementById('upgradeSection').style.display = 'block';
+      document.getElementById('upgradeSectionWrap').style.display = 'block';
+      document.getElementById('freePricingCards').style.display = 'block';
+    } else if (account.plan === 'pro') {
+      document.getElementById('billingBtn').style.display = 'inline-block';
+      document.getElementById('upgradeSectionWrap').style.display = 'block';
+      document.getElementById('proPricingCards').style.display = 'block';
     } else {
       document.getElementById('billingBtn').style.display = 'inline-block';
       document.getElementById('proSection').style.display = 'block';
