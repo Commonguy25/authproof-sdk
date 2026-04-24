@@ -712,6 +712,113 @@
       flex: 1;
     }
 
+    /* ── Enterprise plan badge ── */
+    .plan-badge.enterprise {
+      border-color: #7c3aed;
+      color: #7c3aed;
+      background: #f5f3ff;
+    }
+
+    /* ── Legal Hold locked card ── */
+    .legal-hold-locked {
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: 6px;
+      padding: 32px 28px;
+    }
+    .locked-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--gray-900);
+      margin-bottom: 8px;
+    }
+    .locked-body {
+      font-size: 14px;
+      color: var(--gray-600);
+      line-height: 1.6;
+    }
+    .locked-link { color: var(--blue); text-decoration: underline; }
+
+    /* ── Legal Hold action buttons ── */
+    .btn-hold-create {
+      font-family: var(--sans);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--white);
+      background: var(--blue);
+      border: 2px solid var(--blue);
+      border-radius: 4px;
+      padding: 7px 16px;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .btn-hold-create:hover { background: var(--blue-dk); border-color: var(--blue-dk); }
+
+    .btn-hold-action {
+      font-family: var(--sans);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--blue);
+      background: transparent;
+      border: 1px solid var(--blue);
+      border-radius: 4px;
+      padding: 3px 10px;
+      cursor: pointer;
+      margin-right: 4px;
+      transition: background 0.15s;
+    }
+    .btn-hold-action:hover { background: var(--blue-lt); }
+    .btn-hold-release { color: var(--red); border-color: var(--red); }
+    .btn-hold-release:hover { background: var(--red-lt); }
+
+    /* ── Chain of custody timeline ── */
+    .custody-timeline { display: flex; flex-direction: column; }
+    .custody-entry {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--gray-200);
+    }
+    .custody-entry:last-child { border-bottom: none; }
+    .custody-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--blue);
+      margin-top: 5px;
+      flex-shrink: 0;
+    }
+    .custody-content { display: flex; flex-direction: column; gap: 2px; }
+    .custody-action {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--gray-900);
+      font-family: var(--mono);
+    }
+    .custody-actor { font-size: 12px; color: var(--gray-600); }
+    .custody-time  { font-size: 11px; color: var(--gray-400); }
+
+    /* ── Legal Hold modal overrides ── */
+    .modal-form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+    .modal-form-row { display: flex; gap: 12px; }
+    .modal-form-row .modal-form-group { flex: 1; }
+    .modal-error {
+      display: none;
+      margin-top: 10px;
+      font-size: 13px;
+      color: var(--red);
+      background: var(--red-lt);
+      border: 1px solid var(--red-bd);
+      border-radius: 4px;
+      padding: 8px 12px;
+    }
+
     /* Footer */
     footer {
       background: var(--white);
@@ -1065,6 +1172,44 @@
     </div>
   </div>
 
+  <!-- Legal Hold (Enterprise only — full section) -->
+  <div class="section" id="legalHoldSection" style="display:none;">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-title">Legal Hold</span>
+        <button class="btn-hold-create" onclick="openCreateHoldModal()">+ New Hold</button>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Hold Name</th>
+              <th>Description</th>
+              <th>Items</th>
+              <th>Created</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="legalHoldsBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Legal Hold (Free / Pro — locked card) -->
+  <div class="section" id="legalHoldLockedSection" style="display:none;">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-title">Legal Hold</span>
+      </div>
+      <div class="legal-hold-locked">
+        <div class="locked-title">Legal Hold is an Enterprise feature</div>
+        <div class="locked-body">Freeze specific receipts, verifications, and tool calls so they cannot be revoked or expired during litigation or regulatory audit. <a class="locked-link" href="mailto:ryan@authproof.dev?subject=Enterprise%20Plan%20Inquiry">Contact ryan@authproof.dev to upgrade.</a></div>
+      </div>
+    </div>
+  </div>
+
   <!-- API Key Management -->
   <div class="section section-last">
     <div class="container">
@@ -1082,6 +1227,92 @@
     </div>
   </div>
 
+</div>
+
+<!-- Create Hold Modal -->
+<div class="modal-overlay" id="createHoldModal" onclick="closeCreateHoldModal(event)">
+  <div class="modal" style="max-width:540px;">
+    <div class="modal-title">Create Legal Hold</div>
+    <p class="modal-body" style="margin-bottom:20px;">Receipts on hold cannot be revoked or expired until the hold is released.</p>
+
+    <div class="modal-form-group">
+      <label class="export-label" for="holdName">Hold Name *</label>
+      <input class="form-input" id="holdName" type="text" placeholder="e.g. OCR Investigation Q1 2026" style="width:100%;" />
+    </div>
+    <div class="modal-form-group">
+      <label class="export-label" for="holdDesc">Description</label>
+      <input class="form-input" id="holdDesc" type="text" placeholder="All agent access events under OCR review" style="width:100%;" />
+    </div>
+    <div class="modal-form-row">
+      <div class="modal-form-group">
+        <label class="export-label" for="holdFrom">Bulk Add From</label>
+        <input class="form-input" id="holdFrom" type="date" style="width:100%;" />
+      </div>
+      <div class="modal-form-group">
+        <label class="export-label" for="holdTo">Bulk Add To</label>
+        <input class="form-input" id="holdTo" type="date" style="width:100%;" />
+      </div>
+    </div>
+    <div class="modal-form-group">
+      <label class="export-label" for="holdExpiry">Auto-Release Date (optional)</label>
+      <input class="form-input" id="holdExpiry" type="date" style="width:100%;" />
+    </div>
+
+    <div class="modal-actions" style="margin-top:20px;">
+      <button class="btn-confirm" id="createHoldBtn" onclick="submitCreateHold()" style="background:var(--blue);border-color:var(--blue);">Create Hold</button>
+      <button class="btn-cancel" onclick="closeCreateHoldModal()">Cancel</button>
+    </div>
+    <div class="modal-error" id="createHoldError"></div>
+  </div>
+</div>
+
+<!-- Hold Detail Modal -->
+<div class="modal-overlay" id="holdDetailModal" onclick="closeHoldDetailModal(event)">
+  <div class="modal" style="max-width:680px;max-height:82vh;overflow-y:auto;">
+    <div class="modal-title" id="holdDetailName">Hold Details</div>
+    <div id="holdDetailMeta" style="font-size:13px;color:var(--gray-600);line-height:1.8;margin-bottom:20px;"></div>
+
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--gray-500);margin-bottom:10px;">Chain of Custody</div>
+    <div class="custody-timeline" id="holdCustodyLog" style="margin-bottom:24px;"></div>
+
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--gray-500);margin-bottom:10px;">Items on Hold</div>
+    <div class="tbl-wrap" style="max-height:200px;overflow-y:auto;margin-bottom:24px;">
+      <table>
+        <thead><tr><th>Receipt Hash</th><th>Added At</th><th>Added By</th></tr></thead>
+        <tbody id="holdItemsBody"></tbody>
+      </table>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-export" onclick="exportCurrentHold()">Export Package</button>
+      <button class="btn-confirm" id="holdDetailReleaseBtn" onclick="openReleaseFromDetail()" style="background:var(--yellow);border-color:var(--yellow);">Release Hold</button>
+      <button class="btn-cancel" onclick="closeHoldDetailModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Release Hold Modal -->
+<div class="modal-overlay" id="releaseHoldModal" onclick="closeReleaseModal(event)">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-title">Release Legal Hold</div>
+    <p class="modal-body">Items will return to normal retention policy. This action is permanent.</p>
+    <p class="modal-warn">The hold release will be permanently recorded in the chain of custody log.</p>
+
+    <div class="modal-form-group" style="margin-top:4px;">
+      <label class="export-label" for="releaseBy">Released By *</label>
+      <input class="form-input" id="releaseBy" type="text" placeholder="legal_counsel@hospital.com" style="width:100%;" />
+    </div>
+    <div class="modal-form-group">
+      <label class="export-label" for="releaseReason">Reason *</label>
+      <input class="form-input" id="releaseReason" type="text" placeholder="Investigation closed. No findings." style="width:100%;" />
+    </div>
+
+    <div class="modal-actions" style="margin-top:20px;">
+      <button class="btn-confirm" id="releaseConfirmBtn" onclick="submitRelease()">Release Hold</button>
+      <button class="btn-cancel" onclick="closeReleaseModal()">Cancel</button>
+    </div>
+    <div class="modal-error" id="releaseError"></div>
+  </div>
 </div>
 
 <!-- Regenerate Key Modal -->
@@ -1177,6 +1408,7 @@
     const badge = document.getElementById('planBadge');
     badge.textContent = account.plan.toUpperCase();
     if (account.plan === 'pro') badge.classList.add('pro');
+    if (account.plan === 'enterprise') badge.classList.add('enterprise');
 
     const count = (account.receiptCount ?? 0).toLocaleString();
     const limit = account.monthlyLimit != null ? account.monthlyLimit.toLocaleString() : '∞';
@@ -1196,10 +1428,16 @@
       document.getElementById('upgradeBtn').style.display = 'inline-block';
       document.getElementById('upgradeSectionWrap').style.display = 'block';
       document.getElementById('freePricingCards').style.display = 'block';
+      document.getElementById('legalHoldLockedSection').style.display = 'block';
     } else if (account.plan === 'pro') {
       document.getElementById('billingBtn').style.display = 'inline-block';
       document.getElementById('upgradeSectionWrap').style.display = 'block';
       document.getElementById('proPricingCards').style.display = 'block';
+      document.getElementById('legalHoldLockedSection').style.display = 'block';
+    } else if (account.plan === 'enterprise') {
+      document.getElementById('billingBtn').style.display = 'inline-block';
+      document.getElementById('legalHoldSection').style.display = 'block';
+      loadLegalHolds();
     } else {
       document.getElementById('billingBtn').style.display = 'inline-block';
       document.getElementById('proSection').style.display = 'block';
@@ -1456,6 +1694,219 @@
       window.history.replaceState({}, '', '/dashboard');
     }
   })();
+
+  // ── Legal Holds ─────────────────────────────────────────────────────────────
+  let currentHoldId = null;
+
+  async function loadLegalHolds() {
+    const res = await apiFetch('/legal-holds');
+    if (!res || !res.ok) return;
+    const holds = await res.json();
+    renderLegalHolds(holds);
+  }
+
+  function renderLegalHolds(holds) {
+    const tbody = document.getElementById('legalHoldsBody');
+    if (!holds.length) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="6">No legal holds yet. Create one to freeze receipts for litigation or regulatory audit.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = holds.map(h => {
+      const statusCls = h.status === 'active' ? 'status-active' : 'status-expired';
+      const statusLabel = h.status === 'active' ? 'Active' : 'Released';
+      const releaseBtn = h.status === 'active'
+        ? `<button class="btn-hold-action btn-hold-release" onclick="openReleaseModal('${h.id}');event.stopPropagation()">Release</button>`
+        : '';
+      return `<tr>
+        <td style="font-weight:600;">${escHtml(h.name)}</td>
+        <td style="color:var(--gray-500);font-size:12px;">${escHtml(h.description || '—')}</td>
+        <td>${h.receipt_count ?? 0}</td>
+        <td>${fmtDate(h.created_at)}</td>
+        <td class="${statusCls}">${statusLabel}</td>
+        <td>
+          <button class="btn-hold-action" onclick="viewHoldDetail('${h.id}');event.stopPropagation()">View</button>
+          <button class="btn-hold-action" onclick="exportHold('${h.id}');event.stopPropagation()">Export</button>
+          ${releaseBtn}
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  async function viewHoldDetail(id) {
+    currentHoldId = id;
+    const res = await apiFetch('/legal-holds/' + id);
+    if (!res || !res.ok) { alert('Failed to load hold details'); return; }
+    const hold = await res.json();
+
+    document.getElementById('holdDetailName').textContent = hold.name;
+
+    let meta = `<strong>Status:</strong> ${hold.status}&nbsp;&nbsp;·&nbsp;&nbsp;<strong>Created by:</strong> ${escHtml(hold.created_by)}&nbsp;&nbsp;·&nbsp;&nbsp;<strong>Created:</strong> ${fmtDate(hold.created_at)}`;
+    if (hold.description) meta += `<br><strong>Description:</strong> ${escHtml(hold.description)}`;
+    if (hold.released_at) {
+      meta += `<br><strong>Released by:</strong> ${escHtml(hold.released_by)}&nbsp;&nbsp;·&nbsp;&nbsp;<strong>Released:</strong> ${fmtDate(hold.released_at)}`;
+      meta += `<br><strong>Reason:</strong> ${escHtml(hold.release_reason)}`;
+    }
+    document.getElementById('holdDetailMeta').innerHTML = meta;
+
+    const log = hold.chain_of_custody || [];
+    document.getElementById('holdCustodyLog').innerHTML = log.length
+      ? log.map(e => `<div class="custody-entry">
+          <div class="custody-dot"></div>
+          <div class="custody-content">
+            <span class="custody-action">${escHtml(e.action)}</span>
+            <span class="custody-actor">${escHtml(e.actor)}</span>
+            <span class="custody-time">${fmtDate(e.occurred_at)}</span>
+          </div>
+        </div>`).join('')
+      : '<div style="font-size:13px;color:var(--gray-400);padding:8px 0;">No custody events yet.</div>';
+
+    const items = hold.items || [];
+    document.getElementById('holdItemsBody').innerHTML = items.length
+      ? items.map(i => `<tr>
+          <td style="font-family:var(--mono);font-size:12px;">${i.receipt_hash ? i.receipt_hash.slice(0, 16) + '…' : '—'}</td>
+          <td>${fmtDate(i.added_at)}</td>
+          <td style="font-size:12px;color:var(--gray-500);">${escHtml(i.added_by)}</td>
+        </tr>`).join('')
+      : '<tr class="empty-row"><td colspan="3">No items on this hold.</td></tr>';
+
+    document.getElementById('holdDetailReleaseBtn').style.display = hold.status === 'active' ? 'inline-block' : 'none';
+    document.getElementById('holdDetailModal').classList.add('open');
+  }
+
+  function closeHoldDetailModal(e) {
+    if (e && e.target !== document.getElementById('holdDetailModal')) return;
+    document.getElementById('holdDetailModal').classList.remove('open');
+  }
+
+  function openCreateHoldModal() {
+    ['holdName','holdDesc','holdFrom','holdTo','holdExpiry'].forEach(id => { document.getElementById(id).value = ''; });
+    const err = document.getElementById('createHoldError');
+    err.style.display = 'none';
+    err.textContent = '';
+    document.getElementById('createHoldModal').classList.add('open');
+  }
+
+  function closeCreateHoldModal(e) {
+    if (e && e.target !== document.getElementById('createHoldModal')) return;
+    document.getElementById('createHoldModal').classList.remove('open');
+  }
+
+  async function submitCreateHold() {
+    const name      = document.getElementById('holdName').value.trim();
+    const desc      = document.getElementById('holdDesc').value.trim();
+    const from      = document.getElementById('holdFrom').value;
+    const to        = document.getElementById('holdTo').value;
+    const expiresAt = document.getElementById('holdExpiry').value;
+    const errEl     = document.getElementById('createHoldError');
+    const btn       = document.getElementById('createHoldBtn');
+
+    if (!name) {
+      errEl.textContent = 'Hold name is required.';
+      errEl.style.display = 'block';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Creating…';
+    errEl.style.display = 'none';
+
+    const body = { name };
+    if (desc) body.description = desc;
+    if (expiresAt) body.expiresAt = new Date(expiresAt).toISOString();
+
+    const res = await apiFetch('/legal-holds', { method: 'POST', body: JSON.stringify(body) });
+    if (!res) { btn.disabled = false; btn.textContent = 'Create Hold'; return; }
+    const data = await res.json();
+
+    if (!res.ok) {
+      errEl.textContent = data.error || 'Failed to create hold.';
+      errEl.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Create Hold';
+      return;
+    }
+
+    if (from && to) {
+      await apiFetch('/legal-holds/' + data.id + '/items/bulk', {
+        method: 'POST',
+        body: JSON.stringify({ from: from + 'T00:00:00Z', to: to + 'T23:59:59Z' }),
+      });
+    }
+
+    document.getElementById('createHoldModal').classList.remove('open');
+    btn.disabled = false;
+    btn.textContent = 'Create Hold';
+    await loadLegalHolds();
+  }
+
+  function openReleaseFromDetail() {
+    document.getElementById('holdDetailModal').classList.remove('open');
+    openReleaseModal(currentHoldId);
+  }
+
+  function openReleaseModal(id) {
+    currentHoldId = id;
+    ['releaseBy','releaseReason'].forEach(i => { document.getElementById(i).value = ''; });
+    const err = document.getElementById('releaseError');
+    err.style.display = 'none';
+    err.textContent = '';
+    document.getElementById('releaseHoldModal').classList.add('open');
+  }
+
+  function closeReleaseModal(e) {
+    if (e && e.target !== document.getElementById('releaseHoldModal')) return;
+    document.getElementById('releaseHoldModal').classList.remove('open');
+  }
+
+  async function submitRelease() {
+    const releasedBy = document.getElementById('releaseBy').value.trim();
+    const reason     = document.getElementById('releaseReason').value.trim();
+    const errEl      = document.getElementById('releaseError');
+    const btn        = document.getElementById('releaseConfirmBtn');
+
+    if (!releasedBy) { errEl.textContent = 'Released By is required.'; errEl.style.display = 'block'; return; }
+    if (!reason)     { errEl.textContent = 'Reason is required.';      errEl.style.display = 'block'; return; }
+
+    btn.disabled = true;
+    btn.textContent = 'Releasing…';
+    errEl.style.display = 'none';
+
+    const res = await apiFetch('/legal-holds/' + currentHoldId + '/release', {
+      method: 'POST',
+      body: JSON.stringify({ releasedBy, reason }),
+    });
+    if (!res) { btn.disabled = false; btn.textContent = 'Release Hold'; return; }
+    const data = await res.json();
+
+    if (!res.ok) {
+      errEl.textContent = data.error || 'Failed to release hold.';
+      errEl.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Release Hold';
+      return;
+    }
+
+    document.getElementById('releaseHoldModal').classList.remove('open');
+    btn.disabled = false;
+    btn.textContent = 'Release Hold';
+    await loadLegalHolds();
+  }
+
+  async function exportHold(id) {
+    const res = await apiFetch('/legal-holds/' + id + '/export');
+    if (!res || !res.ok) { alert('Export failed. Please try again.'); return; }
+    const blob = await res.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = 'legal-hold-' + id + '-export.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function exportCurrentHold() {
+    if (currentHoldId) exportHold(currentHoldId);
+  }
 
   // ── Init ────────────────────────────────────────────────────────────────────
   loadDashboard();

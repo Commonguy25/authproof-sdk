@@ -45,6 +45,15 @@ function sha256(data) {
   return crypto.createHash('sha256').update(JSON.stringify(data)).digest('hex');
 }
 
+async function logCustodyEvent(legalHoldId, action, actor, details = null) {
+  await supabaseAdmin.from('legal_hold_custody_log').insert({
+    legal_hold_id: legalHoldId,
+    action,
+    actor,
+    details,
+  });
+}
+
 async function requireApiKey(req, res, next) {
   const auth = req.headers.authorization;
   const apiKey = auth?.startsWith('Bearer ') ? auth.slice(7) : req.query.apiKey;
@@ -58,6 +67,15 @@ async function requireApiKey(req, res, next) {
     .single();
   if (error || !account) return res.status(401).json({ error: 'Invalid API key' });
   req.account = account;
+  next();
+}
+
+function requireEnterprise(req, res, next) {
+  if (req.account.plan !== 'enterprise') {
+    return res.status(403).json({
+      error: 'Legal Hold is available on Enterprise plans only. Contact ryan@authproof.dev to upgrade.',
+    });
+  }
   next();
 }
 
@@ -276,6 +294,17 @@ app.get('/receipts/:hash', requireApiKey, async (req, res) => {
 });
 
 app.post('/receipts/:hash/revoke', requireApiKey, async (req, res) => {
+  const { data: existing } = await supabaseAdmin
+    .from('receipts')
+    .select('on_legal_hold')
+    .eq('receipt_hash', req.params.hash)
+    .eq('account_id', req.account.id)
+    .single();
+
+  if (existing?.on_legal_hold) {
+    return res.status(423).json({ error: 'Receipt is subject to legal hold and cannot be revoked.' });
+  }
+
   const { data: receipt, error } = await supabaseAdmin
     .from('receipts')
     .update({ revoked: true, revoked_at: new Date().toISOString() })
@@ -895,6 +924,350 @@ app.get('/audit/report', requireApiKey, async (req, res) => {
   res.send(html);
 });
 
+// ─── legal holds ─────────────────────────────────────────────────────────────
+
+app.post('/legal-holds', requireApiKey, requireEnterprise, async (req, res) => {
+  const { name, description, organizationId, expiresAt } = req.body || {};
+  if (!name) return res.status(400).json({ error: 'name is required' });
+
+  const { data: hold, error } = await supabaseAdmin
+    .from('legal_holds')
+    .insert({
+      account_id: req.account.id,
+      organization_id: organizationId || null,
+      name,
+      description: description || null,
+      status: 'active',
+      created_by: req.account.email || req.account.id,
+      expires_at: expiresAt || null,
+    })
+    .select()
+    .single();
+
+  if (error) return res.status(400).json({ error: error.message });
+
+  await logCustodyEvent(hold.id, 'hold_created', req.account.email || req.account.id, {
+    name,
+    description: description || null,
+    organization_id: organizationId || null,
+    expires_at: expiresAt || null,
+  });
+
+  res.status(201).json({ id: hold.id, name: hold.name, status: hold.status, createdAt: hold.created_at });
+});
+
+app.get('/legal-holds', requireApiKey, requireEnterprise, async (req, res) => {
+  const { data: holds, error } = await supabaseAdmin
+    .from('legal_holds')
+    .select('*')
+    .eq('account_id', req.account.id)
+    .order('created_at', { ascending: false });
+
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(holds || []);
+});
+
+app.get('/legal-holds/:id', requireApiKey, requireEnterprise, async (req, res) => {
+  const { data: hold, error } = await supabaseAdmin
+    .from('legal_holds')
+    .select('*')
+    .eq('id', req.params.id)
+    .eq('account_id', req.account.id)
+    .single();
+
+  if (error || !hold) return res.status(404).json({ error: 'Legal hold not found' });
+
+  const [{ data: items }, { data: custodyLog }] = await Promise.all([
+    supabaseAdmin
+      .from('legal_hold_items')
+      .select('*')
+      .eq('legal_hold_id', hold.id)
+      .order('added_at', { ascending: false }),
+    supabaseAdmin
+      .from('legal_hold_custody_log')
+      .select('*')
+      .eq('legal_hold_id', hold.id)
+      .order('occurred_at', { ascending: true }),
+  ]);
+
+  res.json({ ...hold, items: items || [], chain_of_custody: custodyLog || [] });
+});
+
+app.post('/legal-holds/:id/items', requireApiKey, requireEnterprise, async (req, res) => {
+  const { receiptHashes, addedBy } = req.body || {};
+  if (!receiptHashes?.length) return res.status(400).json({ error: 'receiptHashes is required' });
+  if (!addedBy) return res.status(400).json({ error: 'addedBy is required' });
+
+  const { data: hold } = await supabaseAdmin
+    .from('legal_holds')
+    .select('id, status, receipt_count')
+    .eq('id', req.params.id)
+    .eq('account_id', req.account.id)
+    .single();
+
+  if (!hold) return res.status(404).json({ error: 'Legal hold not found' });
+  if (hold.status !== 'active') return res.status(409).json({ error: 'Legal hold is not active' });
+
+  const added = [];
+  for (const hash of receiptHashes) {
+    const { data: receipt } = await supabaseAdmin
+      .from('receipts')
+      .select('id, receipt_hash')
+      .eq('receipt_hash', hash)
+      .eq('account_id', req.account.id)
+      .single();
+
+    if (!receipt) continue;
+
+    await supabaseAdmin
+      .from('receipts')
+      .update({ on_legal_hold: true, legal_hold_id: hold.id })
+      .eq('id', receipt.id);
+
+    await supabaseAdmin
+      .from('verifications')
+      .update({ on_legal_hold: true })
+      .eq('receipt_hash', hash)
+      .eq('account_id', req.account.id);
+
+    await supabaseAdmin
+      .from('tool_calls')
+      .update({ on_legal_hold: true })
+      .eq('receipt_hash', hash)
+      .eq('account_id', req.account.id);
+
+    await supabaseAdmin.from('legal_hold_items').insert({
+      legal_hold_id: hold.id,
+      item_type: 'receipt',
+      item_id: receipt.id,
+      receipt_hash: hash,
+      added_by: addedBy,
+    });
+
+    added.push(hash);
+  }
+
+  if (added.length) {
+    await supabaseAdmin
+      .from('legal_holds')
+      .update({ receipt_count: hold.receipt_count + added.length })
+      .eq('id', hold.id);
+
+    await logCustodyEvent(hold.id, 'items_added', addedBy, {
+      count: added.length,
+      receipt_hashes: added,
+    });
+  }
+
+  res.json({ added: added.length, receiptHashes: added });
+});
+
+app.post('/legal-holds/:id/items/bulk', requireApiKey, requireEnterprise, async (req, res) => {
+  const { from, to, organizationId } = req.body || {};
+  if (!from || !to) return res.status(400).json({ error: 'from and to are required' });
+
+  const { data: hold } = await supabaseAdmin
+    .from('legal_holds')
+    .select('id, status, receipt_count')
+    .eq('id', req.params.id)
+    .eq('account_id', req.account.id)
+    .single();
+
+  if (!hold) return res.status(404).json({ error: 'Legal hold not found' });
+  if (hold.status !== 'active') return res.status(409).json({ error: 'Legal hold is not active' });
+
+  const { data: receipts } = await supabaseAdmin
+    .from('receipts')
+    .select('id, receipt_hash')
+    .eq('account_id', req.account.id)
+    .eq('on_legal_hold', false)
+    .gte('created_at', from)
+    .lte('created_at', to);
+
+  if (!receipts?.length) return res.json({ added: 0 });
+
+  const addedBy = req.account.email || req.account.id;
+
+  await supabaseAdmin.from('legal_hold_items').insert(
+    receipts.map(r => ({
+      legal_hold_id: hold.id,
+      item_type: 'receipt',
+      item_id: r.id,
+      receipt_hash: r.receipt_hash,
+      added_by: addedBy,
+    }))
+  );
+
+  const ids = receipts.map(r => r.id);
+  const hashes = receipts.map(r => r.receipt_hash);
+
+  await supabaseAdmin
+    .from('receipts')
+    .update({ on_legal_hold: true, legal_hold_id: hold.id })
+    .in('id', ids);
+
+  await supabaseAdmin
+    .from('verifications')
+    .update({ on_legal_hold: true })
+    .in('receipt_hash', hashes)
+    .eq('account_id', req.account.id);
+
+  await supabaseAdmin
+    .from('tool_calls')
+    .update({ on_legal_hold: true })
+    .in('receipt_hash', hashes)
+    .eq('account_id', req.account.id);
+
+  await supabaseAdmin
+    .from('legal_holds')
+    .update({ receipt_count: hold.receipt_count + receipts.length })
+    .eq('id', hold.id);
+
+  await logCustodyEvent(hold.id, 'items_added_bulk', addedBy, {
+    count: receipts.length,
+    from,
+    to,
+    organization_id: organizationId || null,
+  });
+
+  res.json({ added: receipts.length });
+});
+
+app.post('/legal-holds/:id/release', requireApiKey, requireEnterprise, async (req, res) => {
+  const { releasedBy, reason } = req.body || {};
+  if (!releasedBy) return res.status(400).json({ error: 'releasedBy is required' });
+  if (!reason) return res.status(400).json({ error: 'reason is required' });
+
+  const { data: hold } = await supabaseAdmin
+    .from('legal_holds')
+    .select('id, status')
+    .eq('id', req.params.id)
+    .eq('account_id', req.account.id)
+    .single();
+
+  if (!hold) return res.status(404).json({ error: 'Legal hold not found' });
+  if (hold.status !== 'active') return res.status(409).json({ error: 'Legal hold is already released' });
+
+  const releasedAt = new Date().toISOString();
+
+  await supabaseAdmin
+    .from('legal_holds')
+    .update({ status: 'released', released_at: releasedAt, released_by: releasedBy, release_reason: reason })
+    .eq('id', hold.id);
+
+  const { data: items } = await supabaseAdmin
+    .from('legal_hold_items')
+    .select('item_id, receipt_hash')
+    .eq('legal_hold_id', hold.id);
+
+  if (items?.length) {
+    const ids = items.map(i => i.item_id);
+    const hashes = items.map(i => i.receipt_hash).filter(Boolean);
+
+    await supabaseAdmin.from('receipts').update({ on_legal_hold: false }).in('id', ids);
+
+    if (hashes.length) {
+      await supabaseAdmin
+        .from('verifications')
+        .update({ on_legal_hold: false })
+        .in('receipt_hash', hashes)
+        .eq('account_id', req.account.id);
+
+      await supabaseAdmin
+        .from('tool_calls')
+        .update({ on_legal_hold: false })
+        .in('receipt_hash', hashes)
+        .eq('account_id', req.account.id);
+    }
+  }
+
+  await logCustodyEvent(hold.id, 'hold_released', releasedBy, {
+    reason,
+    released_at: releasedAt,
+    items_released: items?.length || 0,
+  });
+
+  res.json({ success: true, releasedAt, releasedBy, reason });
+});
+
+app.get('/legal-holds/:id/export', requireApiKey, requireEnterprise, async (req, res) => {
+  const { data: hold } = await supabaseAdmin
+    .from('legal_holds')
+    .select('*')
+    .eq('id', req.params.id)
+    .eq('account_id', req.account.id)
+    .single();
+
+  if (!hold) return res.status(404).json({ error: 'Legal hold not found' });
+
+  const [{ data: items }, { data: custodyLog }] = await Promise.all([
+    supabaseAdmin.from('legal_hold_items').select('*').eq('legal_hold_id', hold.id),
+    supabaseAdmin
+      .from('legal_hold_custody_log')
+      .select('*')
+      .eq('legal_hold_id', hold.id)
+      .order('occurred_at', { ascending: true }),
+  ]);
+
+  const receiptHashes = (items || []).map(i => i.receipt_hash).filter(Boolean);
+
+  let verifications = [];
+  let toolCalls = [];
+  if (receiptHashes.length) {
+    const [{ data: v }, { data: tc }] = await Promise.all([
+      supabaseAdmin
+        .from('verifications')
+        .select('*')
+        .eq('account_id', req.account.id)
+        .in('receipt_hash', receiptHashes),
+      supabaseAdmin
+        .from('tool_calls')
+        .select('*')
+        .eq('account_id', req.account.id)
+        .in('receipt_hash', receiptHashes),
+    ]);
+    verifications = v || [];
+    toolCalls = tc || [];
+  }
+
+  const exportedAt = new Date().toISOString();
+  const payload = {
+    exported_at: exportedAt,
+    hold: {
+      id: hold.id,
+      name: hold.name,
+      description: hold.description,
+      status: hold.status,
+      created_by: hold.created_by,
+      created_at: hold.created_at,
+      expires_at: hold.expires_at,
+      released_at: hold.released_at,
+      released_by: hold.released_by,
+      release_reason: hold.release_reason,
+    },
+    receipt_hashes: receiptHashes,
+    items: items || [],
+    verifications,
+    tool_calls: toolCalls,
+    chain_of_custody: custodyLog || [],
+  };
+
+  const signature = crypto
+    .createHmac('sha256', req.account.api_key)
+    .update(JSON.stringify(payload))
+    .digest('hex');
+
+  const exportPackage = { ...payload, export_hash: signature };
+
+  await logCustodyEvent(hold.id, 'export_generated', req.account.email || req.account.id, {
+    exported_at: exportedAt,
+    export_hash: signature,
+  });
+
+  res.setHeader('Content-Disposition', `attachment; filename="legal-hold-${hold.id}-export.json"`);
+  res.json(exportPackage);
+});
+
 // ─── misc ─────────────────────────────────────────────────────────────────────
 
 app.post('/account/regenerate-key', requireApiKey, async (req, res) => {
@@ -909,6 +1282,30 @@ app.post('/account/regenerate-key', requireApiKey, async (req, res) => {
 app.post('/auth/logout', (req, res) => {
   res.json({ ok: true });
 });
+
+// ─── retention cleanup ────────────────────────────────────────────────────────
+// Schedule externally (e.g. pg_cron, Supabase Edge Function, or Vercel cron).
+// Receipts with on_legal_hold = true are always skipped regardless of expires_at.
+async function runRetentionCleanup() {
+  const now = new Date().toISOString();
+  const { data: expired, error } = await supabaseAdmin
+    .from('receipts')
+    .select('id, receipt_hash')
+    .eq('on_legal_hold', false)
+    .eq('revoked', false)
+    .not('expires_at', 'is', null)
+    .lt('expires_at', now);
+
+  if (error) { console.error('[retention] Query error:', error.message); return; }
+  if (!expired?.length) { console.log('[retention] No expired receipts.'); return; }
+
+  await supabaseAdmin
+    .from('receipts')
+    .update({ revoked: true, revoked_at: now })
+    .in('id', expired.map(r => r.id));
+
+  console.log(`[retention] Expired ${expired.length} receipts.`);
+}
 
 // ─── startup ──────────────────────────────────────────────────────────────────
 
