@@ -83,10 +83,9 @@
     .hamburger span { display: block; width: 22px; height: 2px; background: var(--gray-800); }
     .mobile-menu { display: none; position: fixed; inset: 64px 0 0 0; background: rgba(255,255,255,0.97); backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%); border-top: 1px solid rgba(0,0,0,0.08); padding: 20px 24px 32px; z-index: 99; flex-direction: column; gap: 2px; }
     .mobile-menu.open { display: flex; }
-    .mobile-menu a:not(.btn) { font-size: 16px; font-weight: 500; color: var(--gray-700); padding: 13px 0; border-bottom: 1px solid var(--gray-200); }
-    .mobile-menu a:not(.btn):last-of-type { border-bottom: none; }
-    .mobile-menu .btn-outline { margin-top: 20px; width: 100%; padding: 13px 20px; font-size: 15px; text-align: center; border: 2px solid var(--blue); border-radius: 980px; }
-    .mobile-menu .btn-primary { margin-top: 10px; width: 100%; padding: 14px 20px; font-size: 15px; font-weight: 700; text-align: center; border-radius: 980px; }
+    .mobile-menu a:not(.btn) { font-size: 16px; font-weight: 500; color: var(--gray-700); padding: 13px 0; border-bottom: 1px solid var(--gray-200); text-decoration: none; }
+    .mobile-menu .btn-outline { margin-top: 20px; width: 100%; padding: 13px 20px; font-size: 15px; display: block; }
+    .mobile-menu .btn-primary { margin-top: 10px; width: 100%; padding: 14px 20px; font-size: 15px; font-weight: 700; display: block; }
 
     /* Hero */
     .hero { padding: 80px 0 72px; }
@@ -644,4 +643,221 @@
             <td class="feat-name">Verification API</td>
             <td><span class="ct-check">✓</span></td>
             <td><span class="ct-check">✓</span></td>
-    
+            <td><span class="ct-check">✓</span></td>
+          </tr>
+          <tr>
+            <td class="feat-name">7-check pre-execution gate</td>
+            <td><span class="ct-check">✓</span></td>
+            <td><span class="ct-check">✓</span></td>
+            <td><span class="ct-check">✓</span></td>
+          </tr>
+          <tr>
+            <td class="feat-name">Dashboard and audit export</td>
+            <td><span class="ct-check">✓</span></td>
+            <td><span class="ct-check">✓</span></td>
+            <td><span class="ct-check">✓</span></td>
+          </tr>
+          <tr>
+            <td class="feat-name">Session state and trust scoring</td>
+            <td><span class="ct-check">✓</span></td>
+            <td><span class="ct-check">✓</span></td>
+            <td><span class="ct-check">✓</span></td>
+          </tr>
+          <tr>
+            <td class="feat-name">Multi-tenant org management</td>
+            <td><span class="ct-dash">—</span></td>
+            <td><span class="ct-check">✓</span></td>
+            <td><span class="ct-check">✓</span></td>
+          </tr>
+          <tr>
+            <td class="feat-name">Webhook notifications</td>
+            <td><span class="ct-dash">—</span></td>
+            <td><span class="ct-check">✓</span></td>
+            <td><span class="ct-check">✓</span></td>
+          </tr>
+          <tr>
+            <td class="feat-name">Compliance reports</td>
+            <td><span class="ct-dash">—</span></td>
+            <td><span class="ct-check">✓</span></td>
+            <td><span class="ct-check">✓</span></td>
+          </tr>
+          <tr>
+            <td class="feat-name">Custom retention periods</td>
+            <td><span class="ct-dash">—</span></td>
+            <td><span class="ct-dash">—</span></td>
+            <td><span class="ct-check">✓</span></td>
+          </tr>
+          <tr>
+            <td class="feat-name">BAA included</td>
+            <td><span class="ct-dash">—</span></td>
+            <td><span class="ct-dash">—</span></td>
+            <td><span class="ct-check">✓</span></td>
+          </tr>
+          <tr>
+            <td class="feat-name">Priority SLA</td>
+            <td><span class="ct-dash">—</span></td>
+            <td><span class="ct-dash">—</span></td>
+            <td><span class="ct-check">✓</span></td>
+          </tr>
+          <tr>
+            <td class="feat-name">Dedicated onboarding</td>
+            <td><span class="ct-dash">—</span></td>
+            <td><span class="ct-dash">—</span></td>
+            <td><span class="ct-check">✓</span></td>
+          </tr>
+          <tr>
+            <td class="feat-name">SIEM integration</td>
+            <td><span class="ct-dash">—</span></td>
+            <td><span class="ct-dash">—</span></td>
+            <td><span class="ct-check">✓</span></td>
+          </tr>
+          <tr>
+            <td class="feat-name">Annual contract</td>
+            <td><span class="ct-dash">—</span></td>
+            <td><span class="ct-dash">—</span></td>
+            <td><span class="ct-check">✓</span></td>
+          </tr>
+          <tr>
+            <td class="feat-name">Support</td>
+            <td><span class="ct-text">Community</span></td>
+            <td><span class="ct-text">Email 24hr</span></td>
+            <td><span class="ct-text">Named contact 4hr</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- Quick start -->
+<section id="quickstart" class="bg-gray">
+  <div class="container">
+    <div class="section-label">Quick start</div>
+    <h2 class="section-headline">Up and running in minutes</h2>
+    <div class="qs-grid">
+      <div>
+        <ul class="qs-steps">
+          <li class="qs-step">
+            <div class="qs-num">1</div>
+            <div class="qs-content">
+              <h4>Install the SDK</h4>
+              <p>Add authproof to your project with npm or yarn. MIT licensed, zero proprietary lock-in.</p>
+            </div>
+          </li>
+          <li class="qs-step">
+            <div class="qs-num">2</div>
+            <div class="qs-content">
+              <h4>Configure your endpoint</h4>
+              <p>Point the SDK at Authproof Cloud with your API key. One config object, everything else is automatic.</p>
+            </div>
+          </li>
+          <li class="qs-step">
+            <div class="qs-num">3</div>
+            <div class="qs-content">
+              <h4>Delegate and verify</h4>
+              <p>Issue signed receipts before each agent action. Stored, chained, and verifiable by any third party immediately.</p>
+            </div>
+          </li>
+        </ul>
+      </div>
+      <div class="code-block">
+        <div class="code-block-header">
+          <span>JavaScript</span>
+          <button class="copy-btn" id="copyBtn" onclick="copyCode()">Copy</button>
+        </div>
+        <pre id="codeBlock"><span class="kw">import</span> { AuthProofClient } <span class="kw">from</span> <span class="st">'authproof'</span>
+
+<span class="kw">const</span> client = <span class="kw">new</span> <span class="fn">AuthProofClient</span>({
+  logEndpoint: <span class="st">'https://cloud.authproof.dev'</span>,
+  apiKey: process.env.<span class="fn">AUTHPROOF_API_KEY</span>
+})
+
+<span class="kw">const</span> receipt = <span class="kw">await</span> client.<span class="fn">delegate</span>({
+  scope,
+  operatorInstructions,
+  expiresIn: <span class="st">'2h'</span>
+})
+<span class="cm">// Receipt stored in hosted log automatically</span>
+<span class="cm">// Verifiable by any third party instantly</span>
+
+<span class="cm">// Pre-execution check</span>
+<span class="kw">const</span> result = <span class="kw">await</span> client.<span class="fn">verify</span>(receipt.id)
+<span class="cm">// { valid: true, trustScore: 97.3, decision: 'ALLOW' }</span></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer>
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <div class="f-brand">Authproof Cloud</div>
+        <div class="f-tagline">Built on cryptographic proof, not operator trust.</div>
+      </div>
+      <div class="f-col">
+        <h4>Product</h4>
+        <ul>
+          <li><a href="#features">Features</a></li>
+          <li><a href="#pricing">Pricing</a></li>
+          <li><a href="https://github.com/Commonguy25/authproof-sdk">Documentation</a></li>
+          <li><a href="/support">Status</a></li>
+        </ul>
+      </div>
+      <div class="f-col">
+        <h4>Legal</h4>
+        <ul>
+          <li><a href="/terms">Terms of Service</a></li>
+          <li><a href="/privacy">Privacy Policy</a></li>
+          <li><a href="/baa">BAA</a></li>
+          <li><a href="#security">Security</a></li>
+        </ul>
+      </div>
+      <div class="f-col">
+        <h4>Company</h4>
+        <ul>
+          <li><a href="/support">Support</a></li>
+          <li><a href="https://github.com/Commonguy25/authproof-sdk" target="_blank">GitHub</a></li>
+          <li><a href="https://www.npmjs.com/package/authproof" target="_blank">npm</a></li>
+          <li><a href="mailto:ryan@authproof.dev">ryan@authproof.dev</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div class="footer-bottom-text">Authproof is an independent project — ryan@authproof.dev</div>
+      <div class="footer-badges">
+        <span class="f-badge">MIT License</span>
+        <span class="f-badge">HIPAA Ready</span>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // Sticky nav shadow on scroll
+  window.addEventListener('scroll', () => {
+    document.getElementById('nav').classList.toggle('scrolled', window.scrollY > 10);
+  });
+
+  // Mobile menu
+  function toggleMenu() {
+    document.getElementById('mobileMenu').classList.toggle('open');
+  }
+  function closeMenu() {
+    document.getElementById('mobileMenu').classList.remove('open');
+  }
+
+  // Copy code button
+  function copyCode() {
+    const code = document.getElementById('codeBlock').innerText;
+    navigator.clipboard.writeText(code).then(() => {
+      const btn = document.getElementById('copyBtn');
+      btn.textContent = 'Copied!';
+      setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+    });
+  }
+</script>
+
+</body>
+</html>
