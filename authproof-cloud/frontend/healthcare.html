@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Healthcare AI Compliance — Authproof Cloud</title>
+  <meta name="description" content="HIPAA-compliant cryptographic delegation receipts for every AI agent action touching PHI. BAA included. Audit controls satisfied. Independent verification built in." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --blue:    #1a56db;
+      --blue-lt: #e8f0fe;
+      --blue-dk: #1340a8;
+      --text:    #1d1d1f;
+      --text-2:  #6e6e73;
+      --bg-2:    #f5f5f7;
+      --border:  #d2d2d7;
+      --white:   #ffffff;
+      --sans:    'Inter', sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--white);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 16px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    .container { max-width: 980px; margin: 0 auto; padding: 0 24px; }
+
+    /* ── Nav ── */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(255,255,255,0.92);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid transparent;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    nav.scrolled { border-bottom-color: var(--border); box-shadow: 0 1px 8px rgba(0,0,0,0.06); }
+    .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 64px; }
+    .nav-logo { font-size: 17px; font-weight: 700; color: var(--text); }
+    .nav-logo span { color: var(--blue); }
+    .nav-links { display: flex; align-items: center; gap: 32px; list-style: none; }
+    .nav-links a { font-size: 14px; font-weight: 500; color: var(--text-2); transition: color 0.15s; }
+    .nav-links a:hover { color: var(--text); }
+    .nav-actions { display: flex; align-items: center; gap: 10px; }
+    .hamburger { display: none; flex-direction: column; gap: 5px; cursor: pointer; padding: 4px; background: none; border: none; }
+    .hamburger span { display: block; width: 22px; height: 2px; background: var(--text); }
+    .mobile-menu { display: none; position: fixed; inset: 64px 0 0 0; background: var(--white); border-top: 1px solid var(--border); padding: 24px; z-index: 99; flex-direction: column; gap: 4px; }
+    .mobile-menu.open { display: flex; }
+    .mobile-menu a { font-size: 16px; font-weight: 500; color: var(--text); padding: 12px 0; border-bottom: 1px solid var(--bg-2); }
+    .mobile-menu .btn { margin-top: 8px; width: 100%; text-align: center; }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-block;
+      font-family: var(--sans);
+      font-size: 15px;
+      font-weight: 600;
+      padding: 11px 24px;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: all 0.15s;
+      border-radius: 100px;
+      text-align: center;
+      white-space: nowrap;
+    }
+    .btn-primary { background: var(--blue); color: var(--white); border-color: var(--blue); }
+    .btn-primary:hover { background: var(--blue-dk); border-color: var(--blue-dk); }
+    .btn-outline { background: transparent; color: var(--blue); border-color: var(--blue); }
+    .btn-outline:hover { background: var(--blue-lt); }
+    .btn-white { background: var(--white); color: var(--blue); border-color: var(--white); }
+    .btn-white:hover { background: var(--blue-lt); border-color: var(--blue-lt); }
+    .nav-actions .btn { padding: 8px 18px; font-size: 14px; }
+
+    /* ── Sections ── */
+    section { padding: 88px 0; }
+    .bg-gray { background: var(--bg-2); }
+    .section-label { font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--blue); margin-bottom: 12px; }
+    .section-headline { font-size: clamp(24px, 3vw, 36px); font-weight: 700; color: var(--text); letter-spacing: -0.02em; margin-bottom: 16px; line-height: 1.2; }
+    .section-sub { font-size: 17px; color: var(--text-2); max-width: 560px; margin-bottom: 48px; line-height: 1.65; }
+
+    /* ── Hero ── */
+    .hero { padding: 96px 0 88px; background: var(--white); }
+    .hero-badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--blue);
+      border: 1.5px solid var(--blue);
+      border-radius: 100px;
+      padding: 5px 14px;
+      margin-bottom: 28px;
+    }
+    .hero h1 {
+      font-size: clamp(32px, 5vw, 52px);
+      font-weight: 800;
+      line-height: 1.08;
+      letter-spacing: -0.03em;
+      color: var(--text);
+      max-width: 800px;
+      margin-bottom: 24px;
+    }
+    .hero-sub {
+      font-size: 20px;
+      color: var(--text-2);
+      max-width: 640px;
+      line-height: 1.65;
+      margin-bottom: 36px;
+    }
+    .hero-buttons { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+    .hero-note { font-size: 14px; color: var(--text-2); }
+
+    /* ── HIPAA grid ── */
+    .hipaa-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    .hipaa-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 32px;
+    }
+    .hipaa-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--blue);
+      margin-bottom: 12px;
+    }
+    .hipaa-card p {
+      font-size: 15px;
+      color: var(--text-2);
+      line-height: 1.7;
+    }
+
+    /* ── Callout ── */
+    .callout-wrap { max-width: 780px; }
+    .callout {
+      background: #fffbeb;
+      border-left: 4px solid #f59e0b;
+      border-radius: 12px;
+      padding: 28px 32px;
+    }
+    .callout-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #92400e;
+      margin-bottom: 14px;
+      line-height: 1.3;
+    }
+    .callout p {
+      font-size: 16px;
+      color: var(--text);
+      line-height: 1.7;
+    }
+
+    /* ── Feature rows ── */
+    .feat-rows { max-width: 740px; }
+    .feat-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 24px;
+      padding: 32px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .feat-row:first-child { padding-top: 0; }
+    .feat-row:last-child { border-bottom: none; padding-bottom: 0; }
+    .feat-icon {
+      width: 48px;
+      height: 48px;
+      background: var(--blue-lt);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 22px;
+    }
+    .feat-content h3 {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+    .feat-content p {
+      font-size: 15px;
+      color: var(--text-2);
+      line-height: 1.7;
+    }
+
+    /* ── Vendor section ── */
+    .vendor-body {
+      max-width: 680px;
+      margin: 40px auto 0;
+      text-align: center;
+    }
+    .vendor-body p {
+      font-size: 18px;
+      color: var(--text);
+      line-height: 1.75;
+      margin-bottom: 20px;
+    }
+    .vendor-link {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--blue);
+      display: inline-block;
+    }
+    .vendor-link:hover { text-decoration: underline; }
+
+    /* ── Timeline ── */
+    .timeline { display: flex; flex-direction: column; gap: 16px; max-width: 720px; }
+    .timeline-item {
+      border-left: 4px solid;
+      border-radius: 12px;
+      padding: 24px 28px;
+      background: var(--white);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    }
+    .timeline-label {
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 8px;
+    }
+    .timeline-item p {
+      font-size: 15px;
+      color: var(--text-2);
+      line-height: 1.65;
+    }
+
+    /* ── Pricing ── */
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+    .pricing-card {
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 32px 28px;
+      position: relative;
+      background: var(--white);
+    }
+    .pricing-card.pro { border-color: var(--blue); box-shadow: 0 4px 24px rgba(26,86,219,0.12); }
+    .pro-badge {
+      position: absolute; top: -13px; left: 50%; transform: translateX(-50%);
+      background: var(--blue); color: var(--white); font-size: 11px; font-weight: 700;
+      letter-spacing: 0.08em; text-transform: uppercase; padding: 4px 14px;
+      border-radius: 100px; white-space: nowrap;
+    }
+    .p-plan { font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-2); margin-bottom: 8px; }
+    .p-plan.pro-label { color: var(--blue); }
+    .p-price { font-size: 42px; font-weight: 800; color: var(--text); letter-spacing: -0.03em; line-height: 1; margin-bottom: 4px; }
+    .pricing-card.pro .p-price { color: var(--blue); }
+    .p-period { font-size: 14px; color: var(--text-2); margin-bottom: 24px; }
+    .p-features { list-style: none; margin-bottom: 28px; }
+    .p-features li {
+      font-size: 14px; color: var(--text); padding: 9px 0;
+      border-bottom: 1px solid var(--bg-2);
+      display: flex; align-items: flex-start; gap: 8px;
+    }
+    .p-features li:last-child { border-bottom: none; }
+    .p-features li::before { content: '✓'; color: var(--blue); font-weight: 700; font-size: 13px; flex-shrink: 0; margin-top: 1px; }
+    .pricing-card .btn { width: 100%; }
+    .pricing-note { margin-top: 28px; font-size: 14px; color: var(--text-2); text-align: center; }
+    .pricing-note a { color: var(--blue); }
+    .pricing-note a:hover { text-decoration: underline; }
+
+    /* ── CTA ── */
+    .cta-section {
+      background: var(--blue);
+      padding: 80px 0;
+      text-align: center;
+    }
+    .cta-section h2 {
+      font-size: clamp(26px, 3.5vw, 40px);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: var(--white);
+      max-width: 640px;
+      margin: 0 auto 36px;
+      line-height: 1.15;
+    }
+    .cta-buttons { display: flex; justify-content: center; gap: 14px; flex-wrap: wrap; }
+
+    /* ── Footer ── */
+    footer { background: #111111; color: rgba(255,255,255,0.65); padding: 64px 0 0; }
+    .footer-grid { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; gap: 48px; padding-bottom: 48px; border-bottom: 1px solid #2a2a2a; }
+    .f-brand { font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 10px; }
+    .f-tagline { font-size: 13px; color: rgba(255,255,255,0.35); line-height: 1.5; max-width: 220px; }
+    .f-col h4 { font-size: 12px; font-weight: 700; color: rgba(255,255,255,0.45); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 16px; }
+    .f-col ul { list-style: none; }
+    .f-col li { margin-bottom: 10px; }
+    .f-col a { font-size: 14px; color: rgba(255,255,255,0.6); transition: color 0.15s; }
+    .f-col a:hover { color: #fff; }
+    .footer-bottom { padding: 20px 0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+    .footer-bottom-text { font-size: 13px; color: rgba(255,255,255,0.3); }
+    .footer-badges { display: flex; gap: 10px; }
+    .f-badge { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.45); border: 1px solid rgba(255,255,255,0.15); padding: 4px 10px; border-radius: 3px; }
+
+    /* ── Responsive ── */
+    @media (max-width: 860px) {
+      .hipaa-grid { grid-template-columns: 1fr; }
+      .pricing-grid { grid-template-columns: 1fr; max-width: 440px; }
+      .footer-grid { grid-template-columns: 1fr 1fr; gap: 36px; }
+    }
+    @media (max-width: 640px) {
+      section { padding: 60px 0; }
+      .hero { padding: 64px 0 56px; }
+      .nav-links, .nav-actions { display: none; }
+      .hamburger { display: flex; }
+      .hero h1 { font-size: 30px; }
+      .hero-sub { font-size: 17px; }
+      .hipaa-card { padding: 24px; }
+      .callout { padding: 22px 20px; }
+      .callout-title { font-size: 16px; }
+      .callout p { font-size: 14px; }
+      .footer-grid { grid-template-columns: 1fr; }
+      .footer-bottom { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav id="nav">
+  <div class="container">
+    <div class="nav-inner">
+      <a class="nav-logo" href="/">Authproof <span>Cloud</span></a>
+      <ul class="nav-links">
+        <li><a href="#hipaa">HIPAA</a></li>
+        <li><a href="#pricing">Pricing</a></li>
+        <li><a href="https://github.com/Commonguy25/authproof-sdk">Docs</a></li>
+        <li><a href="/baa">BAA</a></li>
+      </ul>
+      <div class="nav-actions">
+        <a href="/login" class="btn btn-outline">Log in</a>
+        <a href="/signup" class="btn btn-primary">Start free</a>
+      </div>
+      <button class="hamburger" id="hamburgerBtn" onclick="toggleMenu()" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<div class="mobile-menu" id="mobileMenu">
+  <a href="#hipaa" onclick="closeMenu()">HIPAA</a>
+  <a href="#pricing" onclick="closeMenu()">Pricing</a>
+  <a href="https://github.com/Commonguy25/authproof-sdk" onclick="closeMenu()">Docs</a>
+  <a href="/baa" onclick="closeMenu()">BAA</a>
+  <a href="/login" class="btn btn-outline">Log in</a>
+  <a href="/signup" class="btn btn-primary">Start free</a>
+</div>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="container">
+    <div class="hero-badge">Healthcare AI Compliance</div>
+    <h1>Your AI agents touch patient data.<br>Can you prove what they were authorized to do?</h1>
+    <p class="hero-sub">Authproof Cloud provides cryptographic delegation receipts for every AI agent action touching PHI. HIPAA audit controls satisfied. BAA included. Independent verification built in.</p>
+    <div class="hero-buttons">
+      <a href="/signup" class="btn btn-primary">Start free</a>
+      <a href="/baa" class="btn btn-outline">Request a BAA</a>
+    </div>
+    <p class="hero-note">BAA available on all paid plans. Free tier for evaluation only.</p>
+  </div>
+</section>
+
+<!-- HIPAA Compliance -->
+<section id="hipaa" class="bg-gray">
+  <div class="container">
+    <h2 class="section-headline">Built for HIPAA compliance from the ground up</h2>
+    <div class="hipaa-grid">
+      <div class="hipaa-card">
+        <div class="hipaa-label">§164.312(b) Audit Controls</div>
+        <p>Authproof satisfies the HIPAA audit controls standard with a tamper-evident log of every PHI access event. RFC 3161 timestamps make every entry legally verifiable and independently auditable.</p>
+      </div>
+      <div class="hipaa-card">
+        <div class="hipaa-label">§164.312(a) Access Controls</div>
+        <p>Delegation receipts are signed access control records. Every PHI access event has a cryptographic record of what was authorized before it happened — not reconstructed from logs after the fact.</p>
+      </div>
+      <div class="hipaa-card">
+        <div class="hipaa-label">Minimum Necessary</div>
+        <p>The scope schema enforces minimum necessary access at the cryptographic layer. Agents cannot access PHI outside their signed scope. Violations are blocked and logged before they execute.</p>
+      </div>
+      <div class="hipaa-card">
+        <div class="hipaa-label">Breach Notification</div>
+        <p>Sensitive data classification detects PHI in agent outputs in real time. RESTRICTED content triggers automatic blocks and audit events. If something goes wrong the evidence existed before the incident.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- System Prompt Callout -->
+<section>
+  <div class="container">
+    <div class="callout-wrap">
+      <div class="callout">
+        <div class="callout-title">Important: System prompts are not HIPAA access controls.</div>
+        <p>Instructing an AI agent not to share PHI via a system prompt does not constitute a technical safeguard under the HIPAA Security Rule. §164.312(a) requires technical access controls — mechanisms that enforce access, not instructions that request it. A cryptographic delegation receipt is a technical access control. A system prompt is not.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Compliance Team -->
+<section>
+  <div class="container">
+    <h2 class="section-headline">What your compliance team gets</h2>
+    <div class="feat-rows">
+      <div class="feat-row">
+        <div class="feat-icon">📋</div>
+        <div class="feat-content">
+          <h3>One-click HIPAA compliance reports</h3>
+          <p>Generate a formatted audit report for any date range. Includes access controls documentation, audit trail completeness verification, RFC 3161 timestamp verification, and BAA status. Ready for your privacy officer or external auditor in seconds.</p>
+        </div>
+      </div>
+      <div class="feat-row">
+        <div class="feat-icon">📄</div>
+        <div class="feat-content">
+          <h3>Business Associate Agreement included</h3>
+          <p>Every paid plan includes a pre-executed BAA. Authproof Cloud is a business associate under HIPAA. The BAA is available immediately at cloud.authproof.dev/baa — no legal back-and-forth required.</p>
+        </div>
+      </div>
+      <div class="feat-row">
+        <div class="feat-icon">🗂️</div>
+        <div class="feat-content">
+          <h3>6-year retention available</h3>
+          <p>HIPAA requires audit records be retained for 6 years. Authproof Cloud Enterprise includes extended retention to meet this requirement. Free and Pro plans include 90-day retention for evaluation.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Healthcare AI Vendors -->
+<section class="bg-gray">
+  <div class="container">
+    <h2 class="section-headline" style="text-align:center;">Deploying AI into healthcare on behalf of covered entities?</h2>
+    <div class="vendor-body">
+      <p>If you build or manage AI agents for healthcare clients you are likely a business associate under HIPAA. Your agents' access to PHI needs to be documented with technical controls your clients can independently verify.</p>
+      <p>Authproof Cloud gives each of your healthcare clients their own isolated cryptographic audit trail. One dashboard for your team. Independent verification for theirs. BAA covers your deployment.</p>
+      <a href="/managed-ai" class="vendor-link">See managed AI pricing →</a>
+    </div>
+  </div>
+</section>
+
+<!-- Regulatory Timeline -->
+<section>
+  <div class="container">
+    <h2 class="section-headline">The compliance clock is running</h2>
+    <div class="timeline">
+      <div class="timeline-item" style="border-left-color: #22c55e;">
+        <div class="timeline-label" style="color: #16a34a;">2025 — HIPAA Security Rule amendments</div>
+        <p>Encryption and cryptographic audit trails moved from addressable to required for AI systems touching PHI.</p>
+      </div>
+      <div class="timeline-item" style="border-left-color: #f59e0b;">
+        <div class="timeline-label" style="color: #d97706;">August 2026 — EU AI Act enforcement</div>
+        <p>High-risk AI system requirements including logging, transparency, and human oversight take effect. Healthcare AI deployments are high-risk by default.</p>
+      </div>
+      <div class="timeline-item" style="border-left-color: #ef4444;">
+        <div class="timeline-label" style="color: #dc2626;">Now — Shadow AI exposure</div>
+        <p>Staff feeding PHI into consumer AI tools without a BAA is a HIPAA violation. Agent deployments without technical access controls are the next wave of exposure.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Pricing -->
+<section id="pricing" class="bg-gray">
+  <div class="container">
+    <div class="section-label">Pricing</div>
+    <h2 class="section-headline">Plans that include BAA coverage</h2>
+    <div class="pricing-grid">
+      <!-- Free -->
+      <div class="pricing-card">
+        <div class="p-plan">Free</div>
+        <div class="p-price">$0</div>
+        <div class="p-period">per month, forever</div>
+        <ul class="p-features">
+          <li>1,000 receipts per month</li>
+          <li>Full verification API</li>
+          <li>7-check pre-execution gate</li>
+          <li>Dashboard and audit export</li>
+          <li>Community support</li>
+          <li>90-day log retention</li>
+        </ul>
+        <a href="/signup" class="btn btn-outline">Start for free</a>
+      </div>
+      <!-- Pro -->
+      <div class="pricing-card pro">
+        <div class="pro-badge">Most popular</div>
+        <div class="p-plan pro-label">Pro</div>
+        <div class="p-price">$49</div>
+        <div class="p-period">per month, billed monthly</div>
+        <ul class="p-features">
+          <li>Unlimited receipts</li>
+          <li>Everything in Free</li>
+          <li>Priority support</li>
+          <li>99.5% uptime SLA</li>
+          <li>BAA included</li>
+          <li>Signed audit exports</li>
+          <li>90-day log retention</li>
+        </ul>
+        <a href="/signup?plan=pro" class="btn btn-primary">Start Pro trial</a>
+      </div>
+      <!-- Enterprise -->
+      <div class="pricing-card">
+        <div class="p-plan">Enterprise</div>
+        <div class="p-price" style="font-size:32px; padding-top:6px;">Custom</div>
+        <div class="p-period">annual contract</div>
+        <ul class="p-features">
+          <li>Unlimited receipts</li>
+          <li>Everything in Pro</li>
+          <li>BAA included</li>
+          <li>6-year audit retention</li>
+          <li>Dedicated support</li>
+          <li>Custom SLA</li>
+          <li>Per-client audit trails</li>
+        </ul>
+        <a href="mailto:ryan@authproof.dev" class="btn btn-outline">Contact us</a>
+      </div>
+    </div>
+    <p class="pricing-note">Free tier is available for technical evaluation. PHI should not be used in free tier deployments — no BAA is in place on the free tier.</p>
+  </div>
+</section>
+
+<!-- CTA -->
+<div class="cta-section">
+  <div class="container">
+    <h2>Ready to make your AI agents HIPAA compliant?</h2>
+    <div class="cta-buttons">
+      <a href="/signup" class="btn btn-white">Start free evaluation</a>
+      <a href="/baa" class="btn btn-white" style="background:transparent; color:#fff; border-color:rgba(255,255,255,0.6);">Request a BAA</a>
+    </div>
+  </div>
+</div>
+
+<!-- Footer -->
+<footer>
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <div class="f-brand">Authproof Cloud</div>
+        <div class="f-tagline">Built on cryptographic proof, not operator trust.</div>
+      </div>
+      <div class="f-col">
+        <h4>Product</h4>
+        <ul>
+          <li><a href="#hipaa">HIPAA</a></li>
+          <li><a href="#pricing">Pricing</a></li>
+          <li><a href="https://github.com/Commonguy25/authproof-sdk">Documentation</a></li>
+          <li><a href="/support">Status</a></li>
+        </ul>
+      </div>
+      <div class="f-col">
+        <h4>Legal</h4>
+        <ul>
+          <li><a href="/terms">Terms of Service</a></li>
+          <li><a href="/privacy">Privacy Policy</a></li>
+          <li><a href="/baa">BAA</a></li>
+          <li><a href="#hipaa">Security</a></li>
+        </ul>
+      </div>
+      <div class="f-col">
+        <h4>Company</h4>
+        <ul>
+          <li><a href="/support">Support</a></li>
+          <li><a href="https://github.com/Commonguy25/authproof-sdk" target="_blank">GitHub</a></li>
+          <li><a href="https://www.npmjs.com/package/authproof" target="_blank">npm</a></li>
+          <li><a href="mailto:ryan@authproof.dev">ryan@authproof.dev</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div class="footer-bottom-text">Authproof is an independent project — ryan@authproof.dev</div>
+      <div class="footer-badges">
+        <span class="f-badge">MIT License</span>
+        <span class="f-badge">HIPAA Ready</span>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+  window.addEventListener('scroll', () => {
+    document.getElementById('nav').classList.toggle('scrolled', window.scrollY > 10);
+  });
+
+  function toggleMenu() {
+    document.getElementById('mobileMenu').classList.toggle('open');
+  }
+  function closeMenu() {
+    document.getElementById('mobileMenu').classList.remove('open');
+  }
+</script>
+
+</body>
+</html>
