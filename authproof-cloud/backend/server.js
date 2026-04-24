@@ -27,7 +27,7 @@ app.use((req, res, next) => {
 
 app.use(cors({
   origin: process.env.CORS_ORIGIN || '*',
-  methods: ['GET', 'POST', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
@@ -54,6 +54,155 @@ async function logCustodyEvent(legalHoldId, action, actor, details = null) {
   });
 }
 
+async function getWhiteLabelConfig(accountId) {
+  const { data } = await supabaseAdmin
+    .from('white_label_configs')
+    .select('*')
+    .eq('account_id', accountId)
+    .single();
+  return data || null;
+}
+
+function validateLogoBase64(dataUri) {
+  if (!dataUri) return { valid: false, error: 'Logo data is required' };
+  const match = dataUri.match(/^data:(image\/png|image\/jpeg);base64,([A-Za-z0-9+/=]+)$/);
+  if (!match) return { valid: false, error: 'Logo must be a PNG or JPG base64 data URI' };
+  const approxBytes = Math.ceil(match[2].length * 0.75);
+  if (approxBytes > 500 * 1024) return { valid: false, error: 'Logo must be under 500KB' };
+  return { valid: true };
+}
+
+function buildComplianceReportHtml({ account, wlConfig, receipts, toolCalls, from, to, orgName, exportedAt, signature }) {
+  const brandName    = wlConfig?.company_name    || 'Authproof Cloud';
+  const brandColor   = wlConfig?.primary_color   || '#1a56db';
+  const footerText   = wlConfig?.footer_text     || '';
+  const disclaimer   = wlConfig?.report_disclaimer || '';
+  const contactEmail = wlConfig?.contact_email   || 'support@authproof.dev';
+  const logoBase64   = wlConfig?.logo_base64     || null;
+  const isWL         = !!wlConfig;
+
+  const r = receipts  || [];
+  const t = toolCalls || [];
+  const blocked = t.filter(c => c.decision === 'blocked').length;
+  const flagged  = t.filter(c => c.decision === 'flagged').length;
+  const allowed  = t.length - blocked - flagged;
+
+  const logoHtml = logoBase64
+    ? `<img src="${logoBase64}" alt="${brandName}" style="max-height:64px;max-width:240px;object-fit:contain;">`
+    : `<div style="font-size:22px;font-weight:800;color:${brandColor};letter-spacing:-0.02em;">${brandName}</div>`;
+
+  const dateRange = (from && to)
+    ? `${new Date(from).toLocaleDateString()} \u2013 ${new Date(to).toLocaleDateString()}`
+    : 'All time';
+
+  const coverPage = isWL ? `
+<div class="cover page-break">
+  <div class="cover-logo">${logoHtml}</div>
+  <div class="cover-company">${brandName}</div>
+  <div class="cover-title">Compliance Audit Report</div>
+  <div class="cover-period">${dateRange}</div>
+  <div class="cover-meta">
+    ${orgName ? `<div class="cover-row"><span class="cover-lbl">Prepared for</span><span>${orgName}</span></div>` : ''}
+    <div class="cover-row"><span class="cover-lbl">Prepared by</span><span>${brandName}</span></div>
+    <div class="cover-row"><span class="cover-lbl">Contact</span><span>${contactEmail}</span></div>
+    ${wlConfig?.contact_phone ? `<div class="cover-row"><span class="cover-lbl">Phone</span><span>${wlConfig.contact_phone}</span></div>` : ''}
+    <div class="cover-row"><span class="cover-lbl">Generated</span><span>${new Date(exportedAt).toLocaleString()}</span></div>
+  </div>
+  ${wlConfig?.address ? `<div class="cover-address">${wlConfig.address.replace(/\n/g, '<br>')}</div>` : ''}
+  <div class="cover-confidential">CONFIDENTIAL \u2014 This report contains sensitive compliance data. Distribution is restricted to authorized parties only.</div>
+</div>` : '';
+
+  const receiptRows = r.map(rec => `
+    <tr>
+      <td>${new Date(rec.created_at).toLocaleString()}</td>
+      <td style="font-family:monospace;font-size:11px">${rec.receipt_hash?.slice(0, 16)}\u2026</td>
+      <td>${rec.revoked ? '<span style="color:#c00">Revoked</span>' : '<span style="color:#060">Active</span>'}</td>
+      <td>${rec.expires_at ? new Date(rec.expires_at).toLocaleDateString() : '\u2014'}</td>
+    </tr>`).join('') || '<tr><td colspan="4" style="text-align:center;color:#999;padding:16px">No receipts in this period</td></tr>';
+
+  const toolCallRows = t.map(tc => {
+    const dc = tc.decision === 'allowed' ? '#060' : tc.decision === 'blocked' ? '#c00' : '#a60';
+    return `<tr>
+      <td>${new Date(tc.created_at).toLocaleString()}</td>
+      <td style="font-family:monospace">${tc.tool_name}</td>
+      <td style="color:${dc};font-weight:600">${tc.decision}</td>
+      <td>${tc.risk_score != null ? tc.risk_score.toFixed(3) : '\u2014'}</td>
+      <td style="font-family:monospace;font-size:11px">${tc.session_id || '\u2014'}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="5" style="text-align:center;color:#999;padding:16px">No tool calls in this period</td></tr>';
+
+  const footerHtml = isWL
+    ? `${footerText ? `<p>${footerText}</p>` : ''}<p style="margin-top:8px;font-size:10px;color:#bbb">Powered by Authproof cryptographic authorization infrastructure \u2014 authproof.dev</p>`
+    : `<p>HMAC-SHA256 Signature: <span style="font-family:monospace">${signature}</span></p><p style="margin-top:4px">Verify: <code>crypto.createHmac('sha256', YOUR_API_KEY).update(JSON.stringify(payload)).digest('hex')</code></p>`;
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>${brandName} \u2014 Compliance Audit Report</title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:system-ui,-apple-system,sans-serif;font-size:13px;color:#111;background:#fff;padding:48px}
+    @page{size:letter;margin:.75in}
+    @media print{body{padding:0}.page-break{page-break-after:always}}
+    .cover{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:84vh;text-align:center;gap:20px;padding:60px 40px}
+    .cover-logo{margin-bottom:4px}
+    .cover-company{font-size:13px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#777}
+    .cover-title{font-size:30px;font-weight:800;color:#111;letter-spacing:-.02em;line-height:1.2}
+    .cover-period{font-size:14px;color:#666;font-weight:500}
+    .cover-meta{display:flex;flex-direction:column;gap:8px;text-align:left;background:#f9f9f9;border:1px solid #e5e5e5;border-left:4px solid ${brandColor};padding:20px 24px;min-width:360px}
+    .cover-row{display:flex;gap:16px;font-size:13px}
+    .cover-lbl{font-weight:700;color:#555;min-width:110px}
+    .cover-address{font-size:12px;color:#888;line-height:1.7}
+    .cover-confidential{font-size:11px;color:#aaa;border-top:1px solid #eee;padding-top:16px;max-width:460px;line-height:1.6}
+    .rpt-header{margin-bottom:28px}
+    h1{font-size:21px;font-weight:800;letter-spacing:-.01em;margin-bottom:4px}
+    .meta{color:#777;font-size:12px}
+    .accent{height:3px;background:${brandColor};margin-bottom:28px;border-radius:2px}
+    .stats{display:flex;border:1px solid #e8e8e8;border-radius:4px;overflow:hidden;margin-bottom:28px}
+    .stat{flex:1;padding:14px 18px;border-right:1px solid #e8e8e8}
+    .stat:last-child{border-right:none}
+    .stat-n{font-size:24px;font-weight:800;line-height:1;margin-bottom:3px}
+    .stat-l{font-size:10px;color:#999;text-transform:uppercase;letter-spacing:.08em;font-weight:700}
+    h2{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:#666;margin:28px 0 10px;padding-bottom:7px;border-bottom:2px solid ${brandColor}}
+    table{width:100%;border-collapse:collapse;font-size:12px}
+    th{text-align:left;padding:7px 10px;background:#f5f5f5;border-bottom:2px solid #e5e5e5;font-size:10px;text-transform:uppercase;letter-spacing:.06em;font-weight:700;color:#666}
+    td{padding:7px 10px;border-bottom:1px solid #f2f2f2;vertical-align:top}
+    tr:last-child td{border-bottom:none}
+    .disclaimer{margin-top:28px;padding:14px 18px;background:#fafafa;border:1px solid #e8e8e8;border-left:3px solid ${brandColor};font-size:12px;color:#666;line-height:1.6}
+    footer{margin-top:36px;padding-top:14px;border-top:1px solid #eee;font-size:11px;color:#aaa;line-height:1.8}
+  </style>
+</head>
+<body>
+${coverPage}
+<div class="rpt-header">
+  <h1>${brandName} \u2014 Compliance Audit Report</h1>
+  <div class="meta">${orgName ? `Organization: ${orgName} &nbsp;&middot;&nbsp; ` : ''}Account: ${account.email} &nbsp;&middot;&nbsp; Generated: ${exportedAt}${from ? ' &nbsp;&middot;&nbsp; From: ' + from : ''}${to ? ' &nbsp;&middot;&nbsp; To: ' + to : ''}</div>
+</div>
+<div class="accent"></div>
+<div class="stats">
+  <div class="stat"><div class="stat-n">${r.length}</div><div class="stat-l">Receipts</div></div>
+  <div class="stat"><div class="stat-n">${t.length}</div><div class="stat-l">Tool Calls</div></div>
+  <div class="stat"><div class="stat-n" style="color:#060">${allowed}</div><div class="stat-l">Allowed</div></div>
+  <div class="stat"><div class="stat-n" style="color:#c00">${blocked}</div><div class="stat-l">Blocked</div></div>
+  <div class="stat"><div class="stat-n" style="color:#a60">${flagged}</div><div class="stat-l">Flagged</div></div>
+</div>
+<h2>Authorization Receipts</h2>
+<table>
+  <thead><tr><th>Time</th><th>Receipt Hash</th><th>Status</th><th>Expires</th></tr></thead>
+  <tbody>${receiptRows}</tbody>
+</table>
+<h2>Tool Call Audit Log</h2>
+<table>
+  <thead><tr><th>Time</th><th>Tool</th><th>Decision</th><th>Risk Score</th><th>Session</th></tr></thead>
+  <tbody>${toolCallRows}</tbody>
+</table>
+${disclaimer ? `<div class="disclaimer">${disclaimer}</div>` : ''}
+<footer>${footerHtml}</footer>
+</body>
+</html>`;
+}
+
 async function requireApiKey(req, res, next) {
   const auth = req.headers.authorization;
   const apiKey = auth?.startsWith('Bearer ') ? auth.slice(7) : req.query.apiKey;
@@ -73,7 +222,7 @@ async function requireApiKey(req, res, next) {
 function requireEnterprise(req, res, next) {
   if (req.account.plan !== 'enterprise') {
     return res.status(403).json({
-      error: 'Legal Hold is available on Enterprise plans only. Contact ryan@authproof.dev to upgrade.',
+      error: 'This feature is available on Enterprise plans only. Contact ryan@authproof.dev to upgrade.',
     });
   }
   next();
@@ -921,6 +1070,192 @@ app.get('/audit/report', requireApiKey, async (req, res) => {
 
   res.setHeader('Content-Type', 'text/html');
   res.setHeader('X-Audit-Signature', signature);
+  res.send(html);
+});
+
+app.get('/audit/compliance-report', requireApiKey, async (req, res) => {
+  const { from, to, session_id } = req.query;
+  const { account } = req;
+
+  let receiptsQuery = supabaseAdmin.from('receipts').select('*').eq('account_id', account.id).order('created_at', { ascending: false });
+  let toolCallsQuery = supabaseAdmin.from('tool_calls').select('*').eq('account_id', account.id).order('created_at', { ascending: false });
+
+  if (from) { receiptsQuery = receiptsQuery.gte('created_at', from); toolCallsQuery = toolCallsQuery.gte('created_at', from); }
+  if (to)   { receiptsQuery = receiptsQuery.lte('created_at', to);   toolCallsQuery = toolCallsQuery.lte('created_at', to);   }
+  if (session_id) toolCallsQuery = toolCallsQuery.eq('session_id', session_id);
+
+  const [{ data: receipts }, { data: toolCalls }] = await Promise.all([receiptsQuery, toolCallsQuery]);
+  const r = receipts || [];
+  const t = toolCalls || [];
+
+  const exportedAt = new Date().toISOString();
+  const payload = { exported_at: exportedAt, account_id: account.id, receipts: r, tool_calls: t };
+  const signature = crypto.createHmac('sha256', account.api_key).update(JSON.stringify(payload)).digest('hex');
+
+  let wlConfig = null;
+  if (account.plan === 'enterprise') wlConfig = await getWhiteLabelConfig(account.id);
+
+  const html = buildComplianceReportHtml({ account, wlConfig, receipts: r, toolCalls: t, from, to, orgName: null, exportedAt, signature });
+
+  res.setHeader('Content-Type', 'text/html');
+  res.setHeader('X-Audit-Signature', signature);
+  res.send(html);
+});
+
+app.get('/organizations/:slug/audit/compliance-report', requireApiKey, async (req, res) => {
+  const { from, to } = req.query;
+  const { account } = req;
+
+  const { data: org } = await supabaseAdmin
+    .from('organizations')
+    .select('id, name')
+    .eq('slug', req.params.slug)
+    .eq('account_id', account.id)
+    .single();
+
+  if (!org) return res.status(404).json({ error: 'Organization not found' });
+
+  let receiptsQuery = supabaseAdmin.from('receipts').select('*').eq('account_id', account.id).order('created_at', { ascending: false });
+  let toolCallsQuery = supabaseAdmin.from('tool_calls').select('*').eq('account_id', account.id).order('created_at', { ascending: false });
+
+  if (from) { receiptsQuery = receiptsQuery.gte('created_at', from); toolCallsQuery = toolCallsQuery.gte('created_at', from); }
+  if (to)   { receiptsQuery = receiptsQuery.lte('created_at', to);   toolCallsQuery = toolCallsQuery.lte('created_at', to);   }
+
+  const [{ data: receipts }, { data: toolCalls }] = await Promise.all([receiptsQuery, toolCallsQuery]);
+  const r = receipts || [];
+  const t = toolCalls || [];
+
+  const exportedAt = new Date().toISOString();
+  const payload = { exported_at: exportedAt, account_id: account.id, organization_id: org.id, receipts: r, tool_calls: t };
+  const signature = crypto.createHmac('sha256', account.api_key).update(JSON.stringify(payload)).digest('hex');
+
+  let wlConfig = null;
+  if (account.plan === 'enterprise') wlConfig = await getWhiteLabelConfig(account.id);
+
+  const html = buildComplianceReportHtml({ account, wlConfig, receipts: r, toolCalls: t, from, to, orgName: org.name, exportedAt, signature });
+
+  res.setHeader('Content-Type', 'text/html');
+  res.setHeader('X-Audit-Signature', signature);
+  res.send(html);
+});
+
+// ─── white label ─────────────────────────────────────────────────────────────
+
+app.post('/white-label', requireApiKey, requireEnterprise, async (req, res) => {
+  const { companyName, logoUrl, primaryColor, secondaryColor, contactEmail, contactPhone, address, footerText, reportDisclaimer } = req.body || {};
+  if (!companyName) return res.status(400).json({ error: 'companyName is required' });
+
+  const { data: existing } = await supabaseAdmin
+    .from('white_label_configs')
+    .select('id')
+    .eq('account_id', req.account.id)
+    .single();
+
+  if (existing) {
+    return res.status(409).json({ error: 'White label config already exists. Use PUT /white-label to update.' });
+  }
+
+  const { data: config, error } = await supabaseAdmin
+    .from('white_label_configs')
+    .insert({
+      account_id: req.account.id,
+      company_name: companyName,
+      logo_url: logoUrl || null,
+      primary_color: primaryColor || '#1a56db',
+      secondary_color: secondaryColor || '#1246b5',
+      contact_email: contactEmail || null,
+      contact_phone: contactPhone || null,
+      address: address || null,
+      footer_text: footerText || null,
+      report_disclaimer: reportDisclaimer || null,
+    })
+    .select()
+    .single();
+
+  if (error) return res.status(400).json({ error: error.message });
+  res.status(201).json({ id: config.id, companyName: config.company_name, createdAt: config.created_at });
+});
+
+app.get('/white-label', requireApiKey, requireEnterprise, async (req, res) => {
+  const config = await getWhiteLabelConfig(req.account.id);
+  if (!config) return res.status(404).json({ error: 'No white label config found' });
+  res.json(config);
+});
+
+app.put('/white-label', requireApiKey, requireEnterprise, async (req, res) => {
+  const { companyName, logoUrl, primaryColor, secondaryColor, contactEmail, contactPhone, address, footerText, reportDisclaimer } = req.body || {};
+  const updates = { updated_at: new Date().toISOString() };
+  if (companyName       !== undefined) updates.company_name       = companyName;
+  if (logoUrl           !== undefined) updates.logo_url           = logoUrl;
+  if (primaryColor      !== undefined) updates.primary_color      = primaryColor;
+  if (secondaryColor    !== undefined) updates.secondary_color    = secondaryColor;
+  if (contactEmail      !== undefined) updates.contact_email      = contactEmail;
+  if (contactPhone      !== undefined) updates.contact_phone      = contactPhone;
+  if (address           !== undefined) updates.address            = address;
+  if (footerText        !== undefined) updates.footer_text        = footerText;
+  if (reportDisclaimer  !== undefined) updates.report_disclaimer  = reportDisclaimer;
+
+  const { data: config, error } = await supabaseAdmin
+    .from('white_label_configs')
+    .update(updates)
+    .eq('account_id', req.account.id)
+    .select()
+    .single();
+
+  if (error || !config) {
+    return res.status(404).json({ error: 'No white label config found. Use POST /white-label to create one.' });
+  }
+  res.json(config);
+});
+
+app.post('/white-label/logo', requireApiKey, requireEnterprise, async (req, res) => {
+  const { logo } = req.body || {};
+  const validation = validateLogoBase64(logo);
+  if (!validation.valid) return res.status(400).json({ error: validation.error });
+
+  const { data: config, error } = await supabaseAdmin
+    .from('white_label_configs')
+    .update({ logo_base64: logo, updated_at: new Date().toISOString() })
+    .eq('account_id', req.account.id)
+    .select('id')
+    .single();
+
+  if (error || !config) {
+    return res.status(404).json({ error: 'No white label config found. Create one first with POST /white-label.' });
+  }
+  res.json({ success: true });
+});
+
+app.delete('/white-label/logo', requireApiKey, requireEnterprise, async (req, res) => {
+  const { error } = await supabaseAdmin
+    .from('white_label_configs')
+    .update({ logo_base64: null, updated_at: new Date().toISOString() })
+    .eq('account_id', req.account.id);
+
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ success: true });
+});
+
+app.get('/white-label/preview', requireApiKey, requireEnterprise, async (req, res) => {
+  const { from, to } = req.query;
+  const { account } = req;
+  const wlConfig = await getWhiteLabelConfig(account.id);
+
+  const [{ data: receipts }, { data: toolCalls }] = await Promise.all([
+    supabaseAdmin.from('receipts').select('*').eq('account_id', account.id).order('created_at', { ascending: false }).limit(5),
+    supabaseAdmin.from('tool_calls').select('*').eq('account_id', account.id).order('created_at', { ascending: false }).limit(5),
+  ]);
+
+  const exportedAt = new Date().toISOString();
+  const payload = { exported_at: exportedAt, account_id: account.id, receipts: receipts || [], tool_calls: toolCalls || [] };
+  const signature = crypto.createHmac('sha256', account.api_key).update(JSON.stringify(payload)).digest('hex');
+
+  const html = buildComplianceReportHtml({
+    account, wlConfig, receipts: receipts || [], toolCalls: toolCalls || [],
+    from, to, orgName: null, exportedAt, signature,
+  });
+
+  res.setHeader('Content-Type', 'text/html');
   res.send(html);
 });
 

@@ -819,6 +819,76 @@
       padding: 8px 12px;
     }
 
+    /* ── White Label Panel ── */
+    .wl-panel {
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .wl-section {
+      padding: 22px 28px;
+      border-bottom: 1px solid var(--gray-200);
+    }
+    .wl-section:last-child { border-bottom: none; }
+    .wl-section-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--gray-500);
+      margin-bottom: 16px;
+    }
+    .wl-grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .wl-color-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .wl-color-input {
+      width: 38px;
+      height: 36px;
+      padding: 2px;
+      border: 1px solid var(--gray-200);
+      border-radius: 4px;
+      cursor: pointer;
+      background: none;
+    }
+    .wl-swatch-bar {
+      display: flex;
+      height: 28px;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 12px;
+    }
+    .wl-swatch-half { flex: 1; }
+    .wl-logo-preview-wrap {
+      display: none;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+    .wl-logo-preview {
+      max-height: 56px;
+      max-width: 200px;
+      object-fit: contain;
+      border: 1px solid var(--gray-200);
+      border-radius: 4px;
+      padding: 6px;
+    }
+    .wl-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .wl-save-toast { display: none; font-size: 13px; color: var(--green); font-weight: 600; }
+    .wl-save-error { display: none; font-size: 13px; color: var(--red); }
+    textarea.form-input { resize: vertical; font-family: var(--sans); line-height: 1.5; }
+    @media (max-width: 640px) {
+      .wl-grid-2 { grid-template-columns: 1fr; }
+      .wl-section { padding: 18px 20px; }
+    }
+
     /* Footer */
     footer {
       background: var(--white);
@@ -1210,6 +1280,121 @@
     </div>
   </div>
 
+  <!-- White Label Reports (Enterprise — config panel) -->
+  <div class="section" id="whiteLabelSection" style="display:none;">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-title">White Label Reports</span>
+      </div>
+      <div class="wl-panel">
+
+        <!-- Section 1: Company identity + logo -->
+        <div class="wl-section">
+          <div class="wl-section-title">Company Identity</div>
+          <div class="wl-grid-2">
+            <div class="modal-form-group">
+              <label class="export-label" for="wlCompanyName">Company Name</label>
+              <input class="form-input" id="wlCompanyName" type="text" placeholder="Acme Health Systems" style="width:100%;" />
+            </div>
+          </div>
+          <div class="modal-form-group" style="margin-top:16px;">
+            <label class="export-label">Logo (PNG or JPG, max 500 KB)</label>
+            <div class="wl-logo-preview-wrap" id="wlLogoPreviewWrap">
+              <img class="wl-logo-preview" id="wlLogoPreview" src="" alt="Logo preview" />
+              <button class="btn-hold-action btn-hold-release" onclick="removeLogo()">Remove</button>
+            </div>
+            <input type="file" id="wlLogoInput" accept="image/png,image/jpeg" onchange="handleLogoUpload(this)" style="font-size:13px;margin-top:4px;" />
+          </div>
+        </div>
+
+        <!-- Section 2: Colors + live swatch -->
+        <div class="wl-section">
+          <div class="wl-section-title">Brand Colors</div>
+          <div class="wl-grid-2">
+            <div class="modal-form-group">
+              <label class="export-label" for="wlPrimaryColor">Primary Color</label>
+              <div class="wl-color-row">
+                <input type="color" class="wl-color-input" id="wlPrimaryColor" value="#1a56db"
+                  oninput="syncColorToHex('wlPrimaryColor','wlPrimaryHex');updateSwatches()" />
+                <input class="form-input" id="wlPrimaryHex" type="text" value="#1a56db" maxlength="7" placeholder="#1a56db"
+                  oninput="syncHexToColor('wlPrimaryHex','wlPrimaryColor');updateSwatches()" style="flex:1;" />
+              </div>
+            </div>
+            <div class="modal-form-group">
+              <label class="export-label" for="wlSecondaryColor">Secondary Color</label>
+              <div class="wl-color-row">
+                <input type="color" class="wl-color-input" id="wlSecondaryColor" value="#1246b5"
+                  oninput="syncColorToHex('wlSecondaryColor','wlSecondaryHex');updateSwatches()" />
+                <input class="form-input" id="wlSecondaryHex" type="text" value="#1246b5" maxlength="7" placeholder="#1246b5"
+                  oninput="syncHexToColor('wlSecondaryHex','wlSecondaryColor');updateSwatches()" style="flex:1;" />
+              </div>
+            </div>
+          </div>
+          <div class="wl-swatch-bar" id="wlSwatchBar">
+            <div class="wl-swatch-half" id="wlSwatchPrimary" style="background:#1a56db;"></div>
+            <div class="wl-swatch-half" id="wlSwatchSecondary" style="background:#1246b5;"></div>
+          </div>
+        </div>
+
+        <!-- Section 3: Contact information -->
+        <div class="wl-section">
+          <div class="wl-section-title">Contact Information</div>
+          <div class="wl-grid-2">
+            <div class="modal-form-group">
+              <label class="export-label" for="wlContactEmail">Contact Email</label>
+              <input class="form-input" id="wlContactEmail" type="email" placeholder="compliance@yourcompany.com" style="width:100%;" />
+            </div>
+            <div class="modal-form-group">
+              <label class="export-label" for="wlContactPhone">Phone</label>
+              <input class="form-input" id="wlContactPhone" type="text" placeholder="+1 (555) 000-0000" style="width:100%;" />
+            </div>
+          </div>
+          <div class="modal-form-group" style="margin-top:4px;">
+            <label class="export-label" for="wlAddress">Address</label>
+            <input class="form-input" id="wlAddress" type="text" placeholder="123 Main St, Suite 100, City, ST 12345" style="width:100%;" />
+          </div>
+        </div>
+
+        <!-- Section 4: Footer text + disclaimer -->
+        <div class="wl-section">
+          <div class="wl-section-title">Report Text</div>
+          <div class="modal-form-group">
+            <label class="export-label" for="wlFooterText">Footer Text</label>
+            <input class="form-input" id="wlFooterText" type="text" placeholder="This report is confidential and intended for authorized recipients only." style="width:100%;" />
+          </div>
+          <div class="modal-form-group" style="margin-top:14px;">
+            <label class="export-label" for="wlDisclaimer">Report Disclaimer</label>
+            <textarea class="form-input" id="wlDisclaimer" rows="3" placeholder="This compliance report has been generated using cryptographically verified authorization receipts and is suitable for regulatory submission." style="width:100%;"></textarea>
+          </div>
+        </div>
+
+        <!-- Section 5: Actions -->
+        <div class="wl-section">
+          <div class="wl-actions">
+            <button class="btn-export" onclick="previewWhiteLabel()">Preview Report</button>
+            <button class="btn-hold-create" id="wlSaveBtn" onclick="saveWhiteLabel()">Save</button>
+            <span class="wl-save-toast" id="wlSaveToast">Saved successfully.</span>
+            <span class="wl-save-error" id="wlSaveError"></span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- White Label Reports (Free / Pro — locked card) -->
+  <div class="section" id="whiteLabelLockedSection" style="display:none;">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-title">White Label Reports</span>
+      </div>
+      <div class="legal-hold-locked">
+        <div class="locked-title">White Label Reports is an Enterprise feature</div>
+        <div class="locked-body">Your compliance reports will carry your brand, not ours. Add your logo, colors, and contact information to every report generated. <a class="locked-link" href="mailto:ryan@authproof.dev?subject=Enterprise%20Plan%20Inquiry">Upgrade to Enterprise to enable.</a></div>
+      </div>
+    </div>
+  </div>
+
   <!-- API Key Management -->
   <div class="section section-last">
     <div class="container">
@@ -1429,15 +1614,19 @@
       document.getElementById('upgradeSectionWrap').style.display = 'block';
       document.getElementById('freePricingCards').style.display = 'block';
       document.getElementById('legalHoldLockedSection').style.display = 'block';
+      document.getElementById('whiteLabelLockedSection').style.display = 'block';
     } else if (account.plan === 'pro') {
       document.getElementById('billingBtn').style.display = 'inline-block';
       document.getElementById('upgradeSectionWrap').style.display = 'block';
       document.getElementById('proPricingCards').style.display = 'block';
       document.getElementById('legalHoldLockedSection').style.display = 'block';
+      document.getElementById('whiteLabelLockedSection').style.display = 'block';
     } else if (account.plan === 'enterprise') {
       document.getElementById('billingBtn').style.display = 'inline-block';
       document.getElementById('legalHoldSection').style.display = 'block';
+      document.getElementById('whiteLabelSection').style.display = 'block';
       loadLegalHolds();
+      loadWhiteLabel();
     } else {
       document.getElementById('billingBtn').style.display = 'inline-block';
       document.getElementById('proSection').style.display = 'block';
@@ -1906,6 +2095,170 @@
 
   function exportCurrentHold() {
     if (currentHoldId) exportHold(currentHoldId);
+  }
+
+  // ── White Label ─────────────────────────────────────────────────────────────
+  let wlConfigExists = false;
+  let wlLogoBase64   = null;
+  let wlLogoRemoved  = false;
+
+  async function loadWhiteLabel() {
+    const res = await apiFetch('/white-label');
+    if (!res) return;
+    if (res.status === 404) {
+      wlConfigExists = false;
+      renderWhiteLabelForm(null);
+      return;
+    }
+    if (!res.ok) return;
+    const data = await res.json();
+    wlConfigExists = true;
+    renderWhiteLabelForm(data.config);
+  }
+
+  function renderWhiteLabelForm(cfg) {
+    wlLogoBase64  = cfg?.logo_base64  || null;
+    wlLogoRemoved = false;
+
+    document.getElementById('wlCompanyName').value   = cfg?.company_name   || '';
+    document.getElementById('wlContactEmail').value  = cfg?.contact_email  || '';
+    document.getElementById('wlContactPhone').value  = cfg?.contact_phone  || '';
+    document.getElementById('wlAddress').value       = cfg?.address        || '';
+    document.getElementById('wlFooterText').value    = cfg?.footer_text    || '';
+    document.getElementById('wlDisclaimer').value    = cfg?.disclaimer     || '';
+
+    const primary   = cfg?.primary_color   || '#1a56db';
+    const secondary = cfg?.secondary_color || '#6b7280';
+    document.getElementById('wlPrimaryColor').value   = primary;
+    document.getElementById('wlPrimaryHex').value     = primary;
+    document.getElementById('wlSecondaryColor').value = secondary;
+    document.getElementById('wlSecondaryHex').value   = secondary;
+    updateSwatches();
+
+    const wrap    = document.getElementById('wlLogoPreviewWrap');
+    const preview = document.getElementById('wlLogoPreview');
+    if (wlLogoBase64) {
+      preview.src          = wlLogoBase64;
+      wrap.style.display   = 'block';
+    } else {
+      wrap.style.display   = 'none';
+    }
+  }
+
+  function syncColorToHex(which) {
+    const val = document.getElementById('wl' + which + 'Color').value;
+    document.getElementById('wl' + which + 'Hex').value = val;
+    updateSwatches();
+  }
+
+  function syncHexToColor(which) {
+    const val = document.getElementById('wl' + which + 'Hex').value.trim();
+    if (/^#[0-9a-fA-F]{6}$/.test(val)) {
+      document.getElementById('wl' + which + 'Color').value = val;
+      updateSwatches();
+    }
+  }
+
+  function updateSwatches() {
+    document.getElementById('wlSwatchPrimary').style.background   = document.getElementById('wlPrimaryColor').value;
+    document.getElementById('wlSwatchSecondary').style.background = document.getElementById('wlSecondaryColor').value;
+  }
+
+  function handleLogoUpload(input) {
+    const file = input.files[0];
+    if (!file) return;
+    if (!['image/png', 'image/jpeg'].includes(file.type)) {
+      alert('Only PNG or JPG images are accepted.');
+      input.value = '';
+      return;
+    }
+    if (file.size > 500 * 1024) {
+      alert('Logo must be under 500 KB.');
+      input.value = '';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = e => {
+      wlLogoBase64  = e.target.result;
+      wlLogoRemoved = false;
+      const preview = document.getElementById('wlLogoPreview');
+      preview.src   = wlLogoBase64;
+      document.getElementById('wlLogoPreviewWrap').style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function removeLogo() {
+    wlLogoBase64  = null;
+    wlLogoRemoved = true;
+    document.getElementById('wlLogoPreviewWrap').style.display = 'none';
+    document.getElementById('wlLogoPreview').src = '';
+    document.getElementById('wlLogoInput').value = '';
+  }
+
+  async function saveWhiteLabel() {
+    const btn   = document.getElementById('wlSaveBtn');
+    const toast = document.getElementById('wlSaveToast');
+    const errEl = document.getElementById('wlSaveError');
+    btn.disabled    = true;
+    btn.textContent = 'Saving…';
+    toast.style.display = 'none';
+    errEl.style.display = 'none';
+
+    const body = {
+      company_name:    document.getElementById('wlCompanyName').value.trim()   || null,
+      primary_color:   document.getElementById('wlPrimaryColor').value         || null,
+      secondary_color: document.getElementById('wlSecondaryColor').value       || null,
+      contact_email:   document.getElementById('wlContactEmail').value.trim()  || null,
+      contact_phone:   document.getElementById('wlContactPhone').value.trim()  || null,
+      address:         document.getElementById('wlAddress').value.trim()       || null,
+      footer_text:     document.getElementById('wlFooterText').value.trim()    || null,
+      disclaimer:      document.getElementById('wlDisclaimer').value.trim()    || null,
+    };
+
+    const method = wlConfigExists ? 'PUT' : 'POST';
+    const res    = await apiFetch('/white-label', { method, body: JSON.stringify(body) });
+    if (!res || !res.ok) {
+      const d = res ? await res.json().catch(() => ({})) : {};
+      errEl.textContent   = d.error || 'Failed to save configuration.';
+      errEl.style.display = 'block';
+      btn.disabled        = false;
+      btn.textContent     = 'Save';
+      return;
+    }
+    wlConfigExists = true;
+
+    if (wlLogoBase64) {
+      const logoRes = await apiFetch('/white-label/logo', {
+        method: 'POST',
+        body: JSON.stringify({ logo: wlLogoBase64 }),
+      });
+      if (logoRes && !logoRes.ok) {
+        const d = await logoRes.json().catch(() => ({}));
+        errEl.textContent   = d.error || 'Config saved but logo upload failed.';
+        errEl.style.display = 'block';
+        btn.disabled        = false;
+        btn.textContent     = 'Save';
+        return;
+      }
+    } else if (wlLogoRemoved) {
+      await apiFetch('/white-label/logo', { method: 'DELETE' });
+      wlLogoRemoved = false;
+    }
+
+    btn.disabled        = false;
+    btn.textContent     = 'Save';
+    toast.style.display = 'block';
+    setTimeout(() => { toast.style.display = 'none'; }, 3000);
+  }
+
+  async function previewWhiteLabel() {
+    const res = await apiFetch('/white-label/preview');
+    if (!res || !res.ok) { alert('Preview failed. Please save your config first.'); return; }
+    const html = await res.text();
+    const win  = window.open('', '_blank');
+    win.document.write(html);
+    win.document.close();
   }
 
   // ── Init ────────────────────────────────────────────────────────────────────
