@@ -889,6 +889,19 @@
       .wl-section { padding: 18px 20px; }
     }
 
+    /* ── Team Management ── */
+    .role-badge { display:inline-block; padding:2px 9px; border-radius:980px; font-size:11px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; }
+    .role-badge.owner              { background:#f3eeff; color:#7c3aed; }
+    .role-badge.admin              { background:#eff6ff; color:#1a56db; }
+    .role-badge.compliance-officer { background:#ecfeff; color:#0891b2; }
+    .role-badge.viewer             { background:#f9fafb; color:#6b7280; border:1px solid #e5e7eb; }
+    .role-select-inline { font-size:12px; padding:4px 8px; border:1px solid var(--gray-200); border-radius:6px; background:#fff; color:var(--gray-800); cursor:pointer; }
+    .role-select-inline:focus { outline:none; border-color:var(--blue); }
+    .team-remove-btn { font-size:12px; font-weight:600; color:#c00; background:none; border:1px solid #c00; border-radius:6px; padding:3px 10px; cursor:pointer; margin-left:6px; }
+    .team-remove-btn:hover { background:#fff0f0; }
+    .access-log-wrap { margin-top:32px; }
+    .access-log-title { font-size:13px; font-weight:700; color:var(--gray-700); margin-bottom:12px; letter-spacing:.01em; }
+
     /* Footer */
     footer {
       background: var(--white);
@@ -957,6 +970,7 @@
     <li><a href="https://github.com/Commonguy25/authproof-sdk" target="_blank">Docs</a></li>
     <li><a href="/support">Support</a></li>
     <li><a href="/baa">BAA</a></li>
+    <li id="teamNavItem" style="display:none;"><a href="#teamSection">Team</a></li>
   </ul>
   <div class="nav-right">
     <span class="nav-email" id="navEmail">—</span>
@@ -1395,6 +1409,64 @@
     </div>
   </div>
 
+  <!-- Team Management (Enterprise) -->
+  <div class="section" id="teamSection" style="display:none;">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-title">Team Management</span>
+        <button class="btn-hold-create" onclick="openInviteModal()">+ Invite Member</button>
+      </div>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Status</th>
+              <th>Last Active</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="teamTableBody">
+            <tr class="empty-row"><td colspan="5">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="access-log-wrap">
+        <div class="access-log-title">Access Log</div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Member</th>
+                <th>Action</th>
+                <th>Resource</th>
+                <th>Timestamp</th>
+              </tr>
+            </thead>
+            <tbody id="accessLogBody">
+              <tr class="empty-row"><td colspan="4">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Team Management (Free / Pro — locked card) -->
+  <div class="section" id="teamLockedSection" style="display:none;">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-title">Team Management</span>
+      </div>
+      <div class="legal-hold-locked">
+        <div class="locked-title">Team Management is an Enterprise feature</div>
+        <div class="locked-body">Invite compliance officers, auditors, and team members with role-based access controls. Upgrade to Enterprise to enable. <a class="locked-link" href="mailto:ryan@authproof.dev?subject=Enterprise%20Plan%20Inquiry">Contact ryan@authproof.dev to upgrade.</a></div>
+      </div>
+    </div>
+  </div>
+
   <!-- API Key Management -->
   <div class="section section-last">
     <div class="container">
@@ -1412,6 +1484,30 @@
     </div>
   </div>
 
+</div>
+
+<!-- Invite Team Member Modal -->
+<div class="modal-overlay" id="inviteModal" onclick="closeInviteModal(event)">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-title">Invite Team Member</div>
+    <div class="modal-form-group">
+      <label class="export-label" for="inviteEmail">Email address</label>
+      <input class="form-input" id="inviteEmail" type="email" placeholder="colleague@company.com" style="width:100%;" />
+    </div>
+    <div class="modal-form-group" style="margin-top:14px;">
+      <label class="export-label" for="inviteRole">Role</label>
+      <select class="form-input" id="inviteRole" style="width:100%;">
+        <option value="viewer">Viewer — dashboard summary only, cannot export or generate reports</option>
+        <option value="compliance_officer">Compliance Officer — read-only audit and compliance reports, ideal for privacy officers</option>
+        <option value="admin">Admin — full access except billing, can manage team</option>
+      </select>
+    </div>
+    <div class="modal-actions" style="margin-top:20px;">
+      <button class="btn-confirm" id="inviteBtn" onclick="submitInvite()" style="background:var(--blue);border-color:var(--blue);">Send Invitation</button>
+      <button class="btn-cancel" onclick="closeInviteModal()">Cancel</button>
+    </div>
+    <div class="modal-error" id="inviteError"></div>
+  </div>
 </div>
 
 <!-- Create Hold Modal -->
@@ -1615,18 +1711,23 @@
       document.getElementById('freePricingCards').style.display = 'block';
       document.getElementById('legalHoldLockedSection').style.display = 'block';
       document.getElementById('whiteLabelLockedSection').style.display = 'block';
+      document.getElementById('teamLockedSection').style.display = 'block';
     } else if (account.plan === 'pro') {
       document.getElementById('billingBtn').style.display = 'inline-block';
       document.getElementById('upgradeSectionWrap').style.display = 'block';
       document.getElementById('proPricingCards').style.display = 'block';
       document.getElementById('legalHoldLockedSection').style.display = 'block';
       document.getElementById('whiteLabelLockedSection').style.display = 'block';
+      document.getElementById('teamLockedSection').style.display = 'block';
     } else if (account.plan === 'enterprise') {
       document.getElementById('billingBtn').style.display = 'inline-block';
       document.getElementById('legalHoldSection').style.display = 'block';
       document.getElementById('whiteLabelSection').style.display = 'block';
+      document.getElementById('teamSection').style.display = 'block';
+      document.getElementById('teamNavItem').style.display = 'list-item';
       loadLegalHolds();
       loadWhiteLabel();
+      loadTeam();
     } else {
       document.getElementById('billingBtn').style.display = 'inline-block';
       document.getElementById('proSection').style.display = 'block';
@@ -2097,6 +2198,128 @@
     if (currentHoldId) exportHold(currentHoldId);
   }
 
+  // ── Team Management ─────────────────────────────────────────────────────────
+
+  async function loadTeam() {
+    await Promise.all([loadTeamMembers(), loadAccessLog()]);
+  }
+
+  async function loadTeamMembers() {
+    const res = await apiFetch('/team');
+    if (!res || !res.ok) return;
+    renderTeamMembers(await res.json());
+  }
+
+  function renderTeamMembers(members) {
+    const tbody = document.getElementById('teamTableBody');
+    if (!members.length) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="5">No team members yet. Use "+ Invite Member" to add one.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = members.map(m => {
+      const cls        = m.role.replace(/_/g, '-');
+      const lastActive = m.last_active_at ? fmtDate(m.last_active_at) : (m.accepted_at ? 'Never' : '—');
+      const status     = m.status === 'pending'
+        ? '<span style="color:#a60;font-size:12px;font-weight:600;">Pending</span>'
+        : '<span style="color:#060;font-size:12px;font-weight:600;">Active</span>';
+      const actions = m.role === 'owner'
+        ? '<span style="color:var(--gray-400);font-size:12px;">Owner</span>'
+        : `<select class="role-select-inline" onchange="changeRole('${m.id}',this.value)">
+             <option value="viewer"             ${m.role==='viewer'             ?'selected':''}>Viewer</option>
+             <option value="compliance_officer" ${m.role==='compliance_officer' ?'selected':''}>Compliance Officer</option>
+             <option value="admin"              ${m.role==='admin'              ?'selected':''}>Admin</option>
+           </select>
+           <button class="team-remove-btn" onclick="removeMember('${m.id}','${escHtml(m.email)}')">Remove</button>`;
+      return `<tr>
+        <td>${escHtml(m.email)}</td>
+        <td><span class="role-badge ${cls}">${m.role.replace(/_/g,' ')}</span></td>
+        <td>${status}</td>
+        <td style="font-size:12px;color:var(--gray-500)">${lastActive}</td>
+        <td>${actions}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  async function changeRole(memberId, role) {
+    const res = await apiFetch('/team/' + memberId + '/role', { method: 'PUT', body: JSON.stringify({ role }) });
+    if (!res || !res.ok) {
+      const d = res ? await res.json().catch(() => ({})) : {};
+      alert(d.error || 'Failed to change role.');
+    }
+    await loadTeamMembers();
+  }
+
+  async function removeMember(memberId, email) {
+    if (!confirm(`Remove ${email} from the team? They will immediately lose access.`)) return;
+    const res = await apiFetch('/team/' + memberId, { method: 'DELETE' });
+    if (!res || !res.ok) {
+      const d = res ? await res.json().catch(() => ({})) : {};
+      alert(d.error || 'Failed to remove member.');
+      return;
+    }
+    await loadTeamMembers();
+  }
+
+  function openInviteModal() {
+    document.getElementById('inviteEmail').value = '';
+    document.getElementById('inviteRole').value  = 'viewer';
+    const err = document.getElementById('inviteError');
+    err.style.display = 'none'; err.textContent = '';
+    document.getElementById('inviteModal').classList.add('open');
+  }
+
+  function closeInviteModal(e) {
+    if (e && e.target !== document.getElementById('inviteModal')) return;
+    document.getElementById('inviteModal').classList.remove('open');
+  }
+
+  async function submitInvite() {
+    const email = document.getElementById('inviteEmail').value.trim();
+    const role  = document.getElementById('inviteRole').value;
+    const errEl = document.getElementById('inviteError');
+    const btn   = document.getElementById('inviteBtn');
+
+    if (!email) { errEl.textContent = 'Email is required.'; errEl.style.display = 'block'; return; }
+
+    btn.disabled = true; btn.textContent = 'Sending…';
+    errEl.style.display = 'none';
+
+    const res = await apiFetch('/team/invite', { method: 'POST', body: JSON.stringify({ email, role }) });
+    if (!res) { btn.disabled = false; btn.textContent = 'Send Invitation'; return; }
+    const data = await res.json();
+
+    if (!res.ok) {
+      errEl.textContent = data.error || 'Failed to send invitation.';
+      errEl.style.display = 'block';
+      btn.disabled = false; btn.textContent = 'Send Invitation';
+      return;
+    }
+
+    document.getElementById('inviteModal').classList.remove('open');
+    btn.disabled = false; btn.textContent = 'Send Invitation';
+    await loadTeamMembers();
+  }
+
+  async function loadAccessLog() {
+    const res = await apiFetch('/team/access-log');
+    if (!res || !res.ok) return;
+    renderAccessLog(await res.json());
+  }
+
+  function renderAccessLog(logs) {
+    const tbody = document.getElementById('accessLogBody');
+    if (!logs.length) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="4">No access events recorded yet.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = logs.map(l => `<tr>
+      <td style="font-size:12px">${escHtml(l.actor)}</td>
+      <td style="font-size:12px;font-family:var(--mono)">${escHtml(l.action)}</td>
+      <td style="font-size:12px;color:var(--gray-500)">${escHtml(l.resource || '')}${l.resource_id ? ' · ' + escHtml(l.resource_id) : ''}</td>
+      <td style="font-size:12px;color:var(--gray-500)">${fmtDate(l.created_at)}</td>
+    </tr>`).join('');
+  }
+
   // ── White Label ─────────────────────────────────────────────────────────────
   let wlConfigExists = false;
   let wlLogoBase64   = null;
@@ -2145,16 +2368,15 @@
     }
   }
 
-  function syncColorToHex(which) {
-    const val = document.getElementById('wl' + which + 'Color').value;
-    document.getElementById('wl' + which + 'Hex').value = val;
+  function syncColorToHex(colorId, hexId) {
+    document.getElementById(hexId).value = document.getElementById(colorId).value;
     updateSwatches();
   }
 
-  function syncHexToColor(which) {
-    const val = document.getElementById('wl' + which + 'Hex').value.trim();
+  function syncHexToColor(hexId, colorId) {
+    const val = document.getElementById(hexId).value.trim();
     if (/^#[0-9a-fA-F]{6}$/.test(val)) {
-      document.getElementById('wl' + which + 'Color').value = val;
+      document.getElementById(colorId).value = val;
       updateSwatches();
     }
   }

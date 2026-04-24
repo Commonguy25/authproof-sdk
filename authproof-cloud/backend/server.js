@@ -228,6 +228,147 @@ function requireEnterprise(req, res, next) {
   next();
 }
 
+// ─── RBAC ────────────────────────────────────────────────────────────────────
+
+const ALL_PERMISSIONS = [
+  'receipts.read', 'receipts.create', 'receipts.revoke',
+  'verifications.read', 'tool_calls.read',
+  'compliance_reports.generate', 'compliance_reports.export', 'audit.export',
+  'legal_holds.read', 'legal_holds.create', 'legal_holds.release',
+  'organizations.read', 'organizations.create', 'organizations.delete',
+  'team.read', 'team.invite', 'team.remove', 'team.change_role',
+  'settings.read', 'settings.update',
+  'billing.read', 'billing.update',
+  'white_label.read', 'white_label.update',
+  'webhooks.read', 'webhooks.create', 'webhooks.delete',
+  'account.delete',
+];
+
+const ROLE_PERMISSIONS = {
+  owner:              new Set(ALL_PERMISSIONS),
+  admin:              new Set(ALL_PERMISSIONS.filter(p => !['billing.read', 'billing.update', 'account.delete'].includes(p))),
+  compliance_officer: new Set([
+    'receipts.read', 'verifications.read', 'tool_calls.read',
+    'compliance_reports.generate', 'compliance_reports.export', 'audit.export',
+    'legal_holds.read', 'organizations.read', 'team.read', 'white_label.read', 'settings.read',
+  ]),
+  viewer: new Set(['receipts.read', 'verifications.read', 'tool_calls.read', 'organizations.read', 'team.read']),
+};
+
+const ROLE_META = {
+  owner:              { name: 'Owner',             description: 'Full access including billing and account management. One per account.' },
+  admin:              { name: 'Admin',              description: 'Full access except billing and account deletion. Can manage team up to Admin level.' },
+  compliance_officer: { name: 'Compliance Officer', description: 'Read-only audit access — receipts, verifications, legal holds, and compliance reports. Ideal for privacy officers and external auditors.' },
+  viewer:             { name: 'Viewer',             description: 'Dashboard summary only. Can view receipts, verifications, and tool calls. Cannot export, generate reports, or view legal holds.' },
+};
+
+function jwtSign(payload, expiresInSeconds = 7 * 24 * 3600) {
+  const secret = process.env.JWT_SECRET || process.env.SUPABASE_SERVICE_KEY;
+  const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
+  const body   = Buffer.from(JSON.stringify({ ...payload, iat: Math.floor(Date.now() / 1000), exp: Math.floor(Date.now() / 1000) + expiresInSeconds })).toString('base64url');
+  const sig    = crypto.createHmac('sha256', secret).update(`${header}.${body}`).digest('base64url');
+  return `${header}.${body}.${sig}`;
+}
+
+function jwtVerify(token) {
+  try {
+    const secret = process.env.JWT_SECRET || process.env.SUPABASE_SERVICE_KEY;
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const [header, body, sig] = parts;
+    const expected = crypto.createHmac('sha256', secret).update(`${header}.${body}`).digest('base64url');
+    if (sig !== expected) return null;
+    const payload = JSON.parse(Buffer.from(body, 'base64url').toString());
+    if (payload.exp && Math.floor(Date.now() / 1000) > payload.exp) return null;
+    return payload;
+  } catch { return null; }
+}
+
+async function requireJWT(req, res, next) {
+  const auth = req.headers.authorization;
+  const token = auth?.startsWith('Bearer ') ? auth.slice(7) : null;
+  if (!token) return res.status(401).json({ error: 'Authentication required' });
+
+  const payload = jwtVerify(token);
+  if (!payload || payload.type !== 'session') return res.status(401).json({ error: 'Invalid or expired token' });
+
+  const { data: member } = await supabaseAdmin
+    .from('team_members')
+    .select('*')
+    .eq('id', payload.memberId)
+    .eq('status', 'accepted')
+    .single();
+
+  if (!member) return res.status(401).json({ error: 'Team member not found or invitation not accepted' });
+
+  const { data: account } = await supabaseAdmin
+    .from('accounts')
+    .select('*')
+    .eq('id', member.account_id)
+    .single();
+
+  if (!account) return res.status(401).json({ error: 'Account not found' });
+
+  req.teamMember = member;
+  req.account    = account;
+  next();
+}
+
+function checkPermission(permission) {
+  return (req, res, next) => {
+    if (req.account && !req.teamMember) return next(); // API key auth — RBAC bypass
+    if (!req.teamMember) return res.status(401).json({ error: 'Authentication required' });
+    const perms = ROLE_PERMISSIONS[req.teamMember.role];
+    if (!perms || !perms.has(permission)) {
+      return res.status(403).json({ error: 'Your role does not have permission to perform this action. Contact your account owner to request access.' });
+    }
+    next();
+  };
+}
+
+function logAccessEvent(req, action, resource, resourceId = null) {
+  const actor = req.teamMember?.email || 'api_key';
+  const ip    = (req.headers['x-forwarded-for'] || req.connection?.remoteAddress || req.socket?.remoteAddress || '').split(',')[0].trim() || null;
+  supabaseAdmin.from('audit_access_log').insert({
+    account_id:  req.account.id,
+    member_id:   req.teamMember?.id || null,
+    actor,
+    action,
+    resource,
+    resource_id: resourceId != null ? String(resourceId) : null,
+    ip_address:  ip,
+  }).then(() => {}).catch(err => console.error('[accessLog]', err.message));
+}
+
+async function sendInviteEmail(toEmail, fromAccountEmail, role, inviteUrl) {
+  const resendKey = process.env.RESEND_API_KEY;
+  if (!resendKey) return;
+  const roleLabels = {
+    admin:              'full access except billing and account deletion — can manage team members',
+    compliance_officer: 'read-only access to audit logs, receipts, legal holds, and compliance reports',
+    viewer:             'dashboard summary — can view receipts, verifications, and tool calls',
+  };
+  const https = require('https');
+  const body = JSON.stringify({
+    from: 'Authproof Cloud <noreply@authproof.dev>',
+    to: [toEmail],
+    subject: `You have been invited to join ${fromAccountEmail} on Authproof Cloud`,
+    html: `<div style="font-family:system-ui,sans-serif;max-width:520px;margin:0 auto;padding:40px 24px;background:#fff">
+      <h1 style="font-size:20px;font-weight:700;margin-bottom:8px;color:#000">You're invited to Authproof Cloud</h1>
+      <p style="color:#555;font-size:14px;margin-bottom:16px;line-height:1.6"><strong>${fromAccountEmail}</strong> has invited you to join their Authproof Cloud account as a <strong>${role.replace('_', ' ')}</strong>.</p>
+      <p style="color:#555;font-size:14px;margin-bottom:28px;line-height:1.6">Your role gives you: ${roleLabels[role] || role}.</p>
+      <a href="${inviteUrl}" style="display:inline-block;background:#1a56db;color:#fff;font-weight:700;font-size:14px;padding:14px 28px;text-decoration:none;border-radius:980px;letter-spacing:0.02em">Accept Invitation</a>
+      <p style="color:#999;font-size:12px;margin-top:28px;line-height:1.6">This invitation expires in 7 days. If you didn't expect this, you can safely ignore this email.</p>
+    </div>`,
+  });
+  const r2 = https.request({
+    hostname: 'api.resend.com', path: '/emails', method: 'POST',
+    headers: { 'Authorization': `Bearer ${resendKey}`, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+  }, (r) => { let raw = ''; r.on('data', c => raw += c); r.on('end', () => console.log('[Resend invite]', r.statusCode, raw)); });
+  r2.on('error', e => console.error('[Resend invite]', e.message));
+  r2.write(body); r2.end();
+}
+
 // ─── auth ────────────────────────────────────────────────────────────────────
 
 app.post('/auth/signup', authLimiter, async (req, res) => {
@@ -382,7 +523,7 @@ app.post('/auth/login', async (req, res) => {
 
 // ─── receipts ────────────────────────────────────────────────────────────────
 
-app.post('/receipts', requireApiKey, async (req, res) => {
+app.post('/receipts', requireApiKey, checkPermission('receipts.create'), async (req, res) => {
   const { receiptHash, receiptData, expiresAt } = req.body || {};
   if (!receiptHash || !receiptData) {
     return res.status(400).json({ error: 'receiptHash and receiptData are required' });
@@ -442,7 +583,7 @@ app.get('/receipts/:hash', requireApiKey, async (req, res) => {
   res.json(receipt);
 });
 
-app.post('/receipts/:hash/revoke', requireApiKey, async (req, res) => {
+app.post('/receipts/:hash/revoke', requireApiKey, checkPermission('receipts.revoke'), async (req, res) => {
   const { data: existing } = await supabaseAdmin
     .from('receipts')
     .select('on_legal_hold')
@@ -646,7 +787,7 @@ app.post('/tool-calls', requireApiKey, async (req, res) => {
   });
 });
 
-app.get('/tool-calls', requireApiKey, async (req, res) => {
+app.get('/tool-calls', requireApiKey, checkPermission('tool_calls.read'), async (req, res) => {
   const { session_id, decision } = req.query;
   const limit = Math.min(parseInt(req.query.limit) || 50, 200);
   const offset = parseInt(req.query.offset) || 0;
@@ -874,7 +1015,7 @@ app.get('/api/dashboard', requireApiKey, async (req, res) => {
 
 // ─── audit ────────────────────────────────────────────────────────────────────
 
-app.get('/audit/export', requireApiKey, async (req, res) => {
+app.get('/audit/export', requireApiKey, checkPermission('audit.export'), async (req, res) => {
   const { format = 'json', from, to, session_id } = req.query;
   const { account } = req;
 
@@ -1073,7 +1214,7 @@ app.get('/audit/report', requireApiKey, async (req, res) => {
   res.send(html);
 });
 
-app.get('/audit/compliance-report', requireApiKey, async (req, res) => {
+app.get('/audit/compliance-report', requireApiKey, checkPermission('compliance_reports.generate'), async (req, res) => {
   const { from, to, session_id } = req.query;
   const { account } = req;
 
@@ -1176,13 +1317,13 @@ app.post('/white-label', requireApiKey, requireEnterprise, async (req, res) => {
   res.status(201).json({ id: config.id, companyName: config.company_name, createdAt: config.created_at });
 });
 
-app.get('/white-label', requireApiKey, requireEnterprise, async (req, res) => {
+app.get('/white-label', requireApiKey, requireEnterprise, checkPermission('white_label.read'), async (req, res) => {
   const config = await getWhiteLabelConfig(req.account.id);
   if (!config) return res.status(404).json({ error: 'No white label config found' });
   res.json(config);
 });
 
-app.put('/white-label', requireApiKey, requireEnterprise, async (req, res) => {
+app.put('/white-label', requireApiKey, requireEnterprise, checkPermission('white_label.update'), async (req, res) => {
   const { companyName, logoUrl, primaryColor, secondaryColor, contactEmail, contactPhone, address, footerText, reportDisclaimer } = req.body || {};
   const updates = { updated_at: new Date().toISOString() };
   if (companyName       !== undefined) updates.company_name       = companyName;
@@ -1261,7 +1402,7 @@ app.get('/white-label/preview', requireApiKey, requireEnterprise, async (req, re
 
 // ─── legal holds ─────────────────────────────────────────────────────────────
 
-app.post('/legal-holds', requireApiKey, requireEnterprise, async (req, res) => {
+app.post('/legal-holds', requireApiKey, requireEnterprise, checkPermission('legal_holds.create'), async (req, res) => {
   const { name, description, organizationId, expiresAt } = req.body || {};
   if (!name) return res.status(400).json({ error: 'name is required' });
 
@@ -1291,7 +1432,7 @@ app.post('/legal-holds', requireApiKey, requireEnterprise, async (req, res) => {
   res.status(201).json({ id: hold.id, name: hold.name, status: hold.status, createdAt: hold.created_at });
 });
 
-app.get('/legal-holds', requireApiKey, requireEnterprise, async (req, res) => {
+app.get('/legal-holds', requireApiKey, requireEnterprise, checkPermission('legal_holds.read'), async (req, res) => {
   const { data: holds, error } = await supabaseAdmin
     .from('legal_holds')
     .select('*')
@@ -1468,7 +1609,7 @@ app.post('/legal-holds/:id/items/bulk', requireApiKey, requireEnterprise, async 
   res.json({ added: receipts.length });
 });
 
-app.post('/legal-holds/:id/release', requireApiKey, requireEnterprise, async (req, res) => {
+app.post('/legal-holds/:id/release', requireApiKey, requireEnterprise, checkPermission('legal_holds.release'), async (req, res) => {
   const { releasedBy, reason } = req.body || {};
   if (!releasedBy) return res.status(400).json({ error: 'releasedBy is required' });
   if (!reason) return res.status(400).json({ error: 'reason is required' });
@@ -1601,6 +1742,155 @@ app.get('/legal-holds/:id/export', requireApiKey, requireEnterprise, async (req,
 
   res.setHeader('Content-Disposition', `attachment; filename="legal-hold-${hold.id}-export.json"`);
   res.json(exportPackage);
+});
+
+// ─── team ────────────────────────────────────────────────────────────────────
+
+app.get('/team/roles', requireApiKey, requireEnterprise, (req, res) => {
+  res.json(Object.entries(ROLE_META).map(([role, meta]) => ({
+    role,
+    name: meta.name,
+    description: meta.description,
+    permissions: [...(ROLE_PERMISSIONS[role] || [])],
+  })));
+});
+
+app.get('/team', requireApiKey, requireEnterprise, checkPermission('team.read'), async (req, res) => {
+  const { data: members, error } = await supabaseAdmin
+    .from('team_members')
+    .select('id, email, role, status, invited_at, accepted_at, last_active_at')
+    .eq('account_id', req.account.id)
+    .neq('status', 'removed')
+    .order('invited_at', { ascending: false });
+
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(members || []);
+});
+
+app.post('/team/invite', requireApiKey, requireEnterprise, checkPermission('team.invite'), async (req, res) => {
+  const { email, role } = req.body || {};
+  if (!email) return res.status(400).json({ error: 'email is required' });
+  if (!['admin', 'compliance_officer', 'viewer'].includes(role)) {
+    return res.status(400).json({ error: 'role must be admin, compliance_officer, or viewer' });
+  }
+
+  const { data: existing } = await supabaseAdmin
+    .from('team_members')
+    .select('id, status')
+    .eq('account_id', req.account.id)
+    .eq('email', email)
+    .neq('status', 'removed')
+    .maybeSingle();
+
+  if (existing) return res.status(409).json({ error: 'This email is already a team member.' });
+
+  const { data: member, error } = await supabaseAdmin
+    .from('team_members')
+    .insert({
+      account_id: req.account.id,
+      email,
+      role,
+      status: 'pending',
+      invited_by: req.account.email,
+      invited_at: new Date().toISOString(),
+    })
+    .select()
+    .single();
+
+  if (error) return res.status(400).json({ error: error.message });
+
+  const token     = jwtSign({ memberId: member.id, accountId: req.account.id, role, type: 'invite' });
+  const inviteUrl = `${process.env.BASE_URL || 'https://cloud.authproof.dev'}/signup?invite=${encodeURIComponent(token)}`;
+
+  await sendInviteEmail(email, req.account.email, role, inviteUrl);
+  logAccessEvent(req, 'team.invite', 'team_member', member.id);
+
+  res.status(201).json({ id: member.id, email: member.email, role: member.role, status: member.status });
+});
+
+app.put('/team/:memberId/role', requireApiKey, requireEnterprise, checkPermission('team.change_role'), async (req, res) => {
+  const { role } = req.body || {};
+  if (!['admin', 'compliance_officer', 'viewer'].includes(role)) {
+    return res.status(400).json({ error: 'role must be admin, compliance_officer, or viewer' });
+  }
+
+  const { data: member } = await supabaseAdmin
+    .from('team_members')
+    .select('id, role')
+    .eq('id', req.params.memberId)
+    .eq('account_id', req.account.id)
+    .single();
+
+  if (!member) return res.status(404).json({ error: 'Team member not found' });
+  if (member.role === 'owner') return res.status(403).json({ error: 'Cannot change the owner role.' });
+
+  const { data: updated, error } = await supabaseAdmin
+    .from('team_members')
+    .update({ role })
+    .eq('id', req.params.memberId)
+    .eq('account_id', req.account.id)
+    .select()
+    .single();
+
+  if (error) return res.status(400).json({ error: error.message });
+  logAccessEvent(req, 'team.change_role', 'team_member', req.params.memberId);
+  res.json({ id: updated.id, email: updated.email, role: updated.role });
+});
+
+app.delete('/team/:memberId', requireApiKey, requireEnterprise, checkPermission('team.remove'), async (req, res) => {
+  const { data: member } = await supabaseAdmin
+    .from('team_members')
+    .select('id, role')
+    .eq('id', req.params.memberId)
+    .eq('account_id', req.account.id)
+    .single();
+
+  if (!member) return res.status(404).json({ error: 'Team member not found' });
+  if (member.role === 'owner') return res.status(403).json({ error: 'The owner cannot be removed.' });
+
+  await supabaseAdmin
+    .from('team_members')
+    .update({ status: 'removed' })
+    .eq('id', req.params.memberId);
+
+  logAccessEvent(req, 'team.remove', 'team_member', req.params.memberId);
+  res.json({ success: true });
+});
+
+app.get('/team/access-log', requireApiKey, requireEnterprise, async (req, res) => {
+  if (req.teamMember && !['owner', 'admin', 'compliance_officer'].includes(req.teamMember.role)) {
+    return res.status(403).json({ error: 'Your role does not have permission to view the access log.' });
+  }
+
+  const { data: logs, error } = await supabaseAdmin
+    .from('audit_access_log')
+    .select('*')
+    .eq('account_id', req.account.id)
+    .order('created_at', { ascending: false })
+    .limit(50);
+
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(logs || []);
+});
+
+app.post('/team/accept-invite', async (req, res) => {
+  const { token } = req.body || {};
+  if (!token) return res.status(400).json({ error: 'token is required' });
+
+  const payload = jwtVerify(token);
+  if (!payload || payload.type !== 'invite') return res.status(400).json({ error: 'Invalid or expired invite token' });
+
+  const { data: member, error } = await supabaseAdmin
+    .from('team_members')
+    .update({ status: 'accepted', accepted_at: new Date().toISOString() })
+    .eq('id', payload.memberId)
+    .eq('account_id', payload.accountId)
+    .eq('status', 'pending')
+    .select()
+    .single();
+
+  if (error || !member) return res.status(400).json({ error: 'Invite not found or already accepted' });
+  res.json({ success: true, memberId: member.id, role: member.role });
 });
 
 // ─── misc ─────────────────────────────────────────────────────────────────────
