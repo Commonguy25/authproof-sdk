@@ -264,6 +264,14 @@
       .integrations-grid { grid-template-columns: 1fr 1fr; }
       .pricing-grid { grid-template-columns: 1fr; max-width: 440px; margin: 0 auto; }
       .compare-wrap { border-radius: 4px; }
+    .addons-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-top: 56px; }
+    .addon-card { border: 1px solid var(--gray-200); border-radius: 14px; padding: 24px; background: var(--white); }
+    .addon-name { font-size: 14px; font-weight: 700; color: var(--gray-900); margin-bottom: 6px; }
+    .addon-price { font-size: 22px; font-weight: 800; color: var(--blue); letter-spacing: -0.02em; margin-bottom: 4px; }
+    .addon-period { font-size: 12px; color: var(--gray-400); margin-bottom: 12px; }
+    .addon-desc { font-size: 13px; color: var(--gray-500); line-height: 1.55; }
+    @media (max-width: 960px) { .addons-grid { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 640px) { .addons-grid { grid-template-columns: 1fr; } }
       .footer-grid { grid-template-columns: 1fr 1fr; gap: 36px; }
     }
     @media (max-width: 640px) {
@@ -726,6 +734,43 @@
         </tbody>
       </table>
     </div>
+
+    <!-- Add-ons -->
+    <div style="margin-top:64px;">
+      <div style="text-align:center;margin-bottom:32px;">
+        <div class="section-label">Professional Add-ons</div>
+        <h3 style="font-size:28px;font-weight:800;color:var(--gray-900);letter-spacing:-0.03em;margin-bottom:8px;">Available on any plan</h3>
+        <p style="font-size:15px;color:var(--gray-500);max-width:520px;margin:0 auto;">One-time or recurring services to accelerate your compliance and integration work.</p>
+      </div>
+      <div class="addons-grid">
+        <div class="addon-card">
+          <div class="addon-name">Implementation Support</div>
+          <div class="addon-price">$499</div>
+          <div class="addon-period">one-time</div>
+          <div class="addon-desc">Two hours of hands-on integration help with an Authproof engineer — SDK setup, scope design, and first-receipt validation.</div>
+        </div>
+        <div class="addon-card">
+          <div class="addon-name">Custom Compliance Report</div>
+          <div class="addon-price">$299</div>
+          <div class="addon-period">per report</div>
+          <div class="addon-desc">Signed, auditor-ready HIPAA, SOC 2, or EU AI Act compliance report generated from your live receipt data.</div>
+        </div>
+        <div class="addon-card">
+          <div class="addon-name">Business Associate Agreement</div>
+          <div class="addon-price">$99</div>
+          <div class="addon-period">per month</div>
+          <div class="addon-desc">Pre-executed BAA for HIPAA-covered entities. Included free on Enterprise. Available as an add-on for Pro accounts.</div>
+        </div>
+        <div class="addon-card">
+          <div class="addon-name">Dedicated Onboarding Session</div>
+          <div class="addon-price">$199</div>
+          <div class="addon-period">one-time</div>
+          <div class="addon-desc">60-minute onboarding call with screen share — scope design review, team walkthrough, and integration Q&amp;A.</div>
+        </div>
+      </div>
+      <p style="text-align:center;margin-top:24px;font-size:13px;color:var(--gray-500);">Questions about add-ons? <a href="mailto:ryan@authproof.dev" style="color:var(--blue);font-weight:600;">Email us →</a></p>
+    </div>
+
   </div>
 </section>
 
