@@ -613,6 +613,105 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    /* ── Pricing cards ── */
+    .pricing-cards-row {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    .pricing-card {
+      flex: 1;
+      min-width: 260px;
+      background: #ffffff;
+      border: 1px solid #d2d2d7;
+      border-radius: 18px;
+      padding: 32px 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .pricing-tier {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--gray-500);
+    }
+    .pricing-price {
+      font-size: 40px;
+      font-weight: 700;
+      color: var(--gray-900);
+      letter-spacing: -0.02em;
+      line-height: 1;
+    }
+    .pricing-period {
+      font-size: 18px;
+      font-weight: 500;
+      color: var(--gray-500);
+      letter-spacing: 0;
+    }
+    .pricing-features {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex: 1;
+    }
+    .pricing-features li {
+      font-size: 14px;
+      color: var(--gray-600);
+      padding-left: 20px;
+      position: relative;
+    }
+    .pricing-features li::before {
+      content: '✓';
+      position: absolute;
+      left: 0;
+      color: var(--green);
+      font-weight: 700;
+    }
+    .btn-pricing-cta {
+      display: block;
+      text-align: center;
+      font-family: var(--sans);
+      font-size: 14px;
+      font-weight: 600;
+      color: #ffffff;
+      background: #1a56db;
+      border: none;
+      border-radius: 980px;
+      padding: 10px 22px;
+      cursor: pointer;
+      transition: background 0.15s;
+      text-decoration: none;
+      margin-top: 8px;
+    }
+    .btn-pricing-cta:hover { background: var(--blue-dk); color: #fff; }
+    .btn-pricing-outline {
+      background: transparent;
+      color: #1a56db;
+      border: 1.5px solid #1a56db;
+    }
+    .btn-pricing-outline:hover { background: var(--blue-lt); color: #1a56db; }
+    .pricing-current-badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--blue);
+      background: var(--blue-lt);
+      border-radius: 20px;
+      padding: 3px 10px;
+      width: fit-content;
+    }
+    .pricing-current-text {
+      font-size: 14px;
+      color: var(--gray-600);
+      line-height: 1.5;
+      flex: 1;
+    }
+
     /* Footer */
     footer {
       background: var(--white);
@@ -722,6 +821,67 @@
         <button class="btn-upgrade" id="billingBtn" style="display:none;background:transparent;color:var(--blue);border:2px solid var(--blue);" onclick="goToBilling()">
           Manage billing
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pricing / Upgrade (free users) -->
+  <div class="section" id="upgradeSection" style="display:none;">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-title">Upgrade your plan</span>
+      </div>
+      <div class="pricing-cards-row">
+        <div class="pricing-card">
+          <div class="pricing-tier">Pro</div>
+          <div class="pricing-price">$49<span class="pricing-period">/mo</span></div>
+          <ul class="pricing-features">
+            <li>Unlimited receipts</li>
+            <li>Priority support</li>
+            <li>Advanced analytics</li>
+            <li>BAA included</li>
+          </ul>
+          <button class="btn-pricing-cta" onclick="goToCheckout()">Upgrade to Pro →</button>
+        </div>
+        <div class="pricing-card">
+          <div class="pricing-tier">Enterprise</div>
+          <div class="pricing-price">Custom</div>
+          <ul class="pricing-features">
+            <li>Custom receipt volume</li>
+            <li>Dedicated support</li>
+            <li>Custom SLA</li>
+            <li>On-premise option</li>
+          </ul>
+          <a href="/support" class="btn-pricing-cta btn-pricing-outline">Contact sales →</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Plan status (pro users) -->
+  <div class="section" id="proSection" style="display:none;">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-title">Your plan</span>
+      </div>
+      <div class="pricing-cards-row">
+        <div class="pricing-card">
+          <div class="pricing-tier">Pro</div>
+          <div class="pricing-current-badge">Current plan</div>
+          <p class="pricing-current-text">You're on the Pro plan. Enjoy unlimited receipts and priority support.</p>
+          <button class="btn-pricing-cta btn-pricing-outline" onclick="goToBilling()">Manage billing →</button>
+        </div>
+        <div class="pricing-card">
+          <div class="pricing-tier">Enterprise</div>
+          <div class="pricing-price">Custom</div>
+          <ul class="pricing-features">
+            <li>Custom receipt volume</li>
+            <li>Dedicated support</li>
+            <li>Custom SLA</li>
+            <li>On-premise option</li>
+          </ul>
+          <a href="/support" class="btn-pricing-cta btn-pricing-outline">Contact sales →</a>
+        </div>
       </div>
     </div>
   </div>
@@ -984,8 +1144,10 @@
 
     if (account.plan === 'free') {
       document.getElementById('upgradeBtn').style.display = 'inline-block';
+      document.getElementById('upgradeSection').style.display = 'block';
     } else {
       document.getElementById('billingBtn').style.display = 'inline-block';
+      document.getElementById('proSection').style.display = 'block';
     }
   }
 
