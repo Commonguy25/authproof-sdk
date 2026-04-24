@@ -182,23 +182,45 @@
     .comp-quote p { font-size: 18px; font-weight: 600; color: var(--blue-dk); line-height: 1.5; font-style: italic; }
 
     /* Pricing */
-    .pricing-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; max-width: 780px; }
+    .pricing-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; }
     .pricing-card { border: 1px solid var(--gray-200); border-radius: 6px; padding: 36px; }
     .pricing-card.pro { border-color: var(--blue); box-shadow: 0 4px 24px rgba(26,86,219,0.12); position: relative; }
+    .pricing-card.enterprise { background: #1a56db; border-color: #1340a8; box-shadow: 0 8px 32px rgba(26,86,219,0.28); position: relative; }
     .pro-badge { position: absolute; top: -13px; left: 50%; transform: translateX(-50%); background: var(--blue); color: var(--white); font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 4px 14px; border-radius: 100px; white-space: nowrap; }
     .p-plan { font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gray-500); margin-bottom: 8px; }
     .p-plan.pro-label { color: var(--blue); }
+    .p-plan.enterprise-label { color: rgba(255,255,255,0.7); }
     .p-price { font-size: 44px; font-weight: 800; color: var(--gray-900); letter-spacing: -0.03em; line-height: 1; margin-bottom: 4px; }
     .pricing-card.pro .p-price { color: var(--blue); }
+    .pricing-card.enterprise .p-price { color: #ffffff; font-size: 28px; letter-spacing: -0.02em; }
     .p-period { font-size: 14px; color: var(--gray-400); margin-bottom: 28px; }
+    .pricing-card.enterprise .p-period { color: rgba(255,255,255,0.6); }
     .p-features { list-style: none; margin-bottom: 32px; }
     .p-features li { font-size: 14px; color: var(--gray-700); padding: 8px 0; border-bottom: 1px solid var(--gray-100); display: flex; align-items: center; gap: 8px; }
     .p-features li:last-child { border-bottom: none; }
     .p-features li::before { content: '✓'; color: var(--blue); font-weight: 700; font-size: 13px; flex-shrink: 0; }
+    .pricing-card.enterprise .p-features li { color: rgba(255,255,255,0.9); border-bottom-color: rgba(255,255,255,0.12); }
+    .pricing-card.enterprise .p-features li::before { color: rgba(255,255,255,0.8); }
+    .pricing-card.enterprise .p-features li.ent-intro { color: rgba(255,255,255,0.55); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
+    .pricing-card.enterprise .p-features li.ent-intro::before { content: none; }
     .pricing-card .btn { width: 100%; }
-    .pricing-note { margin-top: 24px; font-size: 13px; color: var(--gray-500); }
-    .pricing-note a { color: var(--blue); }
-    .pricing-note a:hover { text-decoration: underline; }
+    .btn-enterprise { background: #ffffff; color: #1a56db; border-color: #ffffff; font-weight: 700; letter-spacing: 0.01em; }
+    .btn-enterprise:hover { background: rgba(255,255,255,0.92); border-color: rgba(255,255,255,0.92); }
+    .pricing-note { margin-top: 28px; font-size: 13px; color: var(--gray-500); text-align: center; }
+    /* Comparison table */
+    .compare-wrap { margin-top: 56px; overflow-x: auto; border-radius: 6px; border: 1px solid #d2d2d7; }
+    .compare-table { width: 100%; border-collapse: collapse; font-size: 14px; background: #ffffff; }
+    .compare-table thead tr { background: #f5f5f7; }
+    .compare-table th { font-size: 11px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--gray-600); padding: 14px 20px; text-align: left; border-bottom: 1px solid #d2d2d7; }
+    .compare-table th:not(:first-child) { text-align: center; min-width: 100px; }
+    .compare-table td { padding: 12px 20px; border-bottom: 1px solid #d2d2d7; color: var(--gray-700); vertical-align: middle; }
+    .compare-table td:not(:first-child) { text-align: center; }
+    .compare-table tbody tr:last-child td { border-bottom: none; }
+    .compare-table tbody tr:hover td { background: #fafafa; }
+    .feat-name { font-weight: 500; color: var(--gray-800); }
+    .ct-check { color: #1a56db; font-weight: 700; font-size: 16px; }
+    .ct-dash { color: #86868b; font-size: 15px; }
+    .ct-text { color: var(--gray-600); font-size: 13px; }
 
     /* Quick start */
     .qs-grid { display: grid; grid-template-columns: 1fr 1.4fr; gap: 64px; align-items: start; }
@@ -238,7 +260,8 @@
       .hero-grid, .qs-grid { grid-template-columns: 1fr; gap: 40px; }
       .features-grid, .steps-grid, .demos-grid, .plugins-grid { grid-template-columns: 1fr; }
       .integrations-grid { grid-template-columns: 1fr 1fr; }
-      .pricing-grid { grid-template-columns: 1fr; max-width: 440px; }
+      .pricing-grid { grid-template-columns: 1fr; max-width: 440px; margin: 0 auto; }
+      .compare-wrap { border-radius: 4px; }
       .footer-grid { grid-template-columns: 1fr 1fr; gap: 36px; }
     }
     @media (max-width: 640px) {
@@ -562,6 +585,9 @@
         <ul class="p-features">
           <li>Unlimited receipts</li>
           <li>Everything in Free</li>
+          <li>Multi-tenant org management</li>
+          <li>Webhook notifications</li>
+          <li>Compliance reports</li>
           <li>Priority support</li>
           <li>99.5% uptime SLA</li>
           <li>BAA available</li>
@@ -569,8 +595,131 @@
         </ul>
         <a href="/signup?plan=pro" class="btn btn-primary">Start Pro trial</a>
       </div>
+      <div class="pricing-card enterprise">
+        <div class="p-plan enterprise-label">Enterprise</div>
+        <div class="p-price">Custom pricing</div>
+        <div class="p-period">tailored to your organization</div>
+        <ul class="p-features">
+          <li class="ent-intro">Everything in Pro, plus:</li>
+          <li>Multi-tenant org management</li>
+          <li>Custom retention up to 6 years</li>
+          <li>Dedicated onboarding session</li>
+          <li>4-hour priority SLA with named contact</li>
+          <li>BAA included and pre-executed</li>
+          <li>Custom HIPAA, SOC2, EU AI Act reports</li>
+          <li>SIEM export via webhook</li>
+          <li>Volume receipt pricing</li>
+          <li>Annual contract available</li>
+          <li>Custom scope schema design</li>
+        </ul>
+        <a href="mailto:ryan@authproof.dev?subject=Enterprise%20Plan%20Inquiry" class="btn btn-enterprise">Talk to us →</a>
+      </div>
     </div>
-    <p class="pricing-note">Need more? Enterprise plans available. <a href="mailto:ryan@authproof.dev">Contact ryan@authproof.dev</a></p>
+    <p class="pricing-note">All plans include MIT-licensed open source SDK access. No vendor lock-in ever.</p>
+    <div class="compare-wrap">
+      <table class="compare-table">
+        <thead>
+          <tr>
+            <th>Feature</th>
+            <th>Free</th>
+            <th>Pro</th>
+            <th>Enterprise</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="feat-name">Receipts per month</td>
+            <td><span class="ct-text">1,000</span></td>
+            <td><span class="ct-text">Unlimited</span></td>
+            <td><span class="ct-text">Unlimited</span></td>
+          </tr>
+          <tr>
+            <td class="feat-name">Verification API</td>
+            <td><span class="ct-check">✓</span></td>
+            <td><span class="ct-check">✓</span></td>
+            <td><span class="ct-check">✓</span></td>
+          </tr>
+          <tr>
+            <td class="feat-name">7-check pre-execution gate</td>
+            <td><span class="ct-check">✓</span></td>
+            <td><span class="ct-check">✓</span></td>
+            <td><span class="ct-check">✓</span></td>
+          </tr>
+          <tr>
+            <td class="feat-name">Dashboard and audit export</td>
+            <td><span class="ct-check">✓</span></td>
+            <td><span class="ct-check">✓</span></td>
+            <td><span class="ct-check">✓</span></td>
+          </tr>
+          <tr>
+            <td class="feat-name">Session state and trust scoring</td>
+            <td><span class="ct-check">✓</span></td>
+            <td><span class="ct-check">✓</span></td>
+            <td><span class="ct-check">✓</span></td>
+          </tr>
+          <tr>
+            <td class="feat-name">Multi-tenant org management</td>
+            <td><span class="ct-dash">—</span></td>
+            <td><span class="ct-check">✓</span></td>
+            <td><span class="ct-check">✓</span></td>
+          </tr>
+          <tr>
+            <td class="feat-name">Webhook notifications</td>
+            <td><span class="ct-dash">—</span></td>
+            <td><span class="ct-check">✓</span></td>
+            <td><span class="ct-check">✓</span></td>
+          </tr>
+          <tr>
+            <td class="feat-name">Compliance reports</td>
+            <td><span class="ct-dash">—</span></td>
+            <td><span class="ct-check">✓</span></td>
+            <td><span class="ct-check">✓</span></td>
+          </tr>
+          <tr>
+            <td class="feat-name">Custom retention periods</td>
+            <td><span class="ct-dash">—</span></td>
+            <td><span class="ct-dash">—</span></td>
+            <td><span class="ct-check">✓</span></td>
+          </tr>
+          <tr>
+            <td class="feat-name">BAA included</td>
+            <td><span class="ct-dash">—</span></td>
+            <td><span class="ct-dash">—</span></td>
+            <td><span class="ct-check">✓</span></td>
+          </tr>
+          <tr>
+            <td class="feat-name">Priority SLA</td>
+            <td><span class="ct-dash">—</span></td>
+            <td><span class="ct-dash">—</span></td>
+            <td><span class="ct-check">✓</span></td>
+          </tr>
+          <tr>
+            <td class="feat-name">Dedicated onboarding</td>
+            <td><span class="ct-dash">—</span></td>
+            <td><span class="ct-dash">—</span></td>
+            <td><span class="ct-check">✓</span></td>
+          </tr>
+          <tr>
+            <td class="feat-name">SIEM integration</td>
+            <td><span class="ct-dash">—</span></td>
+            <td><span class="ct-dash">—</span></td>
+            <td><span class="ct-check">✓</span></td>
+          </tr>
+          <tr>
+            <td class="feat-name">Annual contract</td>
+            <td><span class="ct-dash">—</span></td>
+            <td><span class="ct-dash">—</span></td>
+            <td><span class="ct-check">✓</span></td>
+          </tr>
+          <tr>
+            <td class="feat-name">Support</td>
+            <td><span class="ct-text">Community</span></td>
+            <td><span class="ct-text">Email 24hr</span></td>
+            <td><span class="ct-text">Named contact 4hr</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </section>
 
