@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Authproof Cloud — For Managed AI Companies</title>
+  <meta name="description" content="Give every client their own isolated cryptographic audit trail. One Authproof Cloud account. Independent verification for each deployment." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --blue:     #1a56db;
+      --blue-lt:  #e8f0fe;
+      --blue-dk:  #1340a8;
+      --blue-ent: #0f2563;
+      --text:     #1d1d1f;
+      --text-sec: #6e6e73;
+      --bg-gray:  #f5f5f7;
+      --border:   #d2d2d7;
+      --white:    #ffffff;
+      --sans:     'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--white);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 16px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    .container { max-width: 980px; margin: 0 auto; padding: 0 24px; }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-block;
+      font-family: var(--sans);
+      font-size: 15px;
+      font-weight: 600;
+      padding: 13px 28px;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: all 0.15s;
+      border-radius: 100px;
+      text-align: center;
+      white-space: nowrap;
+    }
+    .btn-primary   { background: var(--blue); color: var(--white); border-color: var(--blue); }
+    .btn-primary:hover { background: var(--blue-dk); border-color: var(--blue-dk); }
+    .btn-outline   { background: transparent; color: var(--blue); border-color: var(--blue); }
+    .btn-outline:hover { background: var(--blue-lt); }
+    .btn-cta-main  { background: var(--white); color: var(--blue); border-color: var(--white); }
+    .btn-cta-main:hover  { background: var(--bg-gray); border-color: var(--bg-gray); }
+    .btn-cta-sec   { background: transparent; color: var(--white); border-color: var(--white); }
+    .btn-cta-sec:hover   { background: rgba(255,255,255,0.12); }
+
+    /* ── Nav ── */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(255,255,255,0.85);
+      backdrop-filter: saturate(180%) blur(20px);
+      -webkit-backdrop-filter: saturate(180%) blur(20px);
+      border-bottom: 1px solid var(--border);
+      transition: box-shadow 0.2s;
+    }
+    nav.scrolled { box-shadow: 0 1px 8px rgba(0,0,0,0.06); }
+    .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 64px; }
+    .nav-logo { font-size: 17px; font-weight: 700; color: var(--text); }
+    .nav-logo span { color: var(--blue); }
+    .nav-links { display: flex; align-items: center; gap: 32px; list-style: none; }
+    .nav-links a { font-size: 14px; font-weight: 500; color: var(--text-sec); transition: color 0.15s; }
+    .nav-links a:hover { color: var(--text); }
+    .nav-links a.active { color: var(--blue); font-weight: 600; }
+    .nav-actions { display: flex; align-items: center; gap: 12px; }
+    .nav-actions .btn { padding: 8px 18px; font-size: 14px; }
+    .hamburger { display: none; flex-direction: column; gap: 5px; cursor: pointer; padding: 4px; background: none; border: none; }
+    .hamburger span { display: block; width: 22px; height: 2px; background: var(--text); border-radius: 1px; }
+    .mobile-menu { display: none; position: fixed; inset: 64px 0 0 0; background: var(--white); border-top: 1px solid var(--border); padding: 24px; z-index: 99; flex-direction: column; gap: 4px; overflow-y: auto; }
+    .mobile-menu.open { display: flex; }
+    .mobile-menu a { font-size: 16px; font-weight: 500; color: var(--text); padding: 12px 0; border-bottom: 1px solid var(--bg-gray); }
+    .mobile-menu a.active { color: var(--blue); }
+    .mobile-menu .btn { margin-top: 8px; width: 100%; text-align: center; }
+
+    /* ── Shared section styles ── */
+    section { padding: 96px 0; }
+    .bg-gray { background: var(--bg-gray); }
+    .section-headline {
+      font-size: clamp(26px, 3vw, 38px);
+      font-weight: 800;
+      color: var(--text);
+      letter-spacing: -0.025em;
+      line-height: 1.15;
+      margin-bottom: 16px;
+    }
+    .section-sub {
+      font-size: 17px;
+      color: var(--text-sec);
+      line-height: 1.65;
+      max-width: 580px;
+    }
+
+    /* ── Hero ── */
+    .hero { padding: 100px 0 88px; text-align: center; }
+    .hero-badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--blue);
+      border: 1.5px solid var(--blue);
+      border-radius: 100px;
+      padding: 5px 16px;
+      margin-bottom: 28px;
+    }
+    .hero h1 {
+      font-size: clamp(34px, 4.8vw, 52px);
+      font-weight: 800;
+      line-height: 1.08;
+      letter-spacing: -0.03em;
+      color: var(--text);
+      max-width: 820px;
+      margin: 0 auto 24px;
+    }
+    .hero-sub {
+      font-size: 20px;
+      color: var(--text-sec);
+      max-width: 620px;
+      line-height: 1.6;
+      margin: 0 auto 40px;
+    }
+    .hero-buttons { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
+
+    /* ── Problem section ── */
+    .problem-intro { margin-bottom: 48px; }
+    .problem-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 20px; }
+    .problem-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 32px;
+    }
+    .problem-card h3 { font-size: 17px; font-weight: 700; color: var(--text); margin-bottom: 12px; line-height: 1.3; }
+    .problem-card p  { font-size: 15px; color: var(--text-sec); line-height: 1.65; }
+
+    /* ── How it works ── */
+    .hiw-intro { margin-bottom: 0; }
+
+    /* Diagram */
+    .diagram {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 52px auto 56px;
+    }
+    .diag-org {
+      background: var(--blue);
+      color: var(--white);
+      border-radius: 12px;
+      padding: 18px 32px;
+      text-align: center;
+      min-width: 220px;
+    }
+    .diag-org-name { font-size: 15px; font-weight: 700; }
+    .diag-org-sub  { font-size: 12px; opacity: 0.8; margin-top: 3px; }
+    .diag-org-stem { width: 2px; height: 36px; background: var(--border); }
+
+    /* Branch connector + client rows share the same grid */
+    .diag-branch-row,
+    .diag-clients-row {
+      display: grid;
+      grid-template-columns: repeat(3, 180px);
+      column-gap: 20px;
+    }
+
+    .diag-branch-top {
+      height: 36px;
+      position: relative;
+    }
+    /* Horizontal line across branches */
+    .diag-branch-top::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left:  -10px; /* half of 20px gap */
+      right: -10px;
+      height: 2px;
+      background: var(--border);
+    }
+    .diag-branch-top.first::before { left: 50%; }
+    .diag-branch-top.last::before  { right: 50%; }
+    /* Vertical drop to client box */
+    .diag-branch-top::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: calc(50% - 1px);
+      width: 2px;
+      height: 100%;
+      background: var(--border);
+    }
+
+    .diag-client {
+      border: 1.5px solid var(--blue);
+      border-radius: 12px;
+      padding: 16px 18px;
+      text-align: center;
+      background: var(--white);
+    }
+    .diag-client-name   { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+    .diag-client-detail { font-size: 11px; color: var(--text-sec); line-height: 1.6; }
+
+    /* Mobile diagram fallback */
+    .diag-mobile { display: none; flex-direction: column; gap: 12px; margin: 40px 0 52px; }
+    .diag-mobile-org {
+      background: var(--blue);
+      color: var(--white);
+      border-radius: 12px;
+      padding: 16px 24px;
+      text-align: center;
+    }
+    .diag-mobile-org strong { font-size: 15px; font-weight: 700; display: block; }
+    .diag-mobile-org span  { font-size: 12px; opacity: 0.8; }
+    .diag-mobile-client {
+      border: 1.5px solid var(--blue);
+      border-radius: 12px;
+      padding: 14px 20px;
+      background: var(--white);
+    }
+    .diag-mobile-client strong { font-size: 13px; font-weight: 700; color: var(--text); display: block; margin-bottom: 4px; }
+    .diag-mobile-client span  { font-size: 12px; color: var(--text-sec); }
+
+    /* Feature points grid */
+    .feat-points { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+    .feat-point  { display: flex; gap: 16px; align-items: flex-start; }
+    .feat-point-icon {
+      width: 40px; height: 40px;
+      background: var(--blue-lt);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+    .feat-point-text { font-size: 15px; color: var(--text-sec); line-height: 1.65; }
+
+    /* ── What this protects ── */
+    .protect-intro { margin-bottom: 48px; }
+    .protect-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 20px; }
+    .protect-card {
+      background: var(--blue);
+      color: var(--white);
+      border-radius: 18px;
+      padding: 32px;
+    }
+    .protect-card h3 { font-size: 18px; font-weight: 700; margin-bottom: 14px; line-height: 1.3; }
+    .protect-card p  { font-size: 15px; line-height: 1.65; opacity: 0.9; }
+
+    /* ── Pricing ── */
+    .pricing-intro { margin-bottom: 48px; }
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      max-width: 760px;
+    }
+    .pricing-card {
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 36px;
+      position: relative;
+    }
+    .pricing-card.pro { border-color: var(--blue); box-shadow: 0 4px 24px rgba(26,86,219,0.12); }
+    .pricing-card.enterprise { background: var(--blue-ent); border-color: var(--blue-ent); }
+    .pro-badge {
+      position: absolute; top: -13px; left: 50%; transform: translateX(-50%);
+      background: var(--blue); color: var(--white);
+      font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+      padding: 4px 14px; border-radius: 100px; white-space: nowrap;
+    }
+    .p-plan { font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-sec); margin-bottom: 8px; }
+    .pricing-card.pro .p-plan  { color: var(--blue); }
+    .pricing-card.enterprise .p-plan { color: rgba(255,255,255,0.55); }
+    .p-price { font-size: 44px; font-weight: 800; color: var(--text); letter-spacing: -0.03em; line-height: 1; margin-bottom: 4px; }
+    .pricing-card.pro .p-price { color: var(--blue); }
+    .pricing-card.enterprise .p-price { color: var(--white); font-size: 36px; }
+    .p-period { font-size: 14px; color: var(--text-sec); margin-bottom: 28px; }
+    .pricing-card.enterprise .p-period { color: rgba(255,255,255,0.5); }
+    .p-features { list-style: none; margin-bottom: 32px; }
+    .p-features li {
+      font-size: 14px; color: #374151;
+      padding: 8px 0; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .pricing-card.enterprise .p-features li { color: rgba(255,255,255,0.85); border-bottom-color: rgba(255,255,255,0.12); }
+    .p-features li:last-child { border-bottom: none; }
+    .p-features li::before { content: '✓'; color: var(--blue); font-weight: 700; font-size: 13px; flex-shrink: 0; }
+    .pricing-card.enterprise .p-features li::before { color: #7eb3ff; }
+    .pricing-card .btn { width: 100%; }
+    .btn-enterprise { background: rgba(255,255,255,0.12); color: var(--white); border-color: rgba(255,255,255,0.3); border-radius: 100px; }
+    .btn-enterprise:hover { background: rgba(255,255,255,0.2); border-color: rgba(255,255,255,0.5); }
+    .pricing-foot { margin-top: 28px; font-size: 14px; color: var(--text-sec); text-align: center; max-width: 760px; line-height: 1.6; }
+
+    /* ── CTA ── */
+    .cta-section { background: var(--blue); padding: 96px 0; text-align: center; }
+    .cta-section h2 {
+      font-size: clamp(26px, 3.5vw, 42px);
+      font-weight: 800;
+      color: var(--white);
+      letter-spacing: -0.03em;
+      line-height: 1.2;
+      margin-bottom: 40px;
+      max-width: 640px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .cta-buttons { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
+
+    /* ── Footer ── */
+    footer { background: #111111; color: rgba(255,255,255,0.65); padding: 64px 0 0; }
+    .footer-grid { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; gap: 48px; padding-bottom: 48px; border-bottom: 1px solid #2a2a2a; }
+    .f-brand   { font-size: 16px; font-weight: 700; color: var(--white); margin-bottom: 10px; }
+    .f-tagline { font-size: 13px; color: rgba(255,255,255,0.35); line-height: 1.5; max-width: 220px; }
+    .f-col h4  { font-size: 12px; font-weight: 700; color: rgba(255,255,255,0.45); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 16px; }
+    .f-col ul  { list-style: none; }
+    .f-col li  { margin-bottom: 10px; }
+    .f-col a   { font-size: 14px; color: rgba(255,255,255,0.6); transition: color 0.15s; }
+    .f-col a:hover { color: var(--white); }
+    .footer-bottom { padding: 20px 0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+    .footer-bottom-text { font-size: 13px; color: rgba(255,255,255,0.3); }
+    .footer-badges { display: flex; gap: 10px; }
+    .f-badge { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.45); border: 1px solid rgba(255,255,255,0.15); padding: 4px 10px; border-radius: 3px; }
+
+    /* ── Responsive ── */
+    @media (max-width: 900px) {
+      .problem-grid, .protect-grid { grid-template-columns: 1fr; }
+      .pricing-grid { grid-template-columns: 1fr; max-width: 440px; }
+      .feat-points { grid-template-columns: 1fr; }
+      .footer-grid { grid-template-columns: 1fr 1fr; gap: 36px; }
+      .diagram { display: none; }
+      .diag-mobile { display: flex; }
+    }
+    @media (max-width: 640px) {
+      section { padding: 64px 0; }
+      .hero { padding: 72px 0 60px; }
+      .hero-sub { font-size: 17px; }
+      .nav-links, .nav-actions { display: none; }
+      .hamburger { display: flex; }
+      .footer-grid { grid-template-columns: 1fr; }
+      .cta-section { padding: 72px 0; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Nav ── -->
+<nav id="nav">
+  <div class="container">
+    <div class="nav-inner">
+      <a class="nav-logo" href="/">Authproof <span>Cloud</span></a>
+      <ul class="nav-links">
+        <li><a href="/#features">Features</a></li>
+        <li><a href="#pricing">Pricing</a></li>
+        <li><a href="/managed-ai" class="active">For Managed AI</a></li>
+        <li><a href="https://github.com/Commonguy25/authproof-sdk">Docs</a></li>
+      </ul>
+      <div class="nav-actions">
+        <a href="/login" class="btn btn-outline">Log in</a>
+        <a href="/signup" class="btn btn-primary">Start free</a>
+      </div>
+      <button class="hamburger" id="hamburgerBtn" onclick="toggleMenu()" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<div class="mobile-menu" id="mobileMenu">
+  <a href="/#features" onclick="closeMenu()">Features</a>
+  <a href="#pricing" onclick="closeMenu()">Pricing</a>
+  <a href="/managed-ai" class="active" onclick="closeMenu()">For Managed AI</a>
+  <a href="https://github.com/Commonguy25/authproof-sdk" onclick="closeMenu()">Docs</a>
+  <a href="/login" class="btn btn-outline">Log in</a>
+  <a href="/signup" class="btn btn-primary">Start free</a>
+</div>
+
+<!-- ── Hero ── -->
+<section class="hero">
+  <div class="container">
+    <div class="hero-badge">For Managed AI Companies</div>
+    <h1>You deploy the agent.<br>Your client owns the liability.<br>Make sure the audit trail proves it.</h1>
+    <p class="hero-sub">Authproof Cloud gives every client their own isolated cryptographic audit trail. One dashboard for your team. Independent verification for theirs.</p>
+    <div class="hero-buttons">
+      <a href="#how-it-works" class="btn btn-primary">See how it works</a>
+      <a href="mailto:ryan@authproof.dev?subject=Managed%20AI%20Inquiry" class="btn btn-outline">Talk to us</a>
+    </div>
+  </div>
+</section>
+
+<!-- ── The Problem ── -->
+<section class="bg-gray" id="the-problem">
+  <div class="container">
+    <div class="problem-intro">
+      <h2 class="section-headline">The compliance gap nobody is talking about</h2>
+    </div>
+    <div class="problem-grid">
+      <div class="problem-card">
+        <h3>You are the operator.</h3>
+        <p>When your agent does something unexpected your client asks for the authorization trail. Right now that trail lives on your servers. You are asking them to trust you.</p>
+      </div>
+      <div class="problem-card">
+        <h3>Your clients are in regulated industries.</h3>
+        <p>Healthcare. Fintech. Legal. One audit finding tied to an agent you deployed can cost your client — and you — more than your entire contract is worth.</p>
+      </div>
+      <div class="problem-card">
+        <h3>Logs are not enough.</h3>
+        <p>Server logs can be written after the fact. A cryptographic receipt signed before the agent acted cannot. Auditors know the difference. Your clients will too.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── How It Works ── -->
+<section id="how-it-works">
+  <div class="container">
+    <div class="hiw-intro">
+      <h2 class="section-headline">One account. Isolated audit trail per client.</h2>
+    </div>
+
+    <!-- Desktop diagram -->
+    <div class="diagram">
+      <div class="diag-org">
+        <div class="diag-org-name">Your Organization</div>
+        <div class="diag-org-sub">Authproof Cloud Account</div>
+      </div>
+      <div class="diag-org-stem"></div>
+      <div class="diag-branch-row">
+        <div class="diag-branch-top first"></div>
+        <div class="diag-branch-top mid"></div>
+        <div class="diag-branch-top last"></div>
+      </div>
+      <div class="diag-clients-row">
+        <div class="diag-client">
+          <div class="diag-client-name">Hospital Client</div>
+          <div class="diag-client-detail">Isolated receipt log<br>Independent verification</div>
+        </div>
+        <div class="diag-client">
+          <div class="diag-client-name">Clinic Client</div>
+          <div class="diag-client-detail">Isolated receipt log<br>Independent verification</div>
+        </div>
+        <div class="diag-client">
+          <div class="diag-client-name">Health System Client</div>
+          <div class="diag-client-detail">Isolated receipt log<br>Independent verification</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mobile fallback -->
+    <div class="diag-mobile">
+      <div class="diag-mobile-org">
+        <strong>Your Organization</strong>
+        <span>Authproof Cloud Account</span>
+      </div>
+      <div class="diag-mobile-client">
+        <strong>Hospital Client</strong>
+        <span>Isolated receipt log · Independent verification</span>
+      </div>
+      <div class="diag-mobile-client">
+        <strong>Clinic Client</strong>
+        <span>Isolated receipt log · Independent verification</span>
+      </div>
+      <div class="diag-mobile-client">
+        <strong>Health System Client</strong>
+        <span>Isolated receipt log · Independent verification</span>
+      </div>
+    </div>
+
+    <div class="feat-points">
+      <div class="feat-point">
+        <div class="feat-point-icon">🔑</div>
+        <p class="feat-point-text">Each client gets their own API key and isolated receipt log. Their data never mixes with another client's.</p>
+      </div>
+      <div class="feat-point">
+        <div class="feat-point-icon">🔐</div>
+        <p class="feat-point-text">Every agent action is cryptographically committed before execution. Not reconstructed from logs. Not your word. Math.</p>
+      </div>
+      <div class="feat-point">
+        <div class="feat-point-icon">📋</div>
+        <p class="feat-point-text">One-click compliance reports per client. HIPAA, SOC2, EU AI Act, PCI-DSS. Ready for any auditor in seconds.</p>
+      </div>
+      <div class="feat-point">
+        <div class="feat-point-icon">✅</div>
+        <p class="feat-point-text">Clients can verify their own audit trail independently. They do not have to trust your infrastructure. The proof is cryptographic.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── What This Protects ── -->
+<section class="bg-gray" id="what-this-protects">
+  <div class="container">
+    <div class="protect-intro">
+      <h2 class="section-headline">What this protects</h2>
+    </div>
+    <div class="protect-grid">
+      <div class="protect-card">
+        <h3>Your contract</h3>
+        <p>An agent authorization failure in a regulated deployment can void your contract and trigger clawbacks. A cryptographic receipt proves you delivered what was agreed.</p>
+      </div>
+      <div class="protect-card">
+        <h3>Your client's compliance</h3>
+        <p>HIPAA requires audit trails for every PHI access event. Your client's CISO needs proof that your agents operated within authorized scope. You can give them that now.</p>
+      </div>
+      <div class="protect-card">
+        <h3>Your reputation</h3>
+        <p>When your client's auditor asks what the agent was authorized to do, you hand them a signed cryptographic package. Not a spreadsheet. Not a server log. Proof.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Pricing ── -->
+<section id="pricing">
+  <div class="container">
+    <div class="pricing-intro">
+      <h2 class="section-headline">Built for teams managing multiple client deployments</h2>
+    </div>
+    <div class="pricing-grid">
+      <div class="pricing-card pro">
+        <div class="pro-badge">Most Popular</div>
+        <div class="p-plan pro-label" style="color: var(--blue);">Pro</div>
+        <div class="p-price">$49</div>
+        <div class="p-period">per month, billed monthly</div>
+        <ul class="p-features">
+          <li>Unlimited receipts</li>
+          <li>Multi-tenant org management</li>
+          <li>Per-client isolated receipt logs</li>
+          <li>Priority support</li>
+          <li>99.5% uptime SLA</li>
+          <li>BAA available</li>
+          <li>Signed audit exports</li>
+        </ul>
+        <a href="/signup?plan=pro" class="btn btn-primary">Start Pro trial</a>
+      </div>
+      <div class="pricing-card enterprise">
+        <div class="p-plan">Enterprise</div>
+        <div class="p-price">Custom</div>
+        <div class="p-period">volume pricing for 5+ deployments</div>
+        <ul class="p-features">
+          <li>Everything in Pro</li>
+          <li>5+ active client deployments</li>
+          <li>Dedicated onboarding</li>
+          <li>Custom SLA and uptime guarantee</li>
+          <li>Volume receipt pricing</li>
+          <li>Compliance consulting</li>
+          <li>White-label audit reports</li>
+        </ul>
+        <a href="mailto:ryan@authproof.dev?subject=Managed%20AI%20Enterprise%20Inquiry" class="btn btn-enterprise">Talk to us about Enterprise</a>
+      </div>
+    </div>
+    <p class="pricing-foot">Most managed AI companies start on Pro with multi-tenant org management at $49/month. Enterprise pricing is available for teams with five or more active client deployments.</p>
+  </div>
+</section>
+
+<!-- ── CTA ── -->
+<section class="cta-section">
+  <div class="container">
+    <h2>Ready to give every client their own audit trail?</h2>
+    <div class="cta-buttons">
+      <a href="/signup" class="btn btn-cta-main">Start free — set up your first org in minutes</a>
+      <a href="mailto:ryan@authproof.dev?subject=Managed%20AI%20Enterprise%20Inquiry" class="btn btn-cta-sec">Talk to us about Enterprise</a>
+    </div>
+  </div>
+</section>
+
+<!-- ── Footer ── -->
+<footer>
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <div class="f-brand">Authproof Cloud</div>
+        <div class="f-tagline">Built on cryptographic proof, not operator trust.</div>
+      </div>
+      <div class="f-col">
+        <h4>Product</h4>
+        <ul>
+          <li><a href="/#features">Features</a></li>
+          <li><a href="/#pricing">Pricing</a></li>
+          <li><a href="https://github.com/Commonguy25/authproof-sdk">Documentation</a></li>
+          <li><a href="/support">Status</a></li>
+        </ul>
+      </div>
+      <div class="f-col">
+        <h4>Legal</h4>
+        <ul>
+          <li><a href="/terms">Terms of Service</a></li>
+          <li><a href="/privacy">Privacy Policy</a></li>
+          <li><a href="/baa">BAA</a></li>
+          <li><a href="/#security">Security</a></li>
+        </ul>
+      </div>
+      <div class="f-col">
+        <h4>Company</h4>
+        <ul>
+          <li><a href="/support">Support</a></li>
+          <li><a href="https://github.com/Commonguy25/authproof-sdk" target="_blank">GitHub</a></li>
+          <li><a href="https://www.npmjs.com/package/authproof" target="_blank">npm</a></li>
+          <li><a href="mailto:ryan@authproof.dev">ryan@authproof.dev</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div class="footer-bottom-text">Authproof is an independent project — ryan@authproof.dev</div>
+      <div class="footer-badges">
+        <span class="f-badge">MIT License</span>
+        <span class="f-badge">HIPAA Ready</span>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+  window.addEventListener('scroll', () => {
+    document.getElementById('nav').classList.toggle('scrolled', window.scrollY > 10);
+  });
+
+  function toggleMenu() {
+    document.getElementById('mobileMenu').classList.toggle('open');
+  }
+  function closeMenu() {
+    document.getElementById('mobileMenu').classList.remove('open');
+  }
+</script>
+
+</body>
+</html>
