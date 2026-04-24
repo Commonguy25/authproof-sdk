@@ -127,8 +127,8 @@ async function sendResetEmail(email, resetLink) {
           This link expires in 1 hour.
         </p>
         <a href="${resetLink}"
-           style="display:inline-block;background:#00FF41;color:#000;font-weight:700;font-size:14px;
-                  padding:14px 28px;text-decoration:none;letter-spacing:0.04em">
+           style="display:inline-block;background:#1a56db;color:#ffffff;font-weight:700;font-size:14px;
+                  padding:14px 28px;text-decoration:none;border-radius:980px;letter-spacing:0.02em">
           Reset password
         </a>
         <p style="color:#999;font-size:12px;margin-top:28px;line-height:1.6">
