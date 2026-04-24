@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Authproof — A Story</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Lora:ital,wght@1,400;1,500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700&family=Lora:ital,wght@1,400&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -29,7 +29,6 @@
       position: relative;
       width: 100vw;
       height: calc(100vw / 2.35);
-      max-height: 70vh;
       overflow: hidden;
       background: #ffffff;
       flex-shrink: 0;
@@ -42,50 +41,66 @@
       #cinema { width: calc(100vh * 2.35 * 0.7); height: calc(100vh * 0.7); }
     }
 
-    /* Film grain — very subtle on white */
+    /* Film grain — multiply blend, very low alpha on white */
     #grain {
       position: absolute; inset: 0;
       width: 100%; height: 100%;
       pointer-events: none;
       z-index: 90;
-      opacity: 0.018;
+      opacity: 0.02;
       mix-blend-mode: multiply;
     }
 
-    /* Story text — centered, large */
+    /* Text container */
     #text-wrap {
       position: absolute; inset: 0;
       display: flex;
       align-items: center;
       justify-content: center;
       z-index: 10;
-      padding: 0 12%;
+      padding: 0 10%;
     }
 
-    #story-text {
+    #line {
+      text-align: center;
+      max-width: 70%;
+      opacity: 0;
+      /* no CSS transition — Web Animations API handles all opacity */
+    }
+
+    /* ── Font variants ── */
+    #line.lora {
       font-family: 'Lora', Georgia, serif;
       font-style: italic;
       font-weight: 400;
-      font-size: clamp(16px, 2.5vw, 34px);
-      color: #111;
-      letter-spacing: -0.005em;
-      line-height: 1.7;
-      text-align: center;
-      max-width: 65%;
-      opacity: 0;
+      font-size: clamp(17px, 2.4vw, 32px);
+      color: #1a1a1a;
+      letter-spacing: 0em;
+      line-height: 1.75;
     }
 
-    #story-text.inter {
+    #line.product {
       font-family: 'Inter', sans-serif;
       font-style: normal;
       font-weight: 300;
-      font-size: clamp(15px, 2.2vw, 30px);
+      font-size: clamp(15px, 2.1vw, 28px);
+      color: #2a2a2a;
       letter-spacing: 0.01em;
       line-height: 1.75;
-      color: #222;
     }
 
-    /* Product reveal */
+    /* Brand moments: "Authproof Cloud." and "Math." */
+    #line.brand {
+      font-family: 'Inter', sans-serif;
+      font-style: normal;
+      font-weight: 700;
+      font-size: clamp(22px, 3.5vw, 48px);
+      color: #111;
+      letter-spacing: -0.025em;
+      line-height: 1.2;
+    }
+
+    /* ── Product reveal ── */
     #reveal {
       position: absolute; inset: 0;
       background: #ffffff;
@@ -103,14 +118,15 @@
       font-size: clamp(22px, 3.2vw, 44px);
       font-weight: 700;
       color: #111;
-      letter-spacing: -0.02em;
+      letter-spacing: -0.025em;
       opacity: 0;
     }
     .reveal-logo span { color: #1a56db; }
 
-    .reveal-line {
+    .reveal-tagline {
       font-family: 'Inter', sans-serif;
-      font-size: clamp(10px, 1.15vw, 14px);
+      font-size: clamp(10px, 1.1vw, 14px);
+      font-weight: 300;
       color: #555;
       letter-spacing: 0.04em;
       opacity: 0;
@@ -124,18 +140,19 @@
       color: #1a56db;
       letter-spacing: 0.01em;
       opacity: 0;
-      margin-top: 8px;
+      margin-top: 10px;
     }
 
     .reveal-badges {
-      display: flex; gap: 14px;
+      display: flex;
+      gap: 12px;
       margin-top: 12px;
       opacity: 0;
     }
 
     .badge {
       font-family: 'Inter', sans-serif;
-      font-size: clamp(7px, 0.82vw, 10px);
+      font-size: clamp(7px, 0.78vw, 10px);
       font-weight: 600;
       letter-spacing: 0.08em;
       color: #1a56db;
@@ -145,14 +162,15 @@
       text-transform: uppercase;
     }
 
-    /* Replay — dark on white context */
+    /* Replay button — dark on white */
     #replay {
       position: fixed; bottom: 18px; right: 22px;
       background: transparent;
       border: 1px solid rgba(0,0,0,0.2);
       color: rgba(0,0,0,0.4);
       font-family: 'Inter', sans-serif;
-      font-size: 11px; letter-spacing: 0.08em;
+      font-size: 11px;
+      letter-spacing: 0.08em;
       padding: 7px 18px;
       border-radius: 20px;
       cursor: pointer;
@@ -171,40 +189,39 @@
   <canvas id="grain"></canvas>
 
   <div id="text-wrap">
-    <div id="story-text"></div>
+    <div id="line"></div>
   </div>
 
   <div id="reveal">
-    <div class="reveal-logo" id="r-logo">Authproof <span>Cloud</span></div>
-    <div class="reveal-line" id="r-l1">Cryptographic authorization receipts for AI agents.</div>
-    <div class="reveal-line" id="r-l2">HIPAA ready. &nbsp;Independently verifiable.</div>
-    <div class="reveal-line" id="r-l3">Free to start.</div>
-    <div class="reveal-url"  id="r-url">cloud.authproof.dev</div>
-    <div class="reveal-badges" id="r-badges">
+    <div class="reveal-logo"    id="r-logo">Authproof <span>Cloud</span></div>
+    <div class="reveal-tagline" id="r-t1">Cryptographic authorization receipts for AI agents.</div>
+    <div class="reveal-tagline" id="r-t2">HIPAA ready.&nbsp; Independently verifiable.</div>
+    <div class="reveal-tagline" id="r-t3">Free to start.</div>
+    <div class="reveal-url"     id="r-url">cloud.authproof.dev</div>
+    <div class="reveal-badges"  id="r-badges">
       <div class="badge">HIPAA Ready</div>
       <div class="badge">SOC2 Ready</div>
-      <div class="badge">EU AI Act Compliant</div>
+      <div class="badge">EU AI Act Aligned</div>
     </div>
   </div>
 </div>
 
 <div id="bot-bar"></div>
-
 <button id="replay">↺ &nbsp;REPLAY</button>
 
 <script>
 /* ── Film grain ─────────────────────────────── */
-(function grain() {
+(function () {
   const c = document.getElementById('grain');
-  const setSize = () => {
+  const resize = () => {
     c.width  = Math.floor(c.offsetWidth  / 2);
     c.height = Math.floor(c.offsetHeight / 2);
   };
-  setSize();
+  resize();
   const ctx = c.getContext('2d');
-  let frame = 0;
-  function tick() {
-    if (frame++ % 2 === 0) {
+  let f = 0;
+  (function tick() {
+    if (f++ % 2 === 0) {
       const id = ctx.createImageData(c.width, c.height);
       const d  = id.data;
       for (let i = 0; i < d.length; i += 4) {
@@ -215,9 +232,8 @@
       ctx.putImageData(id, 0, 0);
     }
     requestAnimationFrame(tick);
-  }
-  requestAnimationFrame(tick);
-  window.addEventListener('resize', setSize);
+  })();
+  window.addEventListener('resize', resize);
 })();
 
 /* ── Letterbox ──────────────────────────────── */
@@ -227,9 +243,9 @@ function layout() {
   const barH = Math.max(0, (vh - ch) / 2);
   document.getElementById('top-bar').style.height = barH + 'px';
   document.getElementById('bot-bar').style.height = barH + 'px';
-  const cinema = document.getElementById('cinema');
-  cinema.style.width  = vw + 'px';
-  cinema.style.height = ch + 'px';
+  const c = document.getElementById('cinema');
+  c.style.width  = vw + 'px';
+  c.style.height = ch + 'px';
 }
 layout();
 window.addEventListener('resize', layout);
@@ -243,70 +259,55 @@ function fadeEl(el, from, to, dur, delay = 0) {
   );
 }
 
-/* ── Narration cues ─────────────────────────── */
-// [start_ms, end_ms, html, font]
-const SUBS = [
-  [500,   6000,  '"Tuesday. 6:47 AM. A suburb outside the city."',                                                    'lora'],
-  [13000, 23000, 'She has been managing her mother\'s care<br>for three years.',                                       'lora'],
-  [25000, 30500, 'Her mother\'s care team uses an AI assistant now.',                                                  'lora'],
-  [30500, 34000, 'Scheduling. Prior authorizations. Medication reviews.<br>It is supposed to make things easier.',     'lora'],
-  [35500, 42000, 'Somewhere in that system, an AI agent has access<br>to her mother\'s records.',                      'lora'],
-  [42000, 46000, 'Her insurance. Her medications. Her history.<br>Has anyone asked what it is actually allowed to do?','lora'],
-  [47500, 50500, 'Authproof is a cryptographic receipt.',                                                              'inter'],
-  [50500, 53000, 'Signed before the agent acts.',                                                                      'inter'],
-  [53000, 55500, 'Proof of what was authorized.',                                                                      'inter'],
-  [55500, 57000, 'Not reconstructed from logs. Not the vendor\'s word.',                                               'inter'],
-  [57000, 58500, 'Math.',                                                                                              'inter'],
-  [59500, 65000, 'The people using AI in healthcare deserve to know<br>what it was authorized to do.',                 'lora'],
+/* ── Content cues ───────────────────────────── */
+// [start_ms, end_ms, html, variant]
+// variants: 'lora' | 'product' | 'brand'
+const CUES = [
+  [400,   4200,  'AI agents are making decisions about you.',                              'lora'],
+  [4600,  8800,  'Scheduling appointments. Reviewing records.<br>Authorizing actions.',   'lora'],
+  [9200,  13400, 'Do you know what they\'re allowed to do?',                              'lora'],
+  // ~1.5s white silence: 13400–14900
+  [14900, 18600, 'Authproof Cloud.',                                                      'brand'],
+  [19000, 22700, 'Cryptographic receipts for every AI action.',                           'product'],
+  [23100, 26800, 'Signed before the agent acts.',                                         'product'],
+  [27200, 30900, 'Independently verifiable. Not the vendor\'s word.',                     'product'],
+  [31300, 35500, 'Math.',                                                                 'brand'],
+  [35900, 38900, 'HIPAA ready.',                                                          'product'],
+  [39300, 43000, 'SOC2 compliant. EU AI Act aligned.',                                    'product'],
+  [43400, 47000, 'Free to start. No credit card.',                                        'product'],
+  // product reveal begins at 48500
 ];
 
-const FADE_MS = 800;
-const textEl   = $('story-text');
-let lastSubIdx = -1;
+const FADE = 700; // ms fade in / fade out
+const lineEl = $('line');
+let lastCueIdx = -1;
 
-function updateBackground(elapsed) {
-  // Slowly warm from pure white toward #fffef8 over 65 s, then return to white
-  let r = 255, g = 255, b = 255;
-  if (elapsed < 65000) {
-    const t = elapsed / 65000;           // 0 → 1
-    g = Math.round(255 - t * 1);         // 255 → 254
-    b = Math.round(255 - t * 7);         // 255 → 248
-  } else if (elapsed < 72000) {
-    const t = (elapsed - 65000) / 7000;  // 0 → 1
-    g = Math.round(254 + t * 1);         // 254 → 255
-    b = Math.round(248 + t * 7);         // 248 → 255
+function updateCues(elapsed) {
+  let active = -1;
+  for (let i = 0; i < CUES.length; i++) {
+    if (elapsed >= CUES[i][0] && elapsed < CUES[i][1]) { active = i; break; }
   }
-  $('cinema').style.background = `rgb(${r},${g},${b})`;
-}
+  if (active === lastCueIdx) return;
+  lastCueIdx = active;
 
-function updateSubs(elapsed) {
-  let activeIdx = -1;
-  for (let i = 0; i < SUBS.length; i++) {
-    if (elapsed >= SUBS[i][0] && elapsed < SUBS[i][1]) { activeIdx = i; break; }
-  }
-  if (activeIdx === lastSubIdx) return;
-  lastSubIdx = activeIdx;
+  lineEl.getAnimations().forEach(a => a.cancel());
 
-  // Cancel any running animation on the text element
-  textEl.getAnimations().forEach(a => a.cancel());
-
-  if (activeIdx < 0) {
-    // Fade out
-    textEl.animate([{ opacity: getComputedStyle(textEl).opacity }, { opacity: 0 }],
+  if (active < 0) {
+    lineEl.animate([{ opacity: parseFloat(getComputedStyle(lineEl).opacity) || 0 }, { opacity: 0 }],
       { duration: 500, fill: 'forwards', easing: 'ease-out' });
     return;
   }
 
-  const [start, end, html, font] = SUBS[activeIdx];
-  textEl.classList.toggle('inter', font === 'inter');
-  textEl.innerHTML = html;
+  const [start, end, html, variant] = CUES[active];
+  lineEl.className = variant;
+  lineEl.innerHTML  = html;
 
-  const remaining = Math.max(end - elapsed, 400);
-  const fi = Math.min(FADE_MS, remaining * 0.3);
-  const fo = Math.min(FADE_MS, remaining * 0.3);
+  const remaining = Math.max(end - elapsed, 300);
+  const fi = Math.min(FADE, remaining * 0.28);
+  const fo = Math.min(FADE, remaining * 0.28);
   const holdEnd = Math.max((remaining - fo) / remaining, fi / remaining + 0.01);
 
-  textEl.animate(
+  lineEl.animate(
     [
       { opacity: 0 },
       { opacity: 1,  offset: fi / remaining },
@@ -320,65 +321,64 @@ function updateSubs(elapsed) {
 /* ── Product reveal ─────────────────────────── */
 let revealStarted = false;
 function updateReveal(elapsed) {
-  if (elapsed < 72000 || revealStarted) return;
+  if (elapsed < 48500 || revealStarted) return;
   revealStarted = true;
 
-  textEl.getAnimations().forEach(a => a.cancel());
-  textEl.style.opacity = '0';
+  lineEl.getAnimations().forEach(a => a.cancel());
+  lineEl.style.opacity = '0';
 
   const rv = $('reveal');
   rv.style.display = 'flex';
-  fadeEl(rv, 0, 1, 1200);
+  fadeEl(rv, 0, 1, 1000);
 
   const items = [
-    { id: 'r-logo',   delay: 900  },
-    { id: 'r-l1',     delay: 1900 },
-    { id: 'r-l2',     delay: 2700 },
-    { id: 'r-l3',     delay: 3300 },
-    { id: 'r-url',    delay: 4100 },
-    { id: 'r-badges', delay: 5100 },
+    { id: 'r-logo',   delay: 800  },
+    { id: 'r-t1',     delay: 1700 },
+    { id: 'r-t2',     delay: 2500 },
+    { id: 'r-t3',     delay: 3100 },
+    { id: 'r-url',    delay: 3900 },
+    { id: 'r-badges', delay: 4900 },
   ];
-  for (const { id, delay } of items) fadeEl($(id), 0, 1, 800, delay);
+  for (const { id, delay } of items) fadeEl($(id), 0, 1, 750, delay);
 }
 
-/* ── End / replay ───────────────────────────── */
+/* ── Replay ─────────────────────────────────── */
 let endShown = false;
 function updateEnd(elapsed) {
-  if (elapsed < 86000 || endShown) return;
+  if (elapsed < 58000 || endShown) return;
   endShown = true;
   const btn = $('replay');
   btn.style.display = 'block';
-  btn.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 600, fill: 'forwards' });
+  btn.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 500, fill: 'forwards' });
 }
 
 /* ── Main loop ──────────────────────────────── */
 let startTs = null;
-function tick(timestamp) {
-  if (!startTs) startTs = timestamp;
-  const elapsed = timestamp - startTs;
-  updateBackground(elapsed);
-  updateSubs(elapsed);
-  updateReveal(elapsed);
-  updateEnd(elapsed);
-  if (elapsed < 90000) requestAnimationFrame(tick);
+function tick(ts) {
+  if (!startTs) startTs = ts;
+  const e = ts - startTs;
+  updateCues(e);
+  updateReveal(e);
+  updateEnd(e);
+  if (e < 62000) requestAnimationFrame(tick);
 }
 
-/* ── Reset / replay ─────────────────────────── */
+/* ── Reset ──────────────────────────────────── */
 function reset() {
-  lastSubIdx   = -1;
+  lastCueIdx    = -1;
   revealStarted = false;
   endShown      = false;
   startTs       = null;
 
-  textEl.getAnimations().forEach(a => a.cancel());
-  textEl.style.opacity = '0';
-  textEl.innerHTML     = '';
+  lineEl.getAnimations().forEach(a => a.cancel());
+  lineEl.style.opacity = '0';
+  lineEl.innerHTML     = '';
 
   const rv = $('reveal');
   rv.style.display = 'none';
   rv.style.opacity = '0';
   rv.getAnimations().forEach(a => a.cancel());
-  ['r-logo','r-l1','r-l2','r-l3','r-url','r-badges'].forEach(id => {
+  ['r-logo','r-t1','r-t2','r-t3','r-url','r-badges'].forEach(id => {
     const el = $(id);
     el.style.opacity = '0';
     el.getAnimations().forEach(a => a.cancel());
