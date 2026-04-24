@@ -613,6 +613,138 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    /* ── Pricing section ── */
+    .pricing-card {
+      background: var(--white);
+      border: 1px solid #d2d2d7;
+      border-radius: 18px;
+      padding: 36px 40px;
+      display: none;
+    }
+    .pricing-card.visible { display: block; }
+    .pricing-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: #1d1d1f;
+      letter-spacing: -0.02em;
+      margin-bottom: 4px;
+    }
+    .pricing-sub {
+      font-size: 14px;
+      color: var(--gray-500);
+      margin-bottom: 28px;
+    }
+    .pricing-plans {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    .plan-tile {
+      flex: 1;
+      min-width: 200px;
+      border: 1px solid #d2d2d7;
+      border-radius: 14px;
+      padding: 28px;
+    }
+    .plan-tile.featured {
+      border-color: var(--blue);
+      background: var(--blue-lt);
+    }
+    .plan-tile-name {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--gray-500);
+      margin-bottom: 10px;
+    }
+    .plan-tile.featured .plan-tile-name { color: var(--blue); }
+    .plan-tile-price {
+      font-size: 36px;
+      font-weight: 700;
+      color: #1d1d1f;
+      letter-spacing: -0.03em;
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+    .plan-tile-price sub { font-size: 16px; font-weight: 500; vertical-align: baseline; }
+    .plan-tile-desc {
+      font-size: 13px;
+      color: var(--gray-500);
+      margin-bottom: 22px;
+      line-height: 1.5;
+    }
+    .btn-pill {
+      display: inline-block;
+      font-family: var(--sans);
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--white);
+      background: var(--blue);
+      border: none;
+      border-radius: 980px;
+      padding: 10px 24px;
+      cursor: pointer;
+      transition: background 0.15s;
+      white-space: nowrap;
+      text-decoration: none;
+    }
+    .btn-pill:hover { background: var(--blue-dk); }
+    .btn-pill.outline {
+      background: transparent;
+      color: var(--blue);
+      border: 1.5px solid var(--blue);
+    }
+    .btn-pill.outline:hover { background: var(--blue-lt); }
+
+    /* Pro/Enterprise status cards */
+    .plan-status-card {
+      background: var(--white);
+      border: 1px solid #d2d2d7;
+      border-radius: 18px;
+      padding: 32px 40px;
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+    .plan-status-card.visible { display: flex; }
+    .plan-status-badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 4px 12px;
+      border-radius: 20px;
+      background: var(--blue-lt);
+      color: var(--blue);
+      border: 1px solid var(--blue);
+      margin-bottom: 10px;
+    }
+    .plan-status-badge.enterprise {
+      background: var(--green-lt);
+      color: var(--green);
+      border-color: var(--green);
+    }
+    .plan-status-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #1d1d1f;
+      letter-spacing: -0.01em;
+    }
+    .plan-status-sub {
+      font-size: 13px;
+      color: var(--gray-500);
+      margin-top: 4px;
+    }
+
+    @media (max-width: 640px) {
+      .pricing-card { padding: 24px 20px; }
+      .plan-status-card { padding: 24px 20px; flex-direction: column; align-items: flex-start; }
+    }
+
     /* Footer */
     footer {
       background: var(--white);
@@ -735,6 +867,52 @@
         <a href="/baa" class="help-link">Business Associate Agreement →</a>
         <a href="https://github.com/Commonguy25/authproof-sdk" target="_blank" class="help-link">Docs →</a>
       </div>
+    </div>
+  </div>
+
+  <!-- Plan / Pricing -->
+  <div class="section">
+    <div class="container">
+
+      <!-- Free tier: upgrade prompt -->
+      <div id="pricingCard" class="pricing-card">
+        <div class="pricing-title">Upgrade your plan</div>
+        <div class="pricing-sub">You're on the free plan. Unlock higher limits and premium features.</div>
+        <div class="pricing-plans">
+          <div class="plan-tile featured">
+            <div class="plan-tile-name">Pro</div>
+            <div class="plan-tile-price">$49<sub>/mo</sub></div>
+            <div class="plan-tile-desc">Up to 10,000 receipts/month, priority support, and full audit exports.</div>
+            <button class="btn-pill" onclick="goToCheckout()">Upgrade to Pro →</button>
+          </div>
+          <div class="plan-tile">
+            <div class="plan-tile-name">Enterprise</div>
+            <div class="plan-tile-price">Custom</div>
+            <div class="plan-tile-desc">Unlimited receipts, BAA included, SLA guarantees, and dedicated support.</div>
+            <a href="/support" class="btn-pill outline">Contact sales →</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pro tier: status + enterprise upsell -->
+      <div id="proStatusCard" class="plan-status-card">
+        <div>
+          <div class="plan-status-badge">Pro Plan</div>
+          <div class="plan-status-title">You're on Pro</div>
+          <div class="plan-status-sub">10,000 receipts/month · Priority support · Audit exports</div>
+        </div>
+        <a href="/support" class="btn-pill outline">Upgrade to Enterprise →</a>
+      </div>
+
+      <!-- Enterprise tier: status only -->
+      <div id="enterpriseStatusCard" class="plan-status-card">
+        <div>
+          <div class="plan-status-badge enterprise">Enterprise Plan</div>
+          <div class="plan-status-title">You're on Enterprise</div>
+          <div class="plan-status-sub">Unlimited receipts · BAA included · Dedicated support</div>
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -984,8 +1162,13 @@
 
     if (account.plan === 'free') {
       document.getElementById('upgradeBtn').style.display = 'inline-block';
+      document.getElementById('pricingCard').classList.add('visible');
+    } else if (account.plan === 'pro') {
+      document.getElementById('billingBtn').style.display = 'inline-block';
+      document.getElementById('proStatusCard').classList.add('visible');
     } else {
       document.getElementById('billingBtn').style.display = 'inline-block';
+      document.getElementById('enterpriseStatusCard').classList.add('visible');
     }
   }
 
