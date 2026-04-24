@@ -22,9 +22,8 @@
       justify-content: center;
     }
 
-    /* ── Letterbox layout ── */
     #top-bar { width: 100vw; background: #000; flex-shrink: 0; }
-    #bot-bar { width: 100vw; background: #000; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+    #bot-bar { width: 100vw; background: #000; flex-shrink: 0; }
 
     #cinema {
       position: relative;
@@ -32,62 +31,126 @@
       height: calc(100vw / 2.35);
       max-height: 70vh;
       overflow: hidden;
-      background: #000;
+      background: #ffffff;
       flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
-    /* When viewport is short, cinema fills height and bars are thinner */
     @media (max-aspect-ratio: 2.35/1) {
       #cinema { width: calc(100vh * 2.35 * 0.7); height: calc(100vh * 0.7); }
     }
 
-    /* ── Grain overlay ── */
+    /* Film grain — very subtle on white */
     #grain {
       position: absolute; inset: 0;
       width: 100%; height: 100%;
       pointer-events: none;
       z-index: 90;
-      opacity: 0.035;
-      mix-blend-mode: screen;
+      opacity: 0.018;
+      mix-blend-mode: multiply;
     }
 
-    /* ── Scenes ── */
-    .scene {
+    /* Story text — centered, large */
+    #text-wrap {
       position: absolute; inset: 0;
-      opacity: 0;
-      will-change: opacity;
-    }
-    .scene svg { width: 100%; height: 100%; display: block; }
-
-    /* ── Subtitles ── */
-    #subtitle-wrap {
-      min-height: 2.2em;
       display: flex;
       align-items: center;
       justify-content: center;
+      z-index: 10;
       padding: 0 12%;
-      text-align: center;
     }
 
-    #sub {
+    #story-text {
       font-family: 'Lora', Georgia, serif;
       font-style: italic;
       font-weight: 400;
-      font-size: clamp(10px, 1.25vw, 16px);
-      color: rgba(255,255,255,0.82);
-      letter-spacing: 0.03em;
-      line-height: 1.65;
+      font-size: clamp(16px, 2.5vw, 34px);
+      color: #111;
+      letter-spacing: -0.005em;
+      line-height: 1.7;
+      text-align: center;
+      max-width: 65%;
       opacity: 0;
-      transition: opacity 0.75s ease;
     }
-    #sub.show { opacity: 1; }
 
-    /* ── Replay ── */
+    #story-text.inter {
+      font-family: 'Inter', sans-serif;
+      font-style: normal;
+      font-weight: 300;
+      font-size: clamp(15px, 2.2vw, 30px);
+      letter-spacing: 0.01em;
+      line-height: 1.75;
+      color: #222;
+    }
+
+    /* Product reveal */
+    #reveal {
+      position: absolute; inset: 0;
+      background: #ffffff;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      opacity: 0;
+      z-index: 80;
+    }
+
+    .reveal-logo {
+      font-family: 'Inter', sans-serif;
+      font-size: clamp(22px, 3.2vw, 44px);
+      font-weight: 700;
+      color: #111;
+      letter-spacing: -0.02em;
+      opacity: 0;
+    }
+    .reveal-logo span { color: #1a56db; }
+
+    .reveal-line {
+      font-family: 'Inter', sans-serif;
+      font-size: clamp(10px, 1.15vw, 14px);
+      color: #555;
+      letter-spacing: 0.04em;
+      opacity: 0;
+      text-align: center;
+    }
+
+    .reveal-url {
+      font-family: 'Inter', sans-serif;
+      font-size: clamp(12px, 1.4vw, 17px);
+      font-weight: 600;
+      color: #1a56db;
+      letter-spacing: 0.01em;
+      opacity: 0;
+      margin-top: 8px;
+    }
+
+    .reveal-badges {
+      display: flex; gap: 14px;
+      margin-top: 12px;
+      opacity: 0;
+    }
+
+    .badge {
+      font-family: 'Inter', sans-serif;
+      font-size: clamp(7px, 0.82vw, 10px);
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      color: #1a56db;
+      border: 1.5px solid #1a56db;
+      border-radius: 3px;
+      padding: 4px 10px;
+      text-transform: uppercase;
+    }
+
+    /* Replay — dark on white context */
     #replay {
       position: fixed; bottom: 18px; right: 22px;
       background: transparent;
-      border: 1px solid rgba(255,255,255,0.35);
-      color: rgba(255,255,255,0.65);
+      border: 1px solid rgba(0,0,0,0.2);
+      color: rgba(0,0,0,0.4);
       font-family: 'Inter', sans-serif;
       font-size: 11px; letter-spacing: 0.08em;
       padding: 7px 18px;
@@ -97,87 +160,7 @@
       z-index: 200;
       transition: all 0.2s;
     }
-    #replay:hover { background: rgba(255,255,255,0.1); color: #fff; }
-
-    /* ── Receipt overlay (scene 5) ── */
-    #receipt-overlay {
-      position: absolute; inset: 0;
-      display: flex; align-items: center; justify-content: center;
-      pointer-events: none;
-      z-index: 40;
-      opacity: 0;
-    }
-    .receipt-card {
-      background: rgba(26,86,219,0.12);
-      border: 1px solid rgba(100,160,255,0.45);
-      border-radius: 6px;
-      padding: 22px 32px;
-      backdrop-filter: blur(2px);
-      font-family: 'Courier New', monospace;
-      font-size: clamp(9px, 1.1vw, 13px);
-      color: rgba(180,210,255,0.92);
-      line-height: 2;
-      min-width: 280px;
-    }
-    .receipt-card .rfield { display: flex; gap: 12px; }
-    .receipt-card .rkey { color: rgba(120,170,255,0.7); min-width: 100px; }
-    .receipt-card .rval { color: rgba(200,225,255,0.95); }
-    .receipt-card .rdivider { border-top: 1px solid rgba(100,160,255,0.2); margin: 6px 0; }
-
-    /* ── Product reveal (scene 7) ── */
-    #reveal {
-      position: absolute; inset: 0;
-      background: #fff;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      opacity: 0;
-      z-index: 80;
-    }
-    .reveal-logo {
-      font-family: 'Inter', sans-serif;
-      font-size: clamp(20px, 3vw, 36px);
-      font-weight: 700;
-      color: #111;
-      letter-spacing: -0.02em;
-      opacity: 0;
-    }
-    .reveal-logo span { color: #1a56db; }
-    .reveal-line {
-      font-family: 'Inter', sans-serif;
-      font-size: clamp(9px, 1.1vw, 13px);
-      color: #555;
-      letter-spacing: 0.04em;
-      opacity: 0;
-      text-align: center;
-    }
-    .reveal-url {
-      font-family: 'Inter', sans-serif;
-      font-size: clamp(11px, 1.4vw, 16px);
-      font-weight: 600;
-      color: #1a56db;
-      letter-spacing: 0.01em;
-      opacity: 0;
-      margin-top: 8px;
-    }
-    .reveal-badges {
-      display: flex; gap: 16px;
-      margin-top: 12px;
-      opacity: 0;
-    }
-    .badge {
-      font-family: 'Inter', sans-serif;
-      font-size: clamp(8px, 0.9vw, 11px);
-      font-weight: 600;
-      letter-spacing: 0.08em;
-      color: #1a56db;
-      border: 1.5px solid #1a56db;
-      border-radius: 3px;
-      padding: 4px 10px;
-      text-transform: uppercase;
-    }
+    #replay:hover { background: rgba(0,0,0,0.05); color: #111; }
   </style>
 </head>
 <body>
@@ -187,796 +170,30 @@
 <div id="cinema">
   <canvas id="grain"></canvas>
 
-  <!-- ══ SCENE 1: BEDROOM ══ -->
-  <div class="scene" id="s1">
-    <svg viewBox="0 0 940 400" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id="bg1" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stop-color="#3a1c08"/>
-          <stop offset="45%" stop-color="#1e0e05"/>
-          <stop offset="100%" stop-color="#130804"/>
-        </linearGradient>
-        <linearGradient id="floor1" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#281508"/>
-          <stop offset="100%" stop-color="#100804"/>
-        </linearGradient>
-        <linearGradient id="winGlow" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stop-color="#ff9c28" stop-opacity="1"/>
-          <stop offset="100%" stop-color="#ff9c28" stop-opacity="0"/>
-        </linearGradient>
-        <radialGradient id="winCenter" cx="0" cy="0.5" r="1">
-          <stop offset="0%" stop-color="#ffb040" stop-opacity="0.6"/>
-          <stop offset="100%" stop-color="#ff7a10" stop-opacity="0"/>
-        </radialGradient>
-        <filter id="glow1">
-          <feGaussianBlur stdDeviation="8" result="blur"/>
-          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-        </filter>
-      </defs>
-
-      <!-- Room walls -->
-      <rect x="0" y="0" width="940" height="400" fill="url(#bg1)"/>
-      <!-- Floor -->
-      <rect x="0" y="335" width="940" height="65" fill="url(#floor1)"/>
-      <!-- Floor line -->
-      <line x1="0" y1="336" x2="940" y2="336" stroke="#2a1508" stroke-width="2"/>
-
-      <!-- Window glow on left wall -->
-      <rect x="0" y="80" width="300" height="260" fill="url(#winGlow)" opacity="0.7"/>
-      <ellipse cx="60" cy="220" rx="140" ry="160" fill="url(#winCenter)" opacity="0.5"/>
-
-      <!-- Window frame -->
-      <rect x="32" y="90" width="148" height="210" rx="3" fill="#2a1408"/>
-      <!-- Glass (glowing amber) -->
-      <rect x="38" y="96" width="136" height="198" fill="#ff9c28" opacity="0.88"/>
-      <!-- Cross dividers -->
-      <line x1="106" y1="96" x2="106" y2="294" stroke="#2a1408" stroke-width="5"/>
-      <line x1="38" y1="195" x2="174" y2="195" stroke="#2a1408" stroke-width="5"/>
-      <!-- Window frame outer -->
-      <rect x="32" y="90" width="148" height="210" rx="3" fill="none" stroke="#1e0e04" stroke-width="6"/>
-
-      <!-- Curtains -->
-      <path d="M28,88 C40,130 32,185 38,250 C34,285 40,310 36,302 L22,302 C26,285 20,260 24,195 C18,140 26,95 22,88 Z" fill="#4a2c12"/>
-      <path d="M36,302 L50,302 C46,270 52,240 48,195 C44,155 52,115 46,88 L32,88 C38,118 30,158 34,210 C38,252 32,278 36,302Z" fill="#3d2410"/>
-      <path d="M180,88 C192,130 184,185 190,250 C186,285 192,310 188,302 L174,302 C178,285 172,260 176,195 C170,140 178,95 174,88 Z" fill="#3d2410"/>
-      <path d="M174,88 L188,88 C184,118 176,158 180,210 C184,252 178,278 182,302 L168,302 C164,270 170,240 166,195 C162,155 170,115 164,88 Z" fill="#4a2c12"/>
-
-      <!-- Light rays -->
-      <polygon points="174,115 940,30 940,80 174,155" fill="#ffb040" opacity="0.09">
-        <animateTransform attributeName="transform" type="rotate" values="-1.5 174 195;1.5 174 195;-1.5 174 195" dur="5s" repeatCount="indefinite"/>
-      </polygon>
-      <polygon points="174,160 940,100 940,155 174,210" fill="#ffb040" opacity="0.07">
-        <animateTransform attributeName="transform" type="rotate" values="1 174 195;-1 174 195;1 174 195" dur="7s" repeatCount="indefinite"/>
-      </polygon>
-      <polygon points="174,195 940,175 940,240 174,255" fill="#ffb040" opacity="0.05">
-        <animateTransform attributeName="transform" type="rotate" values="0 174 195;2 174 195;0 174 195" dur="6s" repeatCount="indefinite"/>
-      </polygon>
-      <polygon points="174,230 940,240 940,310 174,295" fill="#ffb040" opacity="0.04">
-        <animateTransform attributeName="transform" type="rotate" values="0.5 174 260;-0.5 174 260;0.5 174 260" dur="8s" repeatCount="indefinite"/>
-      </polygon>
-
-      <!-- Ambient floor glow -->
-      <ellipse cx="290" cy="348" rx="220" ry="22" fill="#ff9c28" opacity="0.18"/>
-
-      <!-- Bed headboard -->
-      <rect x="350" y="155" width="490" height="195" rx="6" fill="#331a08"/>
-      <rect x="350" y="155" width="490" height="22" rx="4" fill="#4d2810"/>
-      <!-- Headboard panel lines -->
-      <line x1="500" y1="177" x2="500" y2="350" stroke="#2a1408" stroke-width="2" opacity="0.5"/>
-      <line x1="650" y1="177" x2="650" y2="350" stroke="#2a1408" stroke-width="2" opacity="0.5"/>
-
-      <!-- Bed side frames -->
-      <rect x="344" y="280" width="12" height="80" rx="2" fill="#251408"/>
-      <rect x="834" y="280" width="12" height="80" rx="2" fill="#251408"/>
-
-      <!-- Pillow left -->
-      <rect x="370" y="175" width="175" height="95" rx="14" fill="#e0cdb8"/>
-      <rect x="378" y="183" width="159" height="79" rx="10" fill="#d4c0a8"/>
-      <!-- Pillow crease -->
-      <line x1="460" y1="183" x2="460" y2="262" stroke="#c4ae94" stroke-width="1.5" opacity="0.6"/>
-
-      <!-- Pillow right -->
-      <rect x="575" y="175" width="175" height="95" rx="14" fill="#d8c4ae"/>
-      <rect x="583" y="183" width="159" height="79" rx="10" fill="#cbb89e"/>
-
-      <!-- Blanket -->
-      <path d="M350,250 Q600,238 840,254 L840,340 Q600,330 350,340 Z" fill="#6b3d1e"/>
-      <path d="M350,250 Q600,240 840,254 L840,268 Q600,255 350,264 Z" fill="#7d4822"/>
-      <!-- Blanket fold/crumple -->
-      <path d="M420,264 Q440,255 460,264 Q480,272 500,264" fill="none" stroke="#5a3218" stroke-width="2" opacity="0.7"/>
-      <path d="M620,258 Q640,250 660,258 Q680,266 700,258" fill="none" stroke="#5a3218" stroke-width="2" opacity="0.5"/>
-
-      <!-- Figure sitting up in bed -->
-      <!-- Lower body under blanket (just shape) -->
-      <ellipse cx="510" cy="310" rx="80" ry="35" fill="#7d4822" opacity="0.8"/>
-
-      <!-- Torso / sleep shirt -->
-      <path d="M462,290 Q468,268 485,258 L490,248 Q500,242 510,242 Q520,242 530,248 L535,258 Q552,268 558,290 Q562,318 555,335 Q530,330 510,330 Q490,330 465,335 Q458,318 462,290Z" fill="#c8856e"/>
-      <!-- Shirt -->
-      <path d="M462,290 Q468,268 485,258 L490,248 Q500,242 510,242 Q520,242 530,248 L535,258 Q552,268 558,290 Q562,315 555,328 Q530,323 510,323 Q490,323 465,328 Q458,315 462,290Z" fill="#4a6b8a"/>
-
-      <!-- Neck -->
-      <rect x="498" y="228" width="24" height="26" rx="4" fill="#c4783a"/>
-
-      <!-- Head -->
-      <ellipse cx="510" cy="200" rx="34" ry="38" fill="#c4783a"/>
-      <!-- Ear left -->
-      <ellipse cx="477" cy="204" rx="8" ry="11" fill="#ba6e32"/>
-      <!-- Ear right -->
-      <ellipse cx="543" cy="204" rx="8" ry="11" fill="#ba6e32"/>
-
-      <!-- Hair - short, neutral -->
-      <path d="M476,180 C478,152 492,142 510,141 C528,142 542,152 544,180 C540,164 530,156 510,155 C490,156 480,164 476,180Z" fill="#1e110a"/>
-      <path d="M476,180 C474,188 472,195 476,200 C474,196 472,188 476,180Z" fill="#1e110a"/>
-      <path d="M544,180 C546,188 548,195 544,200 C546,196 548,188 544,180Z" fill="#1e110a"/>
-
-      <!-- Face features (subtle) -->
-      <!-- Eyes (half open, just waking) -->
-      <ellipse cx="497" cy="200" rx="6" ry="4" fill="#1a0e08"/>
-      <ellipse cx="523" cy="200" rx="6" ry="4" fill="#1a0e08"/>
-      <line x1="491" y1="199" x2="503" y2="199" stroke="#c4783a" stroke-width="3"/>
-      <line x1="517" y1="199" x2="529" y2="199" stroke="#c4783a" stroke-width="3"/>
-
-      <!-- Arm - right arm supporting weight on bed -->
-      <path d="M558,290 Q570,300 572,320 Q565,330 555,328 Z" fill="#c4783a"/>
-      <!-- Arm - left supporting -->
-      <path d="M462,290 Q450,300 448,320 Q455,330 465,328 Z" fill="#c4783a"/>
-
-      <!-- Nightstand -->
-      <rect x="858" y="280" width="78" height="80" rx="3" fill="#2d1608"/>
-      <rect x="858" y="275" width="78" height="9" rx="2" fill="#3d2010"/>
-      <!-- Drawer -->
-      <rect x="865" y="295" width="64" height="28" rx="2" fill="#251208"/>
-      <circle cx="897" cy="309" r="3" fill="#6b3d1e"/>
-
-      <!-- Alarm clock -->
-      <rect x="863" y="250" width="44" height="30" rx="4" fill="#111827"/>
-      <rect x="867" y="254" width="36" height="20" rx="2" fill="#0a1020"/>
-      <text x="885" y="268" text-anchor="middle" font-family="'Courier New', monospace" font-size="11" fill="#ff6535" font-weight="bold">6:47</text>
-      <!-- Bells on top -->
-      <circle cx="869" cy="250" r="5" fill="#1a2030"/>
-      <circle cx="903" cy="250" r="5" fill="#1a2030"/>
-
-      <!-- Water glass -->
-      <path d="M910,258 L920,258 L918,285 L912,285 Z" fill="rgba(180,220,255,0.25)" stroke="rgba(200,230,255,0.5)" stroke-width="1"/>
-      <rect x="911" y="270" width="8" height="15" fill="rgba(120,190,255,0.35)"/>
-
-      <!-- Phone face down -->
-      <rect x="862" y="273" width="30" height="18" rx="3" fill="#0a0a0a" transform="rotate(-8 877 282)"/>
-
-      <!-- Warm ambient light wash from window across bed -->
-      <rect x="174" y="0" width="200" height="400" fill="url(#winGlow)" opacity="0.12"/>
-    </svg>
+  <div id="text-wrap">
+    <div id="story-text"></div>
   </div>
 
-  <!-- ══ SCENE 2: KITCHEN ══ -->
-  <div class="scene" id="s2">
-    <svg viewBox="0 0 940 400" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id="kitWall" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#f5ede0"/>
-          <stop offset="60%" stop-color="#ede0cc"/>
-          <stop offset="100%" stop-color="#ddd0bc"/>
-        </linearGradient>
-        <linearGradient id="kitCounter" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#d4c4a8"/>
-          <stop offset="100%" stop-color="#c0ae94"/>
-        </linearGradient>
-        <linearGradient id="kitWin" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#fff4d6"/>
-          <stop offset="100%" stop-color="#ffe8a8"/>
-        </linearGradient>
-        <filter id="steamBlur"><feGaussianBlur stdDeviation="3"/></filter>
-      </defs>
-
-      <!-- Background wall -->
-      <rect x="0" y="0" width="940" height="400" fill="url(#kitWall)"/>
-
-      <!-- Window above counter - morning light -->
-      <rect x="340" y="20" width="220" height="170" rx="4" fill="#f0f0e8"/>
-      <rect x="348" y="28" width="204" height="154" fill="url(#kitWin)"/>
-      <!-- Window panes -->
-      <line x1="450" y1="28" x2="450" y2="182" stroke="#d0c8b8" stroke-width="4"/>
-      <line x1="348" y1="105" x2="552" y2="105" stroke="#d0c8b8" stroke-width="4"/>
-      <!-- Window frame outer -->
-      <rect x="340" y="20" width="220" height="170" rx="4" fill="none" stroke="#c8b89a" stroke-width="6"/>
-      <!-- Window light glow on wall -->
-      <ellipse cx="450" cy="180" rx="180" ry="80" fill="#fff8e8" opacity="0.7"/>
-
-      <!-- Upper cabinets -->
-      <rect x="0" y="0" width="330" height="195" rx="0" fill="#c8a870"/>
-      <rect x="580" y="0" width="360" height="195" rx="0" fill="#c8a870"/>
-      <!-- Cabinet doors -->
-      <rect x="5" y="8" width="155" height="180" rx="3" fill="#d4b87c" stroke="#b89458" stroke-width="1.5"/>
-      <rect x="168" y="8" width="155" height="180" rx="3" fill="#d4b87c" stroke="#b89458" stroke-width="1.5"/>
-      <rect x="586" y="8" width="175" height="180" rx="3" fill="#d4b87c" stroke="#b89458" stroke-width="1.5"/>
-      <rect x="769" y="8" width="166" height="180" rx="3" fill="#d4b87c" stroke="#b89458" stroke-width="1.5"/>
-      <!-- Cabinet handles -->
-      <rect x="72" y="92" width="22" height="5" rx="2" fill="#a07840"/>
-      <rect x="238" y="92" width="22" height="5" rx="2" fill="#a07840"/>
-      <rect x="658" y="92" width="22" height="5" rx="2" fill="#a07840"/>
-      <rect x="838" y="92" width="22" height="5" rx="2" fill="#a07840"/>
-
-      <!-- Counter top -->
-      <rect x="0" y="230" width="940" height="25" fill="url(#kitCounter)"/>
-      <rect x="0" y="225" width="940" height="8" fill="#e0cfb4"/>
-      <!-- Backsplash tile area -->
-      <rect x="0" y="195" width="940" height="30" fill="#e8d8c0"/>
-      <!-- Tile lines -->
-      <line x1="0" y1="210" x2="940" y2="210" stroke="#d0c0a8" stroke-width="0.5"/>
-      <line x1="0" y1="202" x2="940" y2="202" stroke="#d0c0a8" stroke-width="0.5"/>
-      <line x1="0" y1="218" x2="940" y2="218" stroke="#d0c0a8" stroke-width="0.5"/>
-
-      <!-- Under-counter cabinet -->
-      <rect x="0" y="255" width="940" height="145" fill="#c8a870"/>
-      <rect x="5" y="260" width="300" height="134" rx="2" fill="#d4b87c" stroke="#b89458" stroke-width="1.5"/>
-      <rect x="315" y="260" width="300" height="134" rx="2" fill="#d4b87c" stroke="#b89458" stroke-width="1.5"/>
-      <rect x="625" y="260" width="310" height="134" rx="2" fill="#d4b87c" stroke="#b89458" stroke-width="1.5"/>
-
-      <!-- ── Coffee setup ── -->
-      <!-- Coffee maker -->
-      <rect x="80" y="170" width="65" height="58" rx="4" fill="#222"/>
-      <rect x="84" y="174" width="57" height="35" rx="2" fill="#1a1a1a"/>
-      <rect x="88" y="177" width="49" height="28" rx="1" fill="#111"/>
-      <!-- Carafe -->
-      <path d="M92,204 L100,230 L130,230 L138,204 Z" fill="#333" stroke="#222" stroke-width="1"/>
-      <rect x="96" y="209" width="38" height="18" fill="#1a1a1a"/>
-      <!-- Coffee in carafe -->
-      <rect x="98" y="216" width="34" height="10" fill="#3d2010"/>
-
-      <!-- Coffee mug (main focus) -->
-      <path d="M175,195 L215,195 L212,232 L178,232 Z" fill="#f5f5f0"/>
-      <rect x="175" y="195" width="40" height="6" rx="2" fill="#e8e8e0"/>
-      <!-- Coffee in mug -->
-      <path d="M178,208 L212,208 L211,232 L179,232 Z" fill="#4a2010"/>
-      <ellipse cx="195" cy="208" rx="17" ry="5" fill="#5a2a18"/>
-      <!-- Mug handle -->
-      <path d="M215,205 Q230,205 230,218 Q230,230 215,230" fill="none" stroke="#f5f5f0" stroke-width="6" stroke-linecap="round"/>
-
-      <!-- Steam from mug -->
-      <g opacity="0.6" filter="url(#steamBlur)">
-        <path d="M188,193 Q184,180 188,168 Q192,156 188,144" fill="none" stroke="#c8c0b8" stroke-width="2.5" stroke-linecap="round">
-          <animate attributeName="d" values="M188,193 Q184,180 188,168 Q192,156 188,144;M188,193 Q192,178 188,164 Q184,152 188,140;M188,193 Q184,180 188,168 Q192,156 188,144" dur="3s" repeatCount="indefinite"/>
-          <animate attributeName="opacity" values="0.6;0.2;0.6" dur="3s" repeatCount="indefinite"/>
-        </path>
-        <path d="M195,190 Q191,175 195,161 Q199,148 195,136" fill="none" stroke="#c8c0b8" stroke-width="2" stroke-linecap="round">
-          <animate attributeName="d" values="M195,190 Q191,175 195,161 Q199,148 195,136;M195,190 Q199,173 195,158 Q191,145 195,133;M195,190 Q191,175 195,161 Q199,148 195,136" dur="4s" repeatCount="indefinite"/>
-          <animate attributeName="opacity" values="0.4;0.1;0.4" dur="4s" repeatCount="indefinite"/>
-        </path>
-        <path d="M203,193 Q207,178 203,164 Q199,150 203,137" fill="none" stroke="#c8c0b8" stroke-width="2" stroke-linecap="round">
-          <animate attributeName="d" values="M203,193 Q207,178 203,164 Q199,150 203,137;M203,193 Q199,176 203,162 Q207,148 203,135;M203,193 Q207,178 203,164 Q199,150 203,137" dur="3.5s" repeatCount="indefinite"/>
-          <animate attributeName="opacity" values="0.5;0.15;0.5" dur="3.5s" repeatCount="indefinite"/>
-        </path>
-      </g>
-
-      <!-- Phone on counter -->
-      <rect x="280" y="196" width="52" height="32" rx="5" fill="#111" stroke="#222" stroke-width="1.5"/>
-      <rect x="283" y="199" width="46" height="26" rx="3" fill="#1a2535"/>
-      <!-- Screen content -->
-      <rect x="284" y="200" width="44" height="24" rx="3" fill="#f8fafe"/>
-      <rect x="285" y="201" width="42" height="10" rx="1" fill="#e8f0fe"/>
-      <!-- Calendar icon -->
-      <rect x="287" y="202" width="8" height="8" rx="1" fill="#1a56db"/>
-      <text x="297" y="208" font-family="'Inter', sans-serif" font-size="4.5" fill="#333" font-weight="600">9:00 AM — Follow-up</text>
-      <text x="297" y="214" font-family="'Inter', sans-serif" font-size="4" fill="#666">St. Mary's Medical Center</text>
-      <text x="285" y="221" font-family="'Inter', sans-serif" font-size="3.5" fill="#888">Tuesday · Today</text>
-
-      <!-- Figure: hand picking up phone / holding coffee -->
-      <!-- Arm + hand reaching for phone -->
-      <path d="M260,400 Q268,350 278,290 Q282,260 288,240 Q292,232 298,228" fill="none" stroke="#c4783a" stroke-width="22" stroke-linecap="round"/>
-      <!-- Hand over phone -->
-      <ellipse cx="300" cy="224" rx="18" ry="12" fill="#c4783a"/>
-      <!-- Fingers -->
-      <path d="M288,218 Q284,210 286,205" fill="none" stroke="#c4783a" stroke-width="7" stroke-linecap="round"/>
-      <path d="M295,215 Q292,206 294,200" fill="none" stroke="#c4783a" stroke-width="7" stroke-linecap="round"/>
-      <path d="M303,215 Q301,205 303,199" fill="none" stroke="#c4783a" stroke-width="7" stroke-linecap="round"/>
-      <path d="M312,217 Q312,208 314,203" fill="none" stroke="#c4783a" stroke-width="6" stroke-linecap="round"/>
-
-      <!-- Second arm holding coffee -->
-      <path d="M190,400 Q195,360 196,320 Q197,280 196,240 Q196,232 197,225" fill="none" stroke="#c4783a" stroke-width="22" stroke-linecap="round"/>
-      <ellipse cx="197" cy="218" rx="15" ry="10" fill="#c4783a"/>
-
-      <!-- Warm morning light from window on counter -->
-      <ellipse cx="450" cy="240" rx="150" ry="20" fill="#fff4d0" opacity="0.4"/>
-
-      <!-- Subtle shadow under counter items -->
-      <ellipse cx="195" cy="234" rx="28" ry="4" fill="#b89860" opacity="0.3"/>
-      <ellipse cx="306" cy="234" rx="30" ry="4" fill="#b89860" opacity="0.3"/>
-    </svg>
-  </div>
-
-  <!-- ══ SCENE 3: CAR / DRIVING ══ -->
-  <div class="scene" id="s3">
-    <svg viewBox="0 0 940 400" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#c8e0f5"/>
-          <stop offset="70%" stop-color="#e8f4ff"/>
-          <stop offset="100%" stop-color="#f5e8d0"/>
-        </linearGradient>
-        <linearGradient id="road" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#4a4a4a"/>
-          <stop offset="100%" stop-color="#3a3a3a"/>
-        </linearGradient>
-        <linearGradient id="carInt" x1="0" y1="1" x2="0" y2="0">
-          <stop offset="0%" stop-color="#1a1008"/>
-          <stop offset="100%" stop-color="#0a0806"/>
-        </linearGradient>
-        <clipPath id="windshield">
-          <path d="M85,40 Q95,15 220,10 L720,10 Q845,15 855,40 L855,290 Q855,310 835,320 L105,320 Q85,310 85,290 Z"/>
-        </clipPath>
-      </defs>
-
-      <!-- Car interior (dark frame) -->
-      <rect x="0" y="0" width="940" height="400" fill="url(#carInt)"/>
-
-      <!-- Windshield opening -->
-      <path d="M85,40 Q95,15 220,10 L720,10 Q845,15 855,40 L855,290 Q855,310 835,320 L105,320 Q85,310 85,290 Z" fill="rgba(200,230,255,0.15)"/>
-
-      <!-- Scene through windshield - clipped -->
-      <g clip-path="url(#windshield)">
-        <!-- Sky -->
-        <rect x="85" y="0" width="770" height="220" fill="url(#sky)"/>
-
-        <!-- Morning sun glow (upper right) -->
-        <radialGradient id="sunGlow" cx="0.75" cy="0.1" r="0.5">
-          <stop offset="0%" stop-color="#ffd580" stop-opacity="0.8"/>
-          <stop offset="100%" stop-color="#ffd580" stop-opacity="0"/>
-        </radialGradient>
-        <rect x="85" y="0" width="770" height="220" fill="url(#sunGlow)"/>
-
-        <!-- Background buildings (slow parallax) -->
-        <g id="bldg-layer">
-          <rect x="90" y="120" width="55" height="95" fill="#b8c8d8"/>
-          <rect x="150" y="100" width="40" height="115" fill="#c0ccd8"/>
-          <rect x="195" y="130" width="70" height="85" fill="#b0bcc8"/>
-          <rect x="270" y="110" width="45" height="105" fill="#c4d0da"/>
-          <rect x="320" y="125" width="60" height="90" fill="#b8c4d0"/>
-          <rect x="385" y="95" width="50" height="120" fill="#bcc8d4"/>
-          <rect x="440" y="118" width="75" height="97" fill="#b4c0cc"/>
-          <rect x="520" y="108" width="45" height="107" fill="#c0ccD8"/>
-          <rect x="570" y="130" width="65" height="85" fill="#b8c4d0"/>
-          <rect x="640" y="100" width="50" height="115" fill="#c4d0dc"/>
-          <rect x="695" y="122" width="80" height="93" fill="#b0bcc8"/>
-          <rect x="780" y="110" width="55" height="105" fill="#bcc8d4"/>
-          <!-- Windows on buildings (dots of light) -->
-          <rect x="100" y="135" width="5" height="4" fill="#e8f0ff" opacity="0.7"/>
-          <rect x="110" y="135" width="5" height="4" fill="#e8f0ff" opacity="0.7"/>
-          <rect x="100" y="145" width="5" height="4" fill="#ffe890" opacity="0.8"/>
-          <rect x="158" y="118" width="4" height="4" fill="#e8f0ff" opacity="0.6"/>
-          <rect x="168" y="125" width="4" height="4" fill="#e8f0ff" opacity="0.6"/>
-          <rect x="330" y="138" width="5" height="4" fill="#ffe890" opacity="0.7"/>
-          <rect x="345" y="130" width="5" height="4" fill="#e8f0ff" opacity="0.6"/>
-          <animateTransform attributeName="transform" type="translate" values="0,0;-45,0" dur="8s" repeatCount="indefinite"/>
-        </g>
-
-        <!-- Road surface -->
-        <rect x="85" y="215" width="770" height="110" fill="url(#road)"/>
-        <!-- Road center dashes -->
-        <rect x="450" y="230" width="60" height="8" rx="2" fill="#e8d870" opacity="0.8">
-          <animateTransform attributeName="transform" type="translate" values="0,0;-120,0" dur="2s" repeatCount="indefinite"/>
-        </rect>
-        <rect x="620" y="230" width="60" height="8" rx="2" fill="#e8d870" opacity="0.8">
-          <animateTransform attributeName="transform" type="translate" values="0,0;-120,0" dur="2s" repeatCount="indefinite"/>
-        </rect>
-        <rect x="790" y="230" width="60" height="8" rx="2" fill="#e8d870" opacity="0.8">
-          <animateTransform attributeName="transform" type="translate" values="0,0;-120,0" dur="2s" repeatCount="indefinite"/>
-        </rect>
-        <rect x="90" y="230" width="60" height="8" rx="2" fill="#e8d870" opacity="0.8">
-          <animateTransform attributeName="transform" type="translate" values="120,0;0,0" dur="2s" repeatCount="indefinite"/>
-        </rect>
-        <rect x="200" y="230" width="60" height="8" rx="2" fill="#e8d870" opacity="0.8">
-          <animateTransform attributeName="transform" type="translate" values="0,0;-120,0" dur="2s" repeatCount="indefinite"/>
-        </rect>
-
-        <!-- Foreground trees (fast parallax) -->
-        <g id="tree-layer">
-          <!-- Tree 1 -->
-          <rect x="90" y="175" width="10" height="42" fill="#4a3820"/>
-          <ellipse cx="95" cy="165" rx="28" ry="35" fill="#3a6028"/>
-          <!-- Tree 2 -->
-          <rect x="245" y="178" width="9" height="38" fill="#4a3820"/>
-          <ellipse cx="249" cy="168" rx="24" ry="30" fill="#2e5020"/>
-          <!-- Tree 3 -->
-          <rect x="410" y="172" width="10" height="44" fill="#4a3820"/>
-          <ellipse cx="415" cy="160" rx="30" ry="38" fill="#3a6028"/>
-          <!-- Tree 4 -->
-          <rect x="580" y="176" width="9" height="40" fill="#4a3820"/>
-          <ellipse cx="585" cy="166" rx="26" ry="32" fill="#2e5020"/>
-          <!-- Tree 5 -->
-          <rect x="730" y="174" width="10" height="42" fill="#4a3820"/>
-          <ellipse cx="735" cy="163" rx="29" ry="36" fill="#3a6028"/>
-          <!-- Hospital sign in background -->
-          <rect x="490" y="138" width="80" height="35" rx="3" fill="#1a56db"/>
-          <text x="530" y="152" text-anchor="middle" font-family="'Inter',sans-serif" font-size="8" fill="white" font-weight="700">ST. MARY'S</text>
-          <text x="530" y="165" text-anchor="middle" font-family="'Inter',sans-serif" font-size="7" fill="rgba(255,255,255,0.8)">MEDICAL CENTER</text>
-          <rect x="524" y="173" width="12" height="20" fill="#1a56db"/>
-          <animateTransform attributeName="transform" type="translate" values="0,0;-180,0" dur="4s" repeatCount="indefinite"/>
-        </g>
-      </g>
-
-      <!-- Windshield frame / A-pillars -->
-      <path d="M0,0 L85,40 L85,320 L105,320 L95,30 L80,0 Z" fill="#0f0a06"/>
-      <path d="M940,0 L855,40 L855,320 L835,320 L845,30 L860,0 Z" fill="#0f0a06"/>
-      <!-- Dashboard -->
-      <path d="M0,320 Q200,340 470,342 Q740,340 940,320 L940,400 L0,400 Z" fill="#1a1008"/>
-      <rect x="0" y="316" width="940" height="8" fill="#221508"/>
-      <!-- Rearview mirror -->
-      <rect x="415" y="10" width="110" height="35" rx="4" fill="#0a0806" stroke="#1a1208" stroke-width="2"/>
-      <rect x="420" y="14" width="100" height="27" rx="2" fill="#1e2030" opacity="0.8"/>
-
-      <!-- Steering wheel -->
-      <circle cx="300" cy="380" r="85" fill="none" stroke="#0d0a06" stroke-width="24"/>
-      <circle cx="300" cy="380" r="85" fill="none" stroke="#221a10" stroke-width="18"/>
-      <!-- Steering wheel center -->
-      <circle cx="300" cy="380" r="28" fill="#1a1208"/>
-      <circle cx="300" cy="380" r="22" fill="#111"/>
-      <!-- Spokes -->
-      <line x1="300" y1="296" x2="300" y2="358" stroke="#1a1208" stroke-width="20" stroke-linecap="round"/>
-      <line x1="222" y1="424" x2="278" y2="393" stroke="#1a1208" stroke-width="16" stroke-linecap="round"/>
-      <line x1="378" y1="424" x2="322" y2="393" stroke="#1a1208" stroke-width="16" stroke-linecap="round"/>
-
-      <!-- Hands on wheel -->
-      <!-- Left hand -->
-      <path d="M228,350 Q225,360 222,375 Q220,390 225,405 Q228,415 235,420 Q245,425 252,415 Q258,405 255,390 Q252,375 248,360 Z" fill="#c4783a"/>
-      <path d="M228,350 Q236,342 245,345 Q252,348 255,358 Q252,370 248,360 Q244,350 236,348 Z" fill="#c4783a"/>
-      <!-- Right hand -->
-      <path d="M368,350 Q370,360 374,375 Q376,390 371,405 Q368,415 360,420 Q350,425 344,415 Q338,405 341,390 Q344,375 348,360 Z" fill="#c4783a"/>
-      <path d="M368,350 Q360,342 352,345 Q346,348 342,358 Q346,370 348,360 Q352,350 360,348 Z" fill="#c4783a"/>
-
-      <!-- Dashboard glare/reflection -->
-      <rect x="200" y="320" width="540" height="5" fill="#2a1e10" opacity="0.8"/>
-    </svg>
-  </div>
-
-  <!-- ══ SCENE 4: WAITING ROOM ══ -->
-  <div class="scene" id="s4">
-    <svg viewBox="0 0 940 400" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" id="waiting-room-svg">
-      <defs>
-        <linearGradient id="wrWall" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#f0ede8"/>
-          <stop offset="100%" stop-color="#e8e4de"/>
-        </linearGradient>
-        <linearGradient id="wrFloor" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#d8d0c4"/>
-          <stop offset="100%" stop-color="#c8c0b4"/>
-        </linearGradient>
-        <filter id="softShadow">
-          <feDropShadow dx="0" dy="4" stdDeviation="6" flood-opacity="0.12"/>
-        </filter>
-      </defs>
-
-      <!-- Wall -->
-      <rect x="0" y="0" width="940" height="400" fill="url(#wrWall)"/>
-      <!-- Wainscoting / wall panel line -->
-      <rect x="0" y="240" width="940" height="4" fill="#d8d0c4"/>
-      <rect x="0" y="244" width="940" height="156" fill="url(#wrFloor)"/>
-
-      <!-- Ceiling light -->
-      <ellipse cx="470" cy="0" rx="300" ry="80" fill="#fffef5" opacity="0.8"/>
-      <!-- Light fixtures -->
-      <rect x="280" y="0" width="380" height="8" fill="#e8e4d8"/>
-      <rect x="350" y="8" width="240" height="5" rx="1" fill="#d8d4c8" opacity="0.7"/>
-
-      <!-- TV on wall (left) -->
-      <rect x="40" y="40" width="160" height="100" rx="4" fill="#111" filter="url(#softShadow)"/>
-      <rect x="44" y="44" width="152" height="86" rx="2" fill="#1a2535"/>
-      <!-- TV screen content - news ticker -->
-      <rect x="44" y="44" width="152" height="74" fill="#1e3050"/>
-      <rect x="44" y="118" width="152" height="12" fill="#c02020"/>
-      <text x="120" y="127" text-anchor="middle" font-family="'Inter',sans-serif" font-size="5.5" fill="white" font-weight="600">BREAKING NEWS</text>
-      <!-- TV stand -->
-      <rect x="108" y="140" width="8" height="25" fill="#333"/>
-      <rect x="94" y="165" width="36" height="5" rx="1" fill="#444"/>
-
-      <!-- Background desk area (far right) -->
-      <rect x="750" y="150" width="190" height="130" rx="3" fill="#e0d8cc" filter="url(#softShadow)"/>
-      <rect x="750" y="145" width="190" height="10" rx="2" fill="#d0c8bc"/>
-      <!-- Desk lamp -->
-      <rect x="870" y="120" width="5" height="30" fill="#8a8078"/>
-      <ellipse cx="872" cy="120" rx="18" ry="8" fill="#a0988c"/>
-      <!-- Laptop on desk - AI interface glowing -->
-      <rect x="780" y="120" width="90" height="60" rx="4" fill="#1a1a2e"/>
-      <rect x="783" y="123" width="84" height="50" rx="2" fill="#0f1428"/>
-      <!-- Laptop screen - AI interface suggestion -->
-      <rect x="783" y="123" width="84" height="50" rx="2" fill="#0a1428"/>
-      <!-- Interface glow -->
-      <rect x="786" y="127" width="78" height="5" rx="1" fill="#1a56db" opacity="0.7"/>
-      <rect x="786" y="136" width="55" height="3" rx="1" fill="#3a76f0" opacity="0.5"/>
-      <rect x="786" y="142" width="40" height="3" rx="1" fill="#3a76f0" opacity="0.4"/>
-      <rect x="786" y="148" width="62" height="3" rx="1" fill="#3a76f0" opacity="0.45"/>
-      <rect x="786" y="154" width="35" height="3" rx="1" fill="#3a76f0" opacity="0.35"/>
-      <rect x="786" y="160" width="48" height="3" rx="1" fill="#3a76f0" opacity="0.4"/>
-      <!-- Laptop base -->
-      <rect x="775" y="178" width="100" height="5" rx="2" fill="#1a1a2e"/>
-      <!-- Laptop glow on desk -->
-      <ellipse cx="825" cy="175" rx="40" ry="8" fill="#1a56db" opacity="0.12"/>
-
-      <!-- Nurse walking (background) -->
-      <g transform="translate(640,100)">
-        <!-- Scrubs top -->
-        <path d="M-18,60 Q-22,45 -20,30 Q-18,20 0,18 Q18,20 20,30 Q22,45 18,60 Z" fill="#5a8fb0"/>
-        <!-- Scrubs pants -->
-        <path d="M-18,60 Q-20,75 -16,105 L-8,105 L0,80 L8,105 L16,105 Q20,75 18,60 Z" fill="#4a7f9e"/>
-        <!-- Head -->
-        <ellipse cx="0" cy="6" rx="14" ry="16" fill="#c4783a"/>
-        <!-- Hair up in bun -->
-        <ellipse cx="0" cy="-6" rx="12" ry="8" fill="#1e110a"/>
-        <circle cx="0" cy="-10" r="6" fill="#2a180e"/>
-        <!-- Neck -->
-        <rect x="-5" y="18" width="10" height="10" fill="#c4783a"/>
-        <!-- Arm - right -->
-        <path d="M20,30 Q30,40 28,60 L22,58 Q26,40 18,34 Z" fill="#c4783a"/>
-        <!-- Clipboard in arm -->
-        <rect x="24" y="42" width="20" height="26" rx="2" fill="#e8dcc8"/>
-        <rect x="26" y="45" width="16" height="3" rx="1" fill="#c8b898"/>
-        <rect x="26" y="51" width="14" height="2" rx="1" fill="#c8b898"/>
-        <rect x="26" y="56" width="16" height="2" rx="1" fill="#c8b898"/>
-        <!-- Left arm -->
-        <path d="M-20,30 Q-30,40 -28,60 L-22,58 Q-26,40 -18,34 Z" fill="#5a8fb0"/>
-        <!-- Legs showing below scrubs -->
-        <rect x="-14" y="95" width="10" height="30" fill="#c4783a"/>
-        <rect x="4" y="95" width="10" height="30" fill="#c4783a"/>
-        <!-- Shoes -->
-        <ellipse cx="-9" cy="126" rx="9" ry="5" fill="#f0f0f0"/>
-        <ellipse cx="9" cy="126" rx="9" ry="5" fill="#f0f0f0"/>
-        <!-- Walking animation -->
-        <animateTransform attributeName="transform" type="translate" values="640,100;400,100" dur="6s" repeatCount="indefinite"/>
-      </g>
-
-      <!-- CHAIRS - two rows -->
-      <!-- Row of chairs - background -->
-      <rect x="50" y="185" width="620" height="8" rx="2" fill="#c0b8ac"/>
-
-      <!-- Individual chair frames (4 linked chairs) -->
-      <!-- Chair 1 -->
-      <rect x="65" y="160" width="60" height="55" rx="4" fill="#d4ccc0" filter="url(#softShadow)"/>
-      <rect x="65" y="160" width="60" height="20" rx="4" fill="#c8bfb2"/>
-      <!-- Chair 2 -->
-      <rect x="135" y="160" width="60" height="55" rx="4" fill="#d4ccc0" filter="url(#softShadow)"/>
-      <rect x="135" y="160" width="60" height="20" rx="4" fill="#c8bfb2"/>
-      <!-- Chair 3 -->
-      <rect x="205" y="160" width="60" height="55" rx="4" fill="#d4ccc0" filter="url(#softShadow)"/>
-      <rect x="205" y="160" width="60" height="20" rx="4" fill="#c8bfb2"/>
-      <!-- Chair 4 -->
-      <rect x="275" y="160" width="60" height="55" rx="4" fill="#d4ccc0" filter="url(#softShadow)"/>
-      <rect x="275" y="160" width="60" height="20" rx="4" fill="#c8bfb2"/>
-
-      <!-- ── Main figures: daughter + mother ── -->
-      <!-- MOTHER (elderly, right seat, slightly hunched) -->
-      <!-- Seated on chair 3 -->
-      <!-- Lower body / legs -->
-      <path d="M215,215 Q220,250 218,280 L238,280 Q236,250 242,215 Z" fill="#7a6080"/>
-      <path d="M252,215 Q256,250 254,280 L274,280 Q270,250 275,215 Z" fill="#7a6080"/>
-      <!-- Shoes -->
-      <ellipse cx="228" cy="284" rx="16" ry="7" fill="#4a3820"/>
-      <ellipse cx="264" cy="284" rx="16" ry="7" fill="#4a3820"/>
-      <!-- Torso / body (seated) -->
-      <path d="M208,185 Q210,175 225,170 Q240,165 255,170 Q268,175 270,185 Q272,205 268,218 Q252,215 232,215 Q212,218 208,218 Z" fill="#8c7090"/>
-      <!-- Shawl/cardigan layer -->
-      <path d="M206,200 Q210,188 226,183 Q240,180 254,183 Q268,188 272,200 Q268,218 252,215 Q232,215 210,218 Z" fill="#a080a0" opacity="0.5"/>
-      <!-- Head (elderly, slightly forward) -->
-      <ellipse cx="240" cy="155" rx="28" ry="32" fill="#d4906a"/>
-      <!-- White/grey hair -->
-      <path d="M212,148 C214,122 224,114 240,113 C256,114 266,122 268,148 C264,132 256,125 240,124 C224,125 216,132 212,148Z" fill="#d8d0c8"/>
-      <path d="M212,148 C210,156 209,162 212,168 C210,164 208,157 212,148Z" fill="#d0c8c0"/>
-      <path d="M268,148 C270,156 271,162 268,168 C270,164 272,157 268,148Z" fill="#d0c8c0"/>
-      <!-- Neck (elderly) -->
-      <rect x="229" y="183" width="22" height="18" rx="3" fill="#d4906a"/>
-      <!-- Face details (older) -->
-      <ellipse cx="228" cy="153" rx="5" ry="3.5" fill="#2a1a10"/>
-      <ellipse cx="252" cy="153" rx="5" ry="3.5" fill="#2a1a10"/>
-      <!-- Glasses -->
-      <circle cx="228" cy="153" r="9" fill="none" stroke="#5a4030" stroke-width="2"/>
-      <circle cx="252" cy="153" r="9" fill="none" stroke="#5a4030" stroke-width="2"/>
-      <line x1="237" y1="152" x2="243" y2="152" stroke="#5a4030" stroke-width="1.5"/>
-      <line x1="212" y1="152" x2="219" y2="152" stroke="#5a4030" stroke-width="1.5"/>
-      <line x1="261" y1="152" x2="270" y2="152" stroke="#5a4030" stroke-width="1.5"/>
-      <!-- Lips (subtle smile) -->
-      <path d="M234,168 Q240,172 246,168" fill="none" stroke="#b87055" stroke-width="1.5" stroke-linecap="round"/>
-
-      <!-- DAUGHTER (left of mother, leaning slightly in) -->
-      <!-- Seated on chair 2 -->
-      <!-- Lower body / legs -->
-      <path d="M140,215 Q143,250 141,280 L163,280 Q161,250 167,215 Z" fill="#3d5070"/>
-      <path d="M175,215 Q178,250 175,280 L198,280 Q194,250 200,215 Z" fill="#3d5070"/>
-      <!-- Shoes -->
-      <ellipse cx="152" cy="284" rx="17" ry="7" fill="#2a1e10"/>
-      <ellipse cx="187" cy="284" rx="17" ry="7" fill="#2a1e10"/>
-      <!-- Torso (seated, leaning right slightly) -->
-      <path d="M132,182 Q135,170 152,164 Q168,159 183,165 Q197,172 198,183 Q200,205 195,218 Q175,215 155,215 Q135,217 130,215 Z" fill="#4a6588"/>
-      <!-- Head (turning slightly toward mother) -->
-      <ellipse cx="167" cy="143" rx="30" ry="33" fill="#c4783a" transform="rotate(4 167 143)"/>
-      <!-- Hair - medium length -->
-      <path d="M137,138 C139,110 151,100 167,99 C183,100 195,110 197,138 C193,120 184,113 167,112 C150,113 141,120 137,138Z" fill="#1e110a"/>
-      <path d="M137,138 C135,148 134,158 137,166 C134,160 132,150 137,138Z" fill="#1e110a"/>
-      <path d="M197,138 C199,148 200,158 197,166 C200,160 202,150 197,138Z" fill="#1e110a"/>
-      <!-- Neck -->
-      <rect x="155" y="174" width="24" height="20" rx="4" fill="#c4783a"/>
-      <!-- Face (looking slightly right toward mother) -->
-      <ellipse cx="157" cy="141" rx="5.5" ry="4" fill="#2a1a10"/>
-      <ellipse cx="179" cy="141" rx="5.5" ry="4" fill="#2a1a10"/>
-      <!-- Ear -->
-      <ellipse cx="137" cy="147" rx="7" ry="9" fill="#ba6e32"/>
-      <!-- Warm expression - slight smile -->
-      <path d="M160,160 Q167,165 174,161" fill="none" stroke="#a06040" stroke-width="1.5" stroke-linecap="round"/>
-
-      <!-- ── HOLDING HANDS (center focus) ── -->
-      <!-- Daughter's right arm reaching -->
-      <path d="M193,195 Q210,200 218,212" fill="none" stroke="#c4783a" stroke-width="14" stroke-linecap="round"/>
-      <!-- Mother's left arm reaching -->
-      <path d="M210,200 Q215,208 218,215" fill="none" stroke="#d4906a" stroke-width="14" stroke-linecap="round"/>
-      <!-- Hands clasped -->
-      <ellipse cx="218" cy="215" rx="20" ry="14" fill="#c4783a"/>
-      <ellipse cx="226" cy="218" rx="18" ry="12" fill="#d4906a"/>
-      <!-- Fingers intertwined (suggestion) -->
-      <path d="M208,210 Q214,205 222,209 Q228,212 232,208" fill="none" stroke="#ba6e32" stroke-width="3" stroke-linecap="round"/>
-      <path d="M210,218 Q216,213 224,217 Q230,220 234,216" fill="none" stroke="#c48050" stroke-width="3" stroke-linecap="round"/>
-
-      <!-- Floor reflection/shadow -->
-      <ellipse cx="200" cy="290" rx="100" ry="10" fill="#b8b0a4" opacity="0.3"/>
-      <ellipse cx="250" cy="290" rx="80" ry="8" fill="#b8b0a4" opacity="0.2"/>
-
-      <!-- Room door (background right) -->
-      <rect x="700" y="60" width="100" height="185" rx="3" fill="#e0d8cc"/>
-      <rect x="704" y="64" width="92" height="177" rx="2" fill="#d8d0c4"/>
-      <rect x="730" y="155" width="8" height="18" rx="2" fill="#b0a898"/>
-      <!-- Door frame -->
-      <rect x="700" y="58" width="104" height="187" rx="3" fill="none" stroke="#c8c0b4" stroke-width="4"/>
-    </svg>
-  </div>
-
-  <!-- ══ RECEIPT OVERLAY (scene 5 is same waiting room + overlay) ══ -->
-  <div id="receipt-overlay">
-    <div class="receipt-card">
-      <div class="rfield"><span class="rkey">authorized_by</span><span class="rval">patient_consent_0x4a2f</span></div>
-      <div class="rdivider"></div>
-      <div class="rfield"><span class="rkey">scope</span><span class="rval">read:records, write:scheduling</span></div>
-      <div class="rdivider"></div>
-      <div class="rfield"><span class="rkey">denied</span><span class="rval">send:external, delete:*</span></div>
-      <div class="rdivider"></div>
-      <div class="rfield"><span class="rkey">signed</span><span class="rval">06:51:03 AM · SHA-256</span></div>
-    </div>
-  </div>
-
-  <!-- ══ SCENE 6: RESOLUTION ══ -->
-  <div class="scene" id="s6">
-    <svg viewBox="0 0 940 400" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
-      <!-- Reuse the waiting room as base - slightly wider/warmer -->
-      <defs>
-        <linearGradient id="wrWall6" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#f2efeb"/>
-          <stop offset="100%" stop-color="#eae7e2"/>
-        </linearGradient>
-        <linearGradient id="wrFloor6" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#dad4cc"/>
-          <stop offset="100%" stop-color="#cac4bc"/>
-        </linearGradient>
-        <radialGradient id="warmLight" cx="0.5" cy="0" r="0.8">
-          <stop offset="0%" stop-color="#fff8e8" stop-opacity="0.9"/>
-          <stop offset="100%" stop-color="#fff8e8" stop-opacity="0"/>
-        </radialGradient>
-      </defs>
-
-      <rect x="0" y="0" width="940" height="400" fill="url(#wrWall6)"/>
-      <rect x="0" y="244" width="940" height="156" fill="url(#wrFloor6)"/>
-      <rect x="0" y="240" width="940" height="4" fill="#ccc8c0"/>
-      <!-- Warm overhead light -->
-      <rect x="0" y="0" width="940" height="400" fill="url(#warmLight)"/>
-
-      <!-- Same background elements - chairs, desk at smaller scale (pulled back) -->
-      <!-- Chairs row -->
-      <rect x="50" y="195" width="520" height="7" rx="2" fill="#c0b8ac"/>
-      <rect x="65" y="172" width="50" height="48" rx="3" fill="#d4ccc0"/>
-      <rect x="65" y="172" width="50" height="18" rx="3" fill="#c8bfb2"/>
-      <rect x="123" y="172" width="50" height="48" rx="3" fill="#d4ccc0"/>
-      <rect x="123" y="172" width="50" height="18" rx="3" fill="#c8bfb2"/>
-      <rect x="181" y="172" width="50" height="48" rx="3" fill="#d4ccc0"/>
-      <rect x="181" y="172" width="50" height="18" rx="3" fill="#c8bfb2"/>
-      <rect x="239" y="172" width="50" height="48" rx="3" fill="#d4ccc0"/>
-      <rect x="239" y="172" width="50" height="18" rx="3" fill="#c8bfb2"/>
-
-      <!-- Background desk/laptop -->
-      <rect x="720" y="165" width="180" height="115" rx="3" fill="#e0d8cc"/>
-      <rect x="720" y="160" width="180" height="9" rx="2" fill="#d0c8bc"/>
-      <rect x="750" y="130" width="80" height="52" rx="3" fill="#1a1a2e"/>
-      <rect x="754" y="134" width="72" height="44" rx="2" fill="#0f1428"/>
-      <rect x="756" y="137" width="68" height="4" rx="1" fill="#1a56db" opacity="0.5"/>
-      <ellipse cx="790" cy="178" rx="35" ry="6" fill="#1a56db" opacity="0.08"/>
-
-      <!-- Door (where doctor enters) -->
-      <rect x="660" y="50" width="95" height="195" rx="3" fill="#e0d8cc"/>
-      <rect x="664" y="54" width="87" height="187" rx="2" fill="#d8d0c4"/>
-      <rect x="688" y="155" width="7" height="16" rx="2" fill="#b0a898"/>
-      <rect x="660" y="48" width="99" height="197" rx="3" fill="none" stroke="#c8c0b4" stroke-width="4"/>
-
-      <!-- MOTHER - same as before, scaled slightly smaller (pulled back) -->
-      <ellipse cx="290" cy="162" rx="23" ry="26" fill="#d4906a"/>
-      <path d="M267,156 C269,133 279,126 290,125 C301,126 311,133 313,156 C309,143 303,138 290,137 C277,138 271,143 267,156Z" fill="#d0c8c0"/>
-      <rect x="280" y="186" width="20" height="14" rx="3" fill="#d4906a"/>
-      <path d="M262,193 Q266,182 278,177 Q290,172 302,177 Q312,182 316,193 Q318,210 314,220 Q298,218 281,218 Q264,221 260,218 Z" fill="#8c7090"/>
-      <circle cx="280" cy="161" r="7" fill="none" stroke="#5a4030" stroke-width="1.5"/>
-      <circle cx="300" cy="161" r="7" fill="none" stroke="#5a4030" stroke-width="1.5"/>
-      <line x1="287" y1="160" x2="293" y2="160" stroke="#5a4030" stroke-width="1.2"/>
-      <path d="M283,218 Q283,255 281,278 L296,278 Q294,255 296,218 Z" fill="#7a6080"/>
-      <path d="M297,218 Q296,255 294,278 L310,278 Q306,255 312,218 Z" fill="#7a6080"/>
-      <ellipse cx="289" cy="282" rx="14" ry="6" fill="#4a3820"/>
-      <ellipse cx="303" cy="282" rx="14" ry="6" fill="#4a3820"/>
-
-      <!-- DAUGHTER - pulled back -->
-      <ellipse cx="210" cy="150" rx="24" ry="27" fill="#c4783a" transform="rotate(4 210 150)"/>
-      <path d="M186,145 C188,120 199,111 210,110 C221,111 232,120 234,145 C230,129 223,123 210,122 C197,123 190,129 186,145Z" fill="#1e110a"/>
-      <rect x="199" y="175" width="22" height="16" rx="3" fill="#c4783a"/>
-      <path d="M178,191 Q181,180 196,174 Q210,169 224,175 Q236,181 238,192 Q240,212 235,222 Q218,219 201,219 Q184,221 178,218 Z" fill="#4a6588"/>
-      <path d="M178,218 Q178,255 176,278 L192,278 Q190,255 193,219 Z" fill="#3d5070"/>
-      <path d="M194,219 Q193,255 190,278 L208,278 Q204,255 210,219 Z" fill="#3d5070"/>
-      <ellipse cx="184" cy="282" rx="14" ry="6" fill="#2a1e10"/>
-      <ellipse cx="199" cy="282" rx="14" ry="6" fill="#2a1e10"/>
-
-      <!-- Hands clasped between them (smaller / pulled back) -->
-      <ellipse cx="248" cy="212" rx="15" ry="10" fill="#c4783a"/>
-      <ellipse cx="255" cy="215" rx="14" ry="9" fill="#d4906a"/>
-
-      <!-- DOCTOR entering from door (warm moment) -->
-      <g>
-        <!-- White coat -->
-        <path d="M688,90 Q692,78 708,73 Q720,70 730,73 Q744,78 748,90 Q750,110 746,125 Q732,122 718,122 Q704,125 700,120 Z" fill="#f5f5f0"/>
-        <path d="M694,125 Q695,155 692,185 L706,185 L710,148 L720,185 L734,185 Q730,155 734,125 Z" fill="#f5f5f0"/>
-        <!-- Scrubs under coat -->
-        <rect x="703" y="88" width="30" height="22" fill="#5a8fb0"/>
-        <!-- Head -->
-        <ellipse cx="718" cy="60" rx="22" ry="25" fill="#b06840"/>
-        <!-- Hair (curly, dark) -->
-        <path d="M696,54 C698,32 706,24 718,23 C730,24 738,32 740,54 C736,40 728,34 718,33 C708,34 700,40 696,54Z" fill="#1a0e08"/>
-        <!-- Neck -->
-        <rect x="710" y="82" width="16" height="12" rx="2" fill="#b06840"/>
-        <!-- Stethoscope -->
-        <path d="M706,88 Q700,100 704,115" fill="none" stroke="#333" stroke-width="3" stroke-linecap="round"/>
-        <circle cx="704" cy="116" r="5" fill="#555"/>
-        <!-- SMILE - warm expression -->
-        <path d="M709,68 Q718,74 727,68" fill="none" stroke="#904820" stroke-width="2" stroke-linecap="round"/>
-        <!-- Arms open, good news gesture -->
-        <path d="M748,90 Q760,95 762,110 Q760,120 750,120" fill="none" stroke="#b06840" stroke-width="12" stroke-linecap="round"/>
-        <path d="M700,90 Q688,95 686,110 Q688,120 698,120" fill="none" stroke="#b06840" stroke-width="12" stroke-linecap="round"/>
-        <!-- Legs -->
-        <rect x="706" y="178" width="8" height="35" fill="#3d5070"/>
-        <rect x="724" y="178" width="8" height="35" fill="#3d5070"/>
-        <ellipse cx="710" cy="214" rx="10" ry="5" fill="#1a1210"/>
-        <ellipse cx="728" cy="214" rx="10" ry="5" fill="#1a1210"/>
-      </g>
-
-      <!-- Warm light on the doctor/good news scene -->
-      <ellipse cx="500" cy="0" rx="400" ry="200" fill="#fff4d0" opacity="0.3"/>
-
-      <!-- Floor shadow -->
-      <ellipse cx="280" cy="290" rx="130" ry="10" fill="#b8b0a4" opacity="0.2"/>
-    </svg>
-  </div>
-
-  <!-- ══ SCENE 7: PRODUCT REVEAL ══ -->
   <div id="reveal">
     <div class="reveal-logo" id="r-logo">Authproof <span>Cloud</span></div>
     <div class="reveal-line" id="r-l1">Cryptographic authorization receipts for AI agents.</div>
     <div class="reveal-line" id="r-l2">HIPAA ready. &nbsp;Independently verifiable.</div>
     <div class="reveal-line" id="r-l3">Free to start.</div>
-    <div class="reveal-url" id="r-url">cloud.authproof.dev</div>
+    <div class="reveal-url"  id="r-url">cloud.authproof.dev</div>
     <div class="reveal-badges" id="r-badges">
       <div class="badge">HIPAA Ready</div>
       <div class="badge">SOC2 Ready</div>
       <div class="badge">EU AI Act Compliant</div>
     </div>
   </div>
-
-</div><!-- /cinema -->
-
-<div id="bot-bar">
-  <div id="subtitle-wrap"><div id="sub"></div></div>
 </div>
+
+<div id="bot-bar"></div>
 
 <button id="replay">↺ &nbsp;REPLAY</button>
 
 <script>
-/* ─── Film grain ─────────────────────────────────── */
+/* ── Film grain ─────────────────────────────── */
 (function grain() {
   const c = document.getElementById('grain');
   const setSize = () => {
@@ -987,13 +204,13 @@
   const ctx = c.getContext('2d');
   let frame = 0;
   function tick() {
-    if (frame++ % 2 === 0) { // update every other frame for perf
+    if (frame++ % 2 === 0) {
       const id = ctx.createImageData(c.width, c.height);
       const d  = id.data;
       for (let i = 0; i < d.length; i += 4) {
         const v = Math.random() * 255 | 0;
         d[i] = d[i+1] = d[i+2] = v;
-        d[i+3] = (Math.random() * 28) | 0;
+        d[i+3] = (Math.random() * 10) | 0;
       }
       ctx.putImageData(id, 0, 0);
     }
@@ -1003,21 +220,20 @@
   window.addEventListener('resize', setSize);
 })();
 
-/* ─── Letterbox sizing ───────────────────────────── */
+/* ── Letterbox ──────────────────────────────── */
 function layout() {
   const vw = window.innerWidth, vh = window.innerHeight;
-  const cw = vw, ch = vw / 2.35;
+  const ch = vw / 2.35;
   const barH = Math.max(0, (vh - ch) / 2);
   document.getElementById('top-bar').style.height = barH + 'px';
   document.getElementById('bot-bar').style.height = barH + 'px';
   const cinema = document.getElementById('cinema');
-  cinema.style.width  = cw + 'px';
+  cinema.style.width  = vw + 'px';
   cinema.style.height = ch + 'px';
 }
 layout();
 window.addEventListener('resize', layout);
 
-/* ─── Helpers ────────────────────────────────────── */
 const $ = id => document.getElementById(id);
 
 function fadeEl(el, from, to, dur, delay = 0) {
@@ -1027,240 +243,153 @@ function fadeEl(el, from, to, dur, delay = 0) {
   );
 }
 
-function showScene(id, dur = 1400) {
-  const el = $(id);
-  el.style.display = 'block';
-  return fadeEl(el, 0, 1, dur);
-}
-
-function hideScene(id, dur = 1400) {
-  const el = $(id);
-  const a = fadeEl(el, 1, 0, dur);
-  a.onfinish = () => { el.style.display = 'none'; };
-  return a;
-}
-
-/* ─── Subtitle system ────────────────────────────── */
-const subEl = $('sub');
-let subTimeout = null;
-
-function showSub(text, fadeDur = 700) {
-  subEl.classList.remove('show');
-  clearTimeout(subTimeout);
-  subTimeout = setTimeout(() => {
-    subEl.innerHTML = text;
-    subEl.classList.add('show');
-  }, fadeDur / 2);
-}
-
-function hideSub(fadeDur = 700) {
-  subEl.classList.remove('show');
-}
-
-/* ─── Camera animations ──────────────────────────── */
-function cameraPullBack(sceneEl, duration = 4000) {
-  sceneEl.animate(
-    [{ transform: 'scale(1.08)' }, { transform: 'scale(1.0)' }],
-    { duration, fill: 'forwards', easing: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)' }
-  );
-}
-
-function cameraDrift(sceneEl, fromX, toX, duration = 8000) {
-  sceneEl.animate(
-    [{ transform: `translateX(${fromX}px)` }, { transform: `translateX(${toX}px)` }],
-    { duration, fill: 'forwards', easing: 'linear' }
-  );
-}
-
-/* ─── Main timeline ──────────────────────────────── */
-let startTs = null;
-let playing = false;
-
+/* ── Narration cues ─────────────────────────── */
+// [start_ms, end_ms, html, font]
 const SUBS = [
-  // [start_ms, end_ms, html]
-  [500,   6000,  '"Tuesday. 6:47 AM. A suburb outside the city."'],
-  [13000, 23000, 'She has been managing her mother\'s care for three years.'],
-  [25000, 30500, 'Her mother\'s care team uses an AI assistant now.'],
-  [30500, 34000, 'Scheduling. Prior authorizations. Medication reviews.<br>It is supposed to make things easier.'],
-  [35500, 42000, 'Somewhere in that system, an AI agent has access<br>to her mother\'s records.'],
-  [42000, 46000, 'Her insurance. Her medications. Her history.<br>Has anyone asked what it is actually allowed to do?'],
-  [47500, 50500, 'Authproof is a cryptographic receipt.'],
-  [50500, 53000, 'Signed before the agent acts.'],
-  [53000, 55500, 'Proof of what was authorized.'],
-  [55500, 57000, 'Not reconstructed from logs. Not the vendor\'s word.'],
-  [57000, 58500, 'Math.'],
-  [59500, 65000, 'The people using AI in healthcare deserve to know<br>what it was authorized to do.'],
+  [500,   6000,  '"Tuesday. 6:47 AM. A suburb outside the city."',                                                    'lora'],
+  [13000, 23000, 'She has been managing her mother\'s care<br>for three years.',                                       'lora'],
+  [25000, 30500, 'Her mother\'s care team uses an AI assistant now.',                                                  'lora'],
+  [30500, 34000, 'Scheduling. Prior authorizations. Medication reviews.<br>It is supposed to make things easier.',     'lora'],
+  [35500, 42000, 'Somewhere in that system, an AI agent has access<br>to her mother\'s records.',                      'lora'],
+  [42000, 46000, 'Her insurance. Her medications. Her history.<br>Has anyone asked what it is actually allowed to do?','lora'],
+  [47500, 50500, 'Authproof is a cryptographic receipt.',                                                              'inter'],
+  [50500, 53000, 'Signed before the agent acts.',                                                                      'inter'],
+  [53000, 55500, 'Proof of what was authorized.',                                                                      'inter'],
+  [55500, 57000, 'Not reconstructed from logs. Not the vendor\'s word.',                                               'inter'],
+  [57000, 58500, 'Math.',                                                                                              'inter'],
+  [59500, 65000, 'The people using AI in healthcare deserve to know<br>what it was authorized to do.',                 'lora'],
 ];
 
+const FADE_MS = 800;
+const textEl   = $('story-text');
 let lastSubIdx = -1;
+
+function updateBackground(elapsed) {
+  // Slowly warm from pure white toward #fffef8 over 65 s, then return to white
+  let r = 255, g = 255, b = 255;
+  if (elapsed < 65000) {
+    const t = elapsed / 65000;           // 0 → 1
+    g = Math.round(255 - t * 1);         // 255 → 254
+    b = Math.round(255 - t * 7);         // 255 → 248
+  } else if (elapsed < 72000) {
+    const t = (elapsed - 65000) / 7000;  // 0 → 1
+    g = Math.round(254 + t * 1);         // 254 → 255
+    b = Math.round(248 + t * 7);         // 248 → 255
+  }
+  $('cinema').style.background = `rgb(${r},${g},${b})`;
+}
 
 function updateSubs(elapsed) {
   let activeIdx = -1;
   for (let i = 0; i < SUBS.length; i++) {
-    if (elapsed >= SUBS[i][0] && elapsed < SUBS[i][1]) {
-      activeIdx = i;
-      break;
-    }
+    if (elapsed >= SUBS[i][0] && elapsed < SUBS[i][1]) { activeIdx = i; break; }
   }
-  if (activeIdx !== lastSubIdx) {
-    lastSubIdx = activeIdx;
-    if (activeIdx >= 0) {
-      showSub(SUBS[activeIdx][2]);
-    } else {
-      hideSub();
-    }
+  if (activeIdx === lastSubIdx) return;
+  lastSubIdx = activeIdx;
+
+  // Cancel any running animation on the text element
+  textEl.getAnimations().forEach(a => a.cancel());
+
+  if (activeIdx < 0) {
+    // Fade out
+    textEl.animate([{ opacity: getComputedStyle(textEl).opacity }, { opacity: 0 }],
+      { duration: 500, fill: 'forwards', easing: 'ease-out' });
+    return;
   }
+
+  const [start, end, html, font] = SUBS[activeIdx];
+  textEl.classList.toggle('inter', font === 'inter');
+  textEl.innerHTML = html;
+
+  const remaining = Math.max(end - elapsed, 400);
+  const fi = Math.min(FADE_MS, remaining * 0.3);
+  const fo = Math.min(FADE_MS, remaining * 0.3);
+  const holdEnd = Math.max((remaining - fo) / remaining, fi / remaining + 0.01);
+
+  textEl.animate(
+    [
+      { opacity: 0 },
+      { opacity: 1,  offset: fi / remaining },
+      { opacity: 1,  offset: holdEnd },
+      { opacity: 0 },
+    ],
+    { duration: remaining, fill: 'forwards' }
+  );
 }
 
-// Scene transition schedule (in ms)
-const SCENES = [
-  { id: 's1', start: 0,     end: 13500  },
-  { id: 's2', start: 12000, end: 25500  },
-  { id: 's3', start: 24000, end: 35500  },
-  { id: 's4', start: 34000, end: 58500  },
-  { id: 's6', start: 57000, end: 72000  },
-];
-
-let sceneState = {}; // tracks shown/hidden
-
-function updateScenes(elapsed) {
-  for (const s of SCENES) {
-    const shouldShow = elapsed >= s.start && elapsed < s.end;
-    const isShown    = sceneState[s.id] === 'shown';
-    const isHiding   = sceneState[s.id] === 'hiding';
-
-    if (shouldShow && !isShown && !isHiding) {
-      sceneState[s.id] = 'shown';
-      showScene(s.id, s.id === 's1' ? 1800 : 1400);
-      // Camera moves
-      if (s.id === 's1') cameraPullBack($(s.id), 7000);
-      if (s.id === 's2') cameraDrift($(s.id), 12, -12, 12000);
-    }
-    if (!shouldShow && isShown) {
-      sceneState[s.id] = 'hiding';
-      hideScene(s.id, 1400);
-      setTimeout(() => {
-        if (sceneState[s.id] === 'hiding') sceneState[s.id] = 'hidden';
-      }, 1600);
-    }
-  }
-}
-
-// Receipt overlay: scene 5 (46s - 58s)
-let receiptShown = false, receiptHidden = false;
-function updateReceipt(elapsed) {
-  const ro = $('receipt-overlay');
-  if (elapsed >= 46000 && elapsed < 58000 && !receiptShown) {
-    receiptShown = true;
-    // Show waiting room underneath
-    const s4 = $('s4');
-    if (sceneState['s4'] !== 'shown') {
-      sceneState['s4'] = 'shown';
-      s4.style.display = 'block';
-      fadeEl(s4, 0, 1, 1200);
-    }
-    // Fade in receipt after short delay
-    setTimeout(() => {
-      fadeEl(ro, 0, 1, 1200);
-    }, 800);
-    // Fade out receipt after 3.5s
-    setTimeout(() => {
-      fadeEl(ro, 1, 0, 1200);
-    }, 4500);
-  }
-}
-
-// Reveal: scene 7 (72s - 85s)
+/* ── Product reveal ─────────────────────────── */
 let revealStarted = false;
 function updateReveal(elapsed) {
-  if (elapsed >= 72000 && !revealStarted) {
-    revealStarted = true;
-    const rv = $('reveal');
-    rv.style.display = 'flex';
-    fadeEl(rv, 0, 1, 1800);
+  if (elapsed < 72000 || revealStarted) return;
+  revealStarted = true;
 
-    // Stagger reveal elements
-    const items = [
-      { el: $('r-logo'),   delay: 1800 },
-      { el: $('r-l1'),     delay: 2800 },
-      { el: $('r-l2'),     delay: 3600 },
-      { el: $('r-l3'),     delay: 4200 },
-      { el: $('r-url'),    delay: 5000 },
-      { el: $('r-badges'), delay: 6000 },
-    ];
-    for (const item of items) {
-      fadeEl(item.el, 0, 1, 800, item.delay);
-    }
-  }
+  textEl.getAnimations().forEach(a => a.cancel());
+  textEl.style.opacity = '0';
+
+  const rv = $('reveal');
+  rv.style.display = 'flex';
+  fadeEl(rv, 0, 1, 1200);
+
+  const items = [
+    { id: 'r-logo',   delay: 900  },
+    { id: 'r-l1',     delay: 1900 },
+    { id: 'r-l2',     delay: 2700 },
+    { id: 'r-l3',     delay: 3300 },
+    { id: 'r-url',    delay: 4100 },
+    { id: 'r-badges', delay: 5100 },
+  ];
+  for (const { id, delay } of items) fadeEl($(id), 0, 1, 800, delay);
 }
 
+/* ── End / replay ───────────────────────────── */
 let endShown = false;
 function updateEnd(elapsed) {
-  if (elapsed >= 86000 && !endShown) {
-    endShown = true;
-    hideSub();
-    const btn = $('replay');
-    btn.style.display = 'block';
-    btn.animate([{opacity:0},{opacity:1}], {duration:600, fill:'forwards'});
-  }
+  if (elapsed < 86000 || endShown) return;
+  endShown = true;
+  const btn = $('replay');
+  btn.style.display = 'block';
+  btn.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 600, fill: 'forwards' });
 }
 
+/* ── Main loop ──────────────────────────────── */
+let startTs = null;
 function tick(timestamp) {
   if (!startTs) startTs = timestamp;
   const elapsed = timestamp - startTs;
-
+  updateBackground(elapsed);
   updateSubs(elapsed);
-  updateScenes(elapsed);
-  updateReceipt(elapsed);
   updateReveal(elapsed);
   updateEnd(elapsed);
-
-  if (elapsed < 90000) {
-    requestAnimationFrame(tick);
-  }
+  if (elapsed < 90000) requestAnimationFrame(tick);
 }
 
-// Replay
+/* ── Reset / replay ─────────────────────────── */
 function reset() {
-  // Hide all scenes
-  for (const s of SCENES) {
-    const el = $(s.id);
-    el.style.opacity = 0;
-    el.style.display = 'none';
-    el.style.transform = '';
-    el.getAnimations().forEach(a => a.cancel());
-  }
-  sceneState = {};
-  receiptShown = false;
-  receiptHidden = false;
+  lastSubIdx   = -1;
   revealStarted = false;
-  endShown = false;
-  lastSubIdx = -1;
+  endShown      = false;
+  startTs       = null;
 
-  // Hide receipt overlay
-  $('receipt-overlay').style.opacity = 0;
-  $('receipt-overlay').getAnimations().forEach(a => a.cancel());
+  textEl.getAnimations().forEach(a => a.cancel());
+  textEl.style.opacity = '0';
+  textEl.innerHTML     = '';
 
-  // Hide reveal
   const rv = $('reveal');
   rv.style.display = 'none';
-  rv.style.opacity = 0;
+  rv.style.opacity = '0';
+  rv.getAnimations().forEach(a => a.cancel());
   ['r-logo','r-l1','r-l2','r-l3','r-url','r-badges'].forEach(id => {
     const el = $(id);
-    el.style.opacity = 0;
+    el.style.opacity = '0';
     el.getAnimations().forEach(a => a.cancel());
   });
 
-  hideSub();
+  $('cinema').style.background = '#ffffff';
   $('replay').style.display = 'none';
-  startTs = null;
-
   requestAnimationFrame(tick);
 }
 
 $('replay').addEventListener('click', reset);
-
-// Auto-start
 requestAnimationFrame(tick);
 </script>
 
