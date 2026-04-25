@@ -53,6 +53,7 @@
     { "src": "/services",           "dest": "/frontend/services.html" },
     { "src": "/managed-ai",         "dest": "/frontend/managed-ai.html" },
     { "src": "/healthcare",         "dest": "/frontend/healthcare.html" },
+    { "src": "/compliance",         "dest": "/frontend/compliance.html" },
     { "src": "/(.*)",               "dest": "/frontend/$1" }
   ]
 }

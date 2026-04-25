@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Compliance Mapping — Authproof Cloud</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --blue:     #1a56db;
+      --blue-lt:  #e8f0fe;
+      --blue-dk:  #1340a8;
+      --gray-50:  #f8f9fa;
+      --gray-100: #f1f3f4;
+      --gray-200: #e5e7eb;
+      --gray-400: #9ca3af;
+      --gray-500: #6b7280;
+      --gray-600: #4b5563;
+      --gray-700: #374151;
+      --gray-800: #1f2937;
+      --gray-900: #111111;
+      --green:    #16a34a;
+      --green-lt: #dcfce7;
+      --green-dk: #15803d;
+      --amber:    #d97706;
+      --amber-lt: #fffbeb;
+      --amber-bd: #fde68a;
+      --white:    #ffffff;
+      --mono:     'JetBrains Mono', 'Courier New', monospace;
+      --sans:     'Inter', sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--white);
+      color: var(--gray-800);
+      font-family: var(--sans);
+      font-size: 16px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+
+    /* Buttons */
+    .btn {
+      display: inline-block;
+      font-family: var(--sans);
+      font-size: 15px;
+      font-weight: 600;
+      padding: 12px 24px;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: all 0.15s;
+      border-radius: 980px;
+      text-align: center;
+      text-decoration: none;
+    }
+    .btn-primary { background: var(--blue); color: var(--white); border-color: var(--blue); }
+    .btn-primary:hover { background: var(--blue-dk); border-color: var(--blue-dk); }
+    .btn-outline { background: transparent; color: var(--blue); border-color: var(--blue); }
+    .btn-outline:hover { background: var(--blue-lt); }
+
+    /* Nav */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(255,255,255,0.97);
+      backdrop-filter: blur(8px);
+      transition: box-shadow 0.2s, border-color 0.2s;
+    }
+    nav.scrolled { border-bottom: 1px solid var(--gray-200); box-shadow: 0 1px 8px rgba(0,0,0,0.06); }
+    .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 64px; }
+    .nav-logo { font-size: 17px; font-weight: 700; color: var(--gray-900); }
+    .nav-logo span { color: var(--blue); }
+    .nav-links { display: flex; align-items: center; gap: 32px; list-style: none; }
+    .nav-links a { font-size: 14px; font-weight: 500; color: var(--gray-600); transition: color 0.15s; }
+    .nav-links a:hover { color: var(--gray-900); }
+    .nav-actions { display: flex; align-items: center; gap: 12px; }
+    .nav-actions .btn { padding: 8px 18px; font-size: 14px; }
+    .hamburger { display: none; flex-direction: column; gap: 5px; cursor: pointer; padding: 4px; background: none; border: none; }
+    .hamburger span { display: block; width: 22px; height: 2px; background: var(--gray-800); }
+    .mobile-menu { display: none; position: fixed; inset: 64px 0 0 0; background: rgba(255,255,255,0.97); backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%); border-top: 1px solid rgba(0,0,0,0.08); padding: 20px 24px 32px; z-index: 99; flex-direction: column; gap: 2px; }
+    .mobile-menu.open { display: flex; }
+    .mobile-menu a:not(.btn) { font-size: 16px; font-weight: 500; color: var(--gray-700); padding: 13px 0; border-bottom: 1px solid var(--gray-200); text-decoration: none; }
+    .mobile-menu .btn-outline { margin-top: 20px; width: 100%; padding: 13px 20px; font-size: 15px; display: block; }
+    .mobile-menu .btn-primary { margin-top: 10px; width: 100%; padding: 14px 20px; font-size: 15px; font-weight: 700; display: block; }
+
+    /* Hero */
+    .hero { padding: 72px 0 56px; border-bottom: 1px solid var(--gray-200); }
+    .hero-badge { display: inline-flex; align-items: center; gap: 8px; background: var(--blue-lt); color: var(--blue); font-size: 13px; font-weight: 600; padding: 6px 14px; border-radius: 100px; margin-bottom: 20px; }
+    .hero-badge::before { content: ''; display: block; width: 7px; height: 7px; background: var(--blue); border-radius: 50%; }
+    .hero h1 { font-size: clamp(26px, 3.5vw, 44px); font-weight: 700; line-height: 1.15; letter-spacing: -0.025em; color: var(--gray-900); margin-bottom: 16px; max-width: 720px; }
+    .hero-sub { font-size: 17px; color: var(--gray-600); max-width: 620px; line-height: 1.65; margin-bottom: 32px; }
+    .hero-meta { display: flex; gap: 32px; flex-wrap: wrap; }
+    .hero-meta-item { font-size: 13px; color: var(--gray-500); display: flex; align-items: center; gap: 6px; }
+    .hero-meta-item strong { color: var(--gray-800); font-weight: 600; }
+
+    /* Disclaimer box */
+    .disclaimer {
+      background: var(--amber-lt);
+      border: 1px solid var(--amber-bd);
+      border-left: 4px solid var(--amber);
+      border-radius: 8px;
+      padding: 18px 22px;
+      margin: 40px 0;
+      font-size: 14px;
+      color: #92400e;
+      line-height: 1.65;
+    }
+    .disclaimer strong { font-weight: 700; color: #78350f; }
+
+    /* Section nav (jump links) */
+    .section-nav {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 48px;
+    }
+    .section-nav a {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--blue);
+      background: var(--blue-lt);
+      padding: 6px 14px;
+      border-radius: 100px;
+      transition: background 0.15s;
+    }
+    .section-nav a:hover { background: #d0e3fc; }
+
+    /* Compliance section */
+    .compliance-section { padding: 56px 0; border-bottom: 1px solid var(--gray-200); }
+    .compliance-section:last-of-type { border-bottom: none; }
+    .cs-header { margin-bottom: 28px; }
+    .cs-label { font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--blue); margin-bottom: 8px; }
+    .cs-title { font-size: clamp(20px, 2.5vw, 28px); font-weight: 700; color: var(--gray-900); letter-spacing: -0.02em; margin-bottom: 10px; }
+    .cs-desc { font-size: 15px; color: var(--gray-600); max-width: 680px; line-height: 1.65; }
+
+    /* Compliance table */
+    .comp-table-wrap { overflow-x: auto; border-radius: 8px; border: 1px solid var(--gray-200); }
+    .comp-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+      background: var(--white);
+    }
+    .comp-table thead tr { background: var(--gray-50); }
+    .comp-table th {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--gray-500);
+      padding: 13px 20px;
+      text-align: left;
+      border-bottom: 1px solid var(--gray-200);
+      white-space: nowrap;
+    }
+    .comp-table td {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--gray-200);
+      vertical-align: top;
+      line-height: 1.55;
+    }
+    .comp-table tbody tr:last-child td { border-bottom: none; }
+    .comp-table tbody tr:hover td { background: #fafafa; }
+    .td-req { font-weight: 600; color: var(--gray-900); min-width: 180px; }
+    .td-cite { font-family: var(--mono); font-size: 12px; color: var(--gray-500); white-space: nowrap; min-width: 140px; }
+    .td-desc { color: var(--gray-600); min-width: 300px; }
+    .td-status { min-width: 160px; }
+
+    /* Status badges */
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 4px 10px;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+    .badge-green { background: var(--green-lt); color: var(--green-dk); }
+    .badge-amber { background: var(--amber-lt); color: #92400e; border: 1px solid var(--amber-bd); }
+
+    /* Table note */
+    .table-note {
+      margin-top: 14px;
+      font-size: 13px;
+      color: var(--gray-500);
+      line-height: 1.6;
+      padding: 12px 16px;
+      background: var(--amber-lt);
+      border: 1px solid var(--amber-bd);
+      border-radius: 6px;
+    }
+
+    /* CTA section */
+    .cta-section {
+      background: var(--blue);
+      padding: 72px 0;
+      margin-top: 0;
+    }
+    .cta-inner { text-align: center; max-width: 600px; margin: 0 auto; }
+    .cta-inner h2 { font-size: clamp(22px, 3vw, 32px); font-weight: 700; color: var(--white); letter-spacing: -0.02em; margin-bottom: 14px; line-height: 1.25; }
+    .cta-inner p { font-size: 16px; color: rgba(255,255,255,0.75); margin-bottom: 32px; line-height: 1.65; }
+    .cta-buttons { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    .btn-white { background: var(--white); color: var(--blue); border-color: var(--white); font-weight: 700; }
+    .btn-white:hover { background: rgba(255,255,255,0.92); border-color: rgba(255,255,255,0.92); }
+    .btn-ghost { background: transparent; color: var(--white); border-color: rgba(255,255,255,0.5); }
+    .btn-ghost:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.8); }
+
+    /* Footer */
+    footer { background: var(--gray-900); color: rgba(255,255,255,0.65); padding: 64px 0 0; }
+    .footer-grid { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; gap: 48px; padding-bottom: 48px; border-bottom: 1px solid #2a2a2a; }
+    .f-brand { font-size: 16px; font-weight: 700; color: var(--white); margin-bottom: 10px; }
+    .f-tagline { font-size: 13px; color: rgba(255,255,255,0.35); line-height: 1.5; max-width: 220px; }
+    .f-col h4 { font-size: 12px; font-weight: 700; color: rgba(255,255,255,0.45); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 16px; }
+    .f-col ul { list-style: none; }
+    .f-col li { margin-bottom: 10px; }
+    .f-col a { font-size: 14px; color: rgba(255,255,255,0.6); transition: color 0.15s; }
+    .f-col a:hover { color: var(--white); }
+    .footer-bottom { padding: 20px 0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+    .footer-bottom-text { font-size: 13px; color: rgba(255,255,255,0.3); }
+    .footer-badges { display: flex; gap: 10px; }
+    .f-badge { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.45); border: 1px solid rgba(255,255,255,0.15); padding: 4px 10px; border-radius: 3px; }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .footer-grid { grid-template-columns: 1fr 1fr; gap: 36px; }
+    }
+    @media (max-width: 640px) {
+      .hero { padding: 48px 0 40px; }
+      .nav-links, .nav-actions { display: none; }
+      .hamburger { display: flex; }
+      .footer-grid { grid-template-columns: 1fr; }
+      .comp-table th, .comp-table td { padding: 12px 14px; }
+      .hero-meta { flex-direction: column; gap: 10px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav id="nav">
+  <div class="container">
+    <div class="nav-inner">
+      <a class="nav-logo" href="/">Authproof <span>Cloud</span></a>
+      <ul class="nav-links">
+        <li><a href="/#features">Features</a></li>
+        <li><a href="/#pricing">Pricing</a></li>
+        <li><a href="https://github.com/Commonguy25/authproof-sdk">Docs</a></li>
+        <li><a href="/#security">Security</a></li>
+        <li><a href="/managed-ai">For Managed AI</a></li>
+        <li><a href="/healthcare">Healthcare</a></li>
+      </ul>
+      <div class="nav-actions">
+        <a href="/login" class="btn btn-outline">Log in</a>
+        <a href="/signup" class="btn btn-primary">Start free</a>
+      </div>
+      <button class="hamburger" id="hamburgerBtn" onclick="toggleMenu()" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<div class="mobile-menu" id="mobileMenu">
+  <a href="/#features" onclick="closeMenu()">Features</a>
+  <a href="/#pricing" onclick="closeMenu()">Pricing</a>
+  <a href="https://github.com/Commonguy25/authproof-sdk" onclick="closeMenu()">Docs</a>
+  <a href="/#security" onclick="closeMenu()">Security</a>
+  <a href="/managed-ai" onclick="closeMenu()">For Managed AI</a>
+  <a href="/healthcare" onclick="closeMenu()">Healthcare</a>
+  <a href="/login" class="btn btn-outline">Log in</a>
+  <a href="/signup" class="btn btn-primary">Start free</a>
+</div>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="container">
+    <div class="hero-badge">Compliance Documentation</div>
+    <h1>How Authproof satisfies regulatory requirements for AI agents</h1>
+    <p class="hero-sub">A requirement-by-requirement mapping of Authproof features to HIPAA, SOC 2, EU AI Act, and PCI-DSS obligations for AI agent authorization and audit logging.</p>
+    <div class="hero-meta">
+      <div class="hero-meta-item">🏥 <strong>HIPAA</strong> §164.312 Audit Controls</div>
+      <div class="hero-meta-item">✅ <strong>SOC 2</strong> Type II Ready</div>
+      <div class="hero-meta-item">🇪🇺 <strong>EU AI Act</strong> Art. 9–15</div>
+      <div class="hero-meta-item">💳 <strong>PCI-DSS</strong> v4.0 R7/R10</div>
+    </div>
+  </div>
+</section>
+
+<!-- Content -->
+<div style="background:var(--white);">
+  <div class="container">
+
+    <div class="disclaimer">
+      <strong>Not a certification statement.</strong> This document maps Authproof features to regulatory requirements as an informational reference. Authproof is not a HIPAA-covered entity, SOC 2 auditor, or EU AI Act notified body. Compliance determinations for your organization must be made by qualified legal and compliance counsel. The features described here are intended to support your compliance program — they do not substitute for one.
+    </div>
+
+    <!-- Jump links -->
+    <div class="section-nav">
+      <a href="#hipaa">HIPAA</a>
+      <a href="#soc2">SOC 2</a>
+      <a href="#eu-ai-act">EU AI Act</a>
+      <a href="#pci-dss">PCI-DSS</a>
+    </div>
+
+    <!-- HIPAA -->
+    <div class="compliance-section" id="hipaa">
+      <div class="cs-header">
+        <div class="cs-label">HIPAA</div>
+        <div class="cs-title">Health Insurance Portability and Accountability Act</div>
+        <p class="cs-desc">HIPAA's Security Rule imposes specific technical safeguards on systems that create, receive, maintain, or transmit electronic protected health information (ePHI). AI agents that access patient data must have verifiable authorization controls and audit trails.</p>
+      </div>
+      <div class="comp-table-wrap">
+        <table class="comp-table">
+          <thead>
+            <tr>
+              <th>Requirement</th>
+              <th>Citation</th>
+              <th>How Authproof addresses it</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="td-req">Audit Controls</td>
+              <td class="td-cite">§164.312(b)</td>
+              <td class="td-desc">Every receipt is cryptographically signed and written to a tamper-evident, append-only log before the agent acts. Modifications break the hash chain. The log is independently verifiable without trusting Authproof's servers.</td>
+              <td class="td-status"><span class="badge badge-green">Addressed</span></td>
+            </tr>
+            <tr>
+              <td class="td-req">Access Controls</td>
+              <td class="td-cite">§164.312(a)(1)</td>
+              <td class="td-desc">Scope-limited authorization receipts define exactly what the agent is allowed to access before execution begins. The pre-execution gate enforces these limits — out-of-scope actions are blocked before they run.</td>
+              <td class="td-status"><span class="badge badge-green">Addressed</span></td>
+            </tr>
+            <tr>
+              <td class="td-req">Integrity Controls</td>
+              <td class="td-cite">§164.312(c)(1)</td>
+              <td class="td-desc">ECDSA P-256 signatures make every receipt tamper-evident. Any modification to a receipt or audit log entry is immediately detectable by any party holding the public key — including your auditor.</td>
+              <td class="td-status"><span class="badge badge-green">Addressed</span></td>
+            </tr>
+            <tr>
+              <td class="td-req">Transmission Security</td>
+              <td class="td-cite">§164.312(e)(1)</td>
+              <td class="td-desc">All data is transmitted over TLS 1.2+. Receipts are signed before transmission — the cryptographic signature is independently verifiable regardless of the transport layer.</td>
+              <td class="td-status"><span class="badge badge-green">Addressed</span></td>
+            </tr>
+            <tr>
+              <td class="td-req">Authorization and Supervision</td>
+              <td class="td-cite">§164.308(a)(3)</td>
+              <td class="td-desc">Receipts encode the authorizing party's identity and the precise scope granted. Every agent action has a pre-issued authorization on record that predates execution — not reconstructed after the fact.</td>
+              <td class="td-status"><span class="badge badge-green">Addressed</span></td>
+            </tr>
+            <tr>
+              <td class="td-req">Minimum Necessary Standard</td>
+              <td class="td-cite">§164.514(d)</td>
+              <td class="td-desc">Scope fields explicitly enumerate what the agent is permitted to access. Agents cannot access ePHI outside their issued scope. Scope is defined per session — not globally for the agent.</td>
+              <td class="td-status"><span class="badge badge-green">Addressed</span></td>
+            </tr>
+            <tr>
+              <td class="td-req">Security Incident Procedures</td>
+              <td class="td-cite">§164.308(a)(6)(i)</td>
+              <td class="td-desc">Webhook notifications fire immediately when an agent action is blocked or a session's trust score degrades below threshold. Your security team is alerted in real time without building a separate monitoring stack.</td>
+              <td class="td-status"><span class="badge badge-green">Addressed</span></td>
+            </tr>
+            <tr>
+              <td class="td-req">Audit Log Retention</td>
+              <td class="td-cite">§164.312(b)</td>
+              <td class="td-desc">HIPAA requires records to be retained for 6 years from creation or last effective date. Pro includes 90-day retention. Enterprise includes up to 6-year retention with legal hold to meet this requirement.</td>
+              <td class="td-status"><span class="badge badge-amber">Pro &amp; Enterprise</span></td>
+            </tr>
+            <tr>
+              <td class="td-req">Business Associate Agreement</td>
+              <td class="td-cite">§164.308(b)(1)</td>
+              <td class="td-desc">A BAA is required before a business associate may access ePHI on your behalf. Authproof's BAA is available on Pro and Enterprise plans. On Enterprise it is pre-executed and included.</td>
+              <td class="td-status"><span class="badge badge-amber">Pro &amp; Enterprise</span></td>
+            </tr>
+            <tr>
+              <td class="td-req">Person or Entity Authentication</td>
+              <td class="td-cite">§164.312(d)</td>
+              <td class="td-desc">Authentication of the authorizing party is the customer's responsibility. Authproof signs and logs receipts issued by your system — it does not perform identity authentication of your users or systems.</td>
+              <td class="td-status"><span class="badge badge-amber">Customer Responsibility</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- SOC 2 -->
+    <div class="compliance-section" id="soc2">
+      <div class="cs-header">
+        <div class="cs-label">SOC 2</div>
+        <div class="cs-title">SOC 2 Type II — Security, Availability &amp; Confidentiality</div>
+        <p class="cs-desc">SOC 2 Trust Services Criteria require organizations to demonstrate ongoing controls over security, availability, processing integrity, confidentiality, and privacy. AI agent deployments must show that access is controlled, monitored, and verifiable.</p>
+      </div>
+      <div class="comp-table-wrap">
+        <table class="comp-table">
+          <thead>
+            <tr>
+              <th>Criteria</th>
+              <th>Citation</th>
+              <th>How Authproof addresses it</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="td-req">Logical Access Security</td>
+              <td class="td-cite">CC6.1</td>
+              <td class="td-desc">Access to AI agent capabilities is gated by cryptographically signed receipts. No receipt, no execution. The pre-execution gate enforces this at the tool-call level — not just at login.</td>
+              <td class="td-status"><span class="badge badge-green">Addressed</span></td>
+            </tr>
+            <tr>
+              <td class="td-req">Logical Access Restrictions</td>
+              <td class="td-cite">CC6.6</td>
+              <td class="td-desc">Scope restrictions are encoded in the receipt and enforced at the pre-execution gate. Agents cannot exceed their authorized scope regardless of instructions received during the session.</td>
+              <td class="td-status"><span class="badge badge-green">Addressed</span></td>
+            </tr>
+            <tr>
+              <td class="td-req">System Monitoring</td>
+              <td class="td-cite">CC7.2</td>
+              <td class="td-desc">Every tool call is verified before execution. Session state tracking detects behavioral anomalies in real time. Trust and risk scores are computed continuously and logged with each action.</td>
+              <td class="td-status"><span class="badge badge-green">Addressed</span></td>
+            </tr>
+            <tr>
+              <td class="td-req">Vendor Risk Management</td>
+              <td class="td-cite">CC9.2</td>
+              <td class="td-desc">The Authproof SDK is MIT-licensed open source — your auditor can inspect the code. The hosted log service produces independently verifiable receipts. You are never required to trust Authproof's word.</td>
+              <td class="td-status"><span class="badge badge-green">Addressed</span></td>
+            </tr>
+            <tr>
+              <td class="td-req">Availability Commitments</td>
+              <td class="td-cite">A1.1</td>
+              <td class="td-desc">A 99.5% uptime SLA is included on Pro. Enterprise includes a 4-hour priority SLA with a named contact. Free tier has no SLA commitment.</td>
+              <td class="td-status"><span class="badge badge-amber">Pro &amp; Enterprise</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="table-note">
+        <strong>Note on SOC 2 Type II:</strong> Authproof does not currently hold a SOC 2 Type II certification. The mappings above describe how Authproof features support the controls your organization must implement to achieve SOC 2 Type II for AI agent deployments. Authproof's audit trail can serve as evidence in your own SOC 2 assessment.
+      </div>
+    </div>
+
+    <!-- EU AI Act -->
+    <div class="compliance-section" id="eu-ai-act">
+      <div class="cs-header">
+        <div class="cs-label">EU AI Act</div>
+        <div class="cs-title">EU Artificial Intelligence Act — High-Risk AI Systems</div>
+        <p class="cs-desc">The EU AI Act imposes obligations on providers and deployers of high-risk AI systems, including requirements for human oversight, technical robustness, transparency, and record-keeping. AI agents operating in regulated sectors typically qualify as high-risk systems.</p>
+      </div>
+      <div class="comp-table-wrap">
+        <table class="comp-table">
+          <thead>
+            <tr>
+              <th>Obligation</th>
+              <th>Citation</th>
+              <th>How Authproof addresses it</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="td-req">Risk Management</td>
+              <td class="td-cite">Art. 9</td>
+              <td class="td-desc">Pre-execution authorization receipts constitute a documented risk management measure — demonstrating that human oversight was exercised and scope was constrained before the AI system acted.</td>
+              <td class="td-status"><span class="badge badge-green">Addressed</span></td>
+            </tr>
+            <tr>
+              <td class="td-req">Transparency &amp; Logging</td>
+              <td class="td-cite">Art. 12–13</td>
+              <td class="td-desc">Every receipt encodes the scope, authorizing party identity, timestamp, and decision in a format readable by humans and machines. Audit exports are structured and signed for auditor review.</td>
+              <td class="td-status"><span class="badge badge-green">Addressed</span></td>
+            </tr>
+            <tr>
+              <td class="td-req">Human Oversight</td>
+              <td class="td-cite">Art. 14</td>
+              <td class="td-desc">Pre-execution gating ensures no AI action executes without an authorized receipt issued by a human or system acting on a human's behalf. Anomaly detection flags and blocks deviations for human review.</td>
+              <td class="td-status"><span class="badge badge-green">Addressed</span></td>
+            </tr>
+            <tr>
+              <td class="td-req">Technical Robustness</td>
+              <td class="td-cite">Art. 15</td>
+              <td class="td-desc">ECDSA P-256 signatures with RFC 3161 timestamps provide cryptographic robustness that survives operator failure or compromise. The append-only log cannot be silently modified.</td>
+              <td class="td-status"><span class="badge badge-green">Addressed</span></td>
+            </tr>
+            <tr>
+              <td class="td-req">Record-Keeping</td>
+              <td class="td-cite">Art. 12</td>
+              <td class="td-desc">The append-only tamper-evident log with configurable retention satisfies EU AI Act record-keeping requirements. Long-term retention and legal hold for up to 6 years are available on Enterprise.</td>
+              <td class="td-status"><span class="badge badge-amber">Enterprise</span></td>
+            </tr>
+            <tr>
+              <td class="td-req">Serious Incident Reporting</td>
+              <td class="td-cite">Art. 73</td>
+              <td class="td-desc">Blocked actions, degraded sessions, and flagged anomalies are logged with precise timestamps, scope data, and cryptographic proof. These records can be exported in auditor-ready format for incident reporting obligations.</td>
+              <td class="td-status"><span class="badge badge-green">Addressed</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- PCI-DSS -->
+    <div class="compliance-section" id="pci-dss">
+      <div class="cs-header">
+        <div class="cs-label">PCI-DSS</div>
+        <div class="cs-title">PCI-DSS v4.0 — Cardholder Data Environment</div>
+        <p class="cs-desc">PCI-DSS v4.0 requires strict access controls and audit logging for systems that touch cardholder data. AI agents operating in payment environments must have verifiable authorization boundaries and tamper-protected audit trails.</p>
+      </div>
+      <div class="comp-table-wrap">
+        <table class="comp-table">
+          <thead>
+            <tr>
+              <th>Requirement</th>
+              <th>Citation</th>
+              <th>How Authproof addresses it</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="td-req">Restrict Access to System Components</td>
+              <td class="td-cite">PCI-DSS v4.0 R7</td>
+              <td class="td-desc">Scope-limited receipts restrict which data the AI agent can access or modify. Delete and write operations on cardholder data can be explicitly excluded from scope. Scope is cryptographically enforced — not advisory.</td>
+              <td class="td-status"><span class="badge badge-green">Addressed</span></td>
+            </tr>
+            <tr>
+              <td class="td-req">Log and Monitor All Access</td>
+              <td class="td-cite">PCI-DSS v4.0 R10</td>
+              <td class="td-desc">Every agent action is logged with a cryptographic receipt before execution. The tamper-evident log satisfies Requirement 10's cardholder data environment audit log obligations. RFC 3161 timestamps provide legally verifiable time ordering.</td>
+              <td class="td-status"><span class="badge badge-green">Addressed</span></td>
+            </tr>
+            <tr>
+              <td class="td-req">Protect Audit Logs from Destruction</td>
+              <td class="td-cite">PCI-DSS v4.0 R10.5</td>
+              <td class="td-desc">The append-only architecture and ECDSA signatures prevent unauthorized modification or deletion of audit logs. Any tampered entry breaks the cryptographic chain — satisfying PCI-DSS tamper-detection requirements.</td>
+              <td class="td-status"><span class="badge badge-green">Addressed</span></td>
+            </tr>
+            <tr>
+              <td class="td-req">Targeted Risk Analysis for AI Systems</td>
+              <td class="td-cite">PCI-DSS v4.0 R12.3</td>
+              <td class="td-desc">Receipt data, blocked-action logs, and trust/risk scoring provide the evidence base for targeted risk analysis of AI system behavior in the cardholder data environment. Exportable in structured format for QSA review.</td>
+              <td class="td-status"><span class="badge badge-green">Addressed</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- CTA -->
+<div class="cta-section">
+  <div class="container">
+    <div class="cta-inner">
+      <h2>Ready to build a verifiable compliance record for your AI agents?</h2>
+      <p>Start issuing cryptographic authorization receipts today. Free tier includes 1,000 receipts per month — no card required.</p>
+      <div class="cta-buttons">
+        <a href="/signup" class="btn btn-white">Start free</a>
+        <a href="mailto:ryan@authproof.dev?subject=Compliance%20Inquiry" class="btn btn-ghost">Talk to a compliance engineer →</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Footer -->
+<footer>
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <div class="f-brand">Authproof Cloud</div>
+        <div class="f-tagline">Built on cryptographic proof, not operator trust.</div>
+      </div>
+      <div class="f-col">
+        <h4>Product</h4>
+        <ul>
+          <li><a href="/#features">Features</a></li>
+          <li><a href="/#pricing">Pricing</a></li>
+          <li><a href="https://github.com/Commonguy25/authproof-sdk">Documentation</a></li>
+          <li><a href="/support">Status</a></li>
+        </ul>
+      </div>
+      <div class="f-col">
+        <h4>Legal</h4>
+        <ul>
+          <li><a href="/terms">Terms of Service</a></li>
+          <li><a href="/privacy">Privacy Policy</a></li>
+          <li><a href="/baa">BAA</a></li>
+          <li><a href="/compliance">Compliance</a></li>
+          <li><a href="/#security">Security</a></li>
+        </ul>
+      </div>
+      <div class="f-col">
+        <h4>Company</h4>
+        <ul>
+          <li><a href="/support">Support</a></li>
+          <li><a href="https://github.com/Commonguy25/authproof-sdk" target="_blank">GitHub</a></li>
+          <li><a href="https://www.npmjs.com/package/authproof" target="_blank">npm</a></li>
+          <li><a href="mailto:ryan@authproof.dev">ryan@authproof.dev</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div class="footer-bottom-text">Authproof is an independent project — ryan@authproof.dev</div>
+      <div class="footer-badges">
+        <span class="f-badge">ECDSA P-256</span>
+        <span class="f-badge">RFC 3161</span>
+        <span class="f-badge">MIT Licensed</span>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+  window.addEventListener('scroll', () => {
+    document.getElementById('nav').classList.toggle('scrolled', window.scrollY > 10);
+  });
+
+  function toggleMenu() {
+    const m = document.getElementById('mobileMenu');
+    m.classList.toggle('open');
+  }
+  function closeMenu() {
+    document.getElementById('mobileMenu').classList.remove('open');
+  }
+</script>
+
+</body>
+</html>
