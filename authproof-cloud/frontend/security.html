@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Security — Authproof Cloud</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --blue:     #1a56db;
+      --blue-lt:  #e8f0fe;
+      --blue-dk:  #1340a8;
+      --gray-50:  #f8f9fa;
+      --gray-100: #f1f3f4;
+      --gray-200: #e5e7eb;
+      --gray-400: #9ca3af;
+      --gray-500: #6b7280;
+      --gray-600: #4b5563;
+      --gray-700: #374151;
+      --gray-800: #1f2937;
+      --gray-900: #111111;
+      --green:    #16a34a;
+      --green-lt: #dcfce7;
+      --green-dk: #15803d;
+      --red:      #dc2626;
+      --red-lt:   #fef2f2;
+      --red-dk:   #991b1b;
+      --amber:    #d97706;
+      --amber-lt: #fffbeb;
+      --amber-bd: #fde68a;
+      --white:    #ffffff;
+      --mono:     'JetBrains Mono', 'Courier New', monospace;
+      --sans:     'Inter', sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--white);
+      color: var(--gray-800);
+      font-family: var(--sans);
+      font-size: 16px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: inherit; text-decoration: none; }
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+
+    /* Buttons */
+    .btn {
+      display: inline-block;
+      font-family: var(--sans);
+      font-size: 15px;
+      font-weight: 600;
+      padding: 12px 24px;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: all 0.15s;
+      border-radius: 980px;
+      text-align: center;
+      text-decoration: none;
+    }
+    .btn-primary { background: var(--blue); color: var(--white); border-color: var(--blue); }
+    .btn-primary:hover { background: var(--blue-dk); border-color: var(--blue-dk); }
+    .btn-outline { background: transparent; color: var(--blue); border-color: var(--blue); }
+    .btn-outline:hover { background: var(--blue-lt); }
+
+    /* Nav */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(255,255,255,0.97);
+      backdrop-filter: blur(8px);
+      transition: box-shadow 0.2s, border-color 0.2s;
+    }
+    nav.scrolled { border-bottom: 1px solid var(--gray-200); box-shadow: 0 1px 8px rgba(0,0,0,0.06); }
+    .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 64px; }
+    .nav-logo { font-size: 17px; font-weight: 700; color: var(--gray-900); }
+    .nav-logo span { color: var(--blue); }
+    .nav-links { display: flex; align-items: center; gap: 32px; list-style: none; }
+    .nav-links a { font-size: 14px; font-weight: 500; color: var(--gray-600); transition: color 0.15s; }
+    .nav-links a:hover { color: var(--gray-900); }
+    .nav-actions { display: flex; align-items: center; gap: 12px; }
+    .nav-actions .btn { padding: 8px 18px; font-size: 14px; }
+    .hamburger { display: none; flex-direction: column; gap: 5px; cursor: pointer; padding: 4px; background: none; border: none; }
+    .hamburger span { display: block; width: 22px; height: 2px; background: var(--gray-800); }
+    .mobile-menu { display: none; position: fixed; inset: 64px 0 0 0; background: rgba(255,255,255,0.97); backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%); border-top: 1px solid rgba(0,0,0,0.08); padding: 20px 24px 32px; z-index: 99; flex-direction: column; gap: 2px; }
+    .mobile-menu.open { display: flex; }
+    .mobile-menu a:not(.btn) { font-size: 16px; font-weight: 500; color: var(--gray-700); padding: 13px 0; border-bottom: 1px solid var(--gray-200); text-decoration: none; }
+    .mobile-menu .btn-outline { margin-top: 20px; width: 100%; padding: 13px 20px; font-size: 15px; display: block; }
+    .mobile-menu .btn-primary { margin-top: 10px; width: 100%; padding: 14px 20px; font-size: 15px; font-weight: 700; display: block; }
+
+    /* Hero */
+    .hero { padding: 72px 0 56px; border-bottom: 1px solid var(--gray-200); }
+    .hero-badge { display: inline-flex; align-items: center; gap: 8px; background: var(--blue-lt); color: var(--blue); font-size: 13px; font-weight: 600; padding: 6px 14px; border-radius: 100px; margin-bottom: 20px; }
+    .hero-badge::before { content: ''; display: block; width: 7px; height: 7px; background: var(--blue); border-radius: 50%; }
+    .hero h1 { font-size: clamp(26px, 3.5vw, 44px); font-weight: 700; line-height: 1.15; letter-spacing: -0.025em; color: var(--gray-900); margin-bottom: 16px; max-width: 700px; }
+    .hero-sub { font-size: 17px; color: var(--gray-600); max-width: 620px; line-height: 1.65; }
+
+    /* Sections */
+    .section { padding: 64px 0; border-bottom: 1px solid var(--gray-200); }
+    .section:last-of-type { border-bottom: none; }
+    .section-label { font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--blue); margin-bottom: 8px; }
+    .section-headline { font-size: clamp(20px, 2.5vw, 28px); font-weight: 700; color: var(--gray-900); letter-spacing: -0.02em; margin-bottom: 32px; line-height: 1.2; }
+
+    /* Section 1 — Crypto cards */
+    .crypto-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    .crypto-card {
+      border: 1px solid var(--gray-200);
+      border-radius: 8px;
+      padding: 32px;
+      transition: box-shadow 0.2s;
+    }
+    .crypto-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.07); }
+    .crypto-icon {
+      width: 44px; height: 44px;
+      background: var(--blue-lt);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+      margin-bottom: 18px;
+    }
+    .crypto-card h3 { font-size: 16px; font-weight: 700; color: var(--gray-900); margin-bottom: 10px; }
+    .crypto-card p { font-size: 14px; color: var(--gray-600); line-height: 1.65; }
+
+    /* Section 2 — Infrastructure table */
+    .infra-table-wrap { overflow-x: auto; border-radius: 8px; border: 1px solid var(--gray-200); }
+    .infra-table { width: 100%; border-collapse: collapse; font-size: 14px; background: var(--white); }
+    .infra-table thead tr { background: var(--gray-50); }
+    .infra-table th {
+      font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+      color: var(--gray-500); padding: 13px 24px; text-align: left;
+      border-bottom: 1px solid var(--gray-200);
+    }
+    .infra-table td {
+      padding: 16px 24px; border-bottom: 1px solid var(--gray-200);
+      vertical-align: top; line-height: 1.6; color: var(--gray-700);
+    }
+    .infra-table tbody tr:last-child td { border-bottom: none; }
+    .infra-table tbody tr:hover td { background: #fafafa; }
+    .td-what { font-weight: 600; color: var(--gray-900); min-width: 220px; white-space: nowrap; }
+
+    /* Section 3 — Data two-column */
+    .data-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    .data-col { border: 1px solid var(--gray-200); border-radius: 8px; overflow: hidden; }
+    .data-col-header {
+      padding: 16px 24px;
+      font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+    }
+    .data-col-header.green { background: var(--green-lt); color: var(--green-dk); }
+    .data-col-header.red { background: var(--red-lt); color: var(--red-dk); }
+    .data-col ul { list-style: none; padding: 20px 24px; display: flex; flex-direction: column; gap: 0; }
+    .data-col li {
+      font-size: 14px; color: var(--gray-700);
+      padding: 12px 0;
+      border-bottom: 1px solid var(--gray-200);
+      line-height: 1.55;
+    }
+    .data-col li:last-child { border-bottom: none; }
+    .data-col li strong { color: var(--gray-900); font-weight: 600; display: block; margin-bottom: 2px; }
+    .data-col.do li::before { content: '✓'; color: var(--green-dk); font-weight: 700; margin-right: 10px; }
+    .data-col.dont li::before { content: '✗'; color: var(--red-dk); font-weight: 700; margin-right: 10px; }
+    .data-note {
+      margin-top: 16px;
+      padding: 14px 18px;
+      background: var(--amber-lt);
+      border: 1px solid var(--amber-bd);
+      border-left: 4px solid var(--amber);
+      border-radius: 8px;
+      font-size: 13px;
+      color: #92400e;
+      line-height: 1.65;
+    }
+
+    /* Section 4 — Key custody prose */
+    .prose { max-width: 760px; }
+    .prose p { font-size: 15px; color: var(--gray-700); line-height: 1.75; margin-bottom: 20px; }
+    .prose p:last-child { margin-bottom: 0; }
+
+    /* Section 5 — Vulnerabilities */
+    /* reuses .prose */
+
+    /* Section 6 — Roadmap box */
+    .roadmap-box {
+      border: 1px solid var(--amber-bd);
+      border-left: 4px solid var(--amber);
+      border-radius: 8px;
+      padding: 32px 36px;
+      background: var(--amber-lt);
+      max-width: 800px;
+    }
+    .roadmap-intro { font-size: 15px; color: #78350f; line-height: 1.65; margin-bottom: 24px; }
+    .roadmap-list { list-style: none; display: flex; flex-direction: column; gap: 16px; }
+    .roadmap-list li { font-size: 14px; color: #92400e; line-height: 1.6; padding-left: 24px; position: relative; }
+    .roadmap-list li::before { content: '·'; position: absolute; left: 0; font-size: 20px; line-height: 1; color: var(--amber); top: 2px; }
+    .roadmap-list li strong { color: #78350f; font-weight: 700; }
+
+    /* CTA */
+    .cta-section { background: var(--blue); padding: 72px 0; }
+    .cta-inner { text-align: center; max-width: 560px; margin: 0 auto; }
+    .cta-inner h2 { font-size: clamp(22px, 3vw, 30px); font-weight: 700; color: var(--white); letter-spacing: -0.02em; margin-bottom: 12px; line-height: 1.25; }
+    .cta-inner p { font-size: 14px; color: rgba(255,255,255,0.65); margin-top: 16px; }
+    .btn-white { background: var(--white); color: var(--blue); border-color: var(--white); font-weight: 700; }
+    .btn-white:hover { background: rgba(255,255,255,0.92); border-color: rgba(255,255,255,0.92); }
+
+    /* Footer */
+    footer { background: var(--gray-900); color: rgba(255,255,255,0.65); padding: 64px 0 0; }
+    .footer-grid { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; gap: 48px; padding-bottom: 48px; border-bottom: 1px solid #2a2a2a; }
+    .f-brand { font-size: 16px; font-weight: 700; color: var(--white); margin-bottom: 10px; }
+    .f-tagline { font-size: 13px; color: rgba(255,255,255,0.35); line-height: 1.5; max-width: 220px; }
+    .f-col h4 { font-size: 12px; font-weight: 700; color: rgba(255,255,255,0.45); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 16px; }
+    .f-col ul { list-style: none; }
+    .f-col li { margin-bottom: 10px; }
+    .f-col a { font-size: 14px; color: rgba(255,255,255,0.6); transition: color 0.15s; }
+    .f-col a:hover { color: var(--white); }
+    .footer-bottom { padding: 20px 0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+    .footer-bottom-text { font-size: 13px; color: rgba(255,255,255,0.3); }
+    .footer-badges { display: flex; gap: 10px; }
+    .f-badge { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.45); border: 1px solid rgba(255,255,255,0.15); padding: 4px 10px; border-radius: 3px; }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .footer-grid { grid-template-columns: 1fr 1fr; gap: 36px; }
+      .data-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 640px) {
+      .hero { padding: 48px 0 40px; }
+      .nav-links, .nav-actions { display: none; }
+      .hamburger { display: flex; }
+      .footer-grid { grid-template-columns: 1fr; }
+      .crypto-grid { grid-template-columns: 1fr; }
+      .roadmap-box { padding: 24px 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav id="nav">
+  <div class="container">
+    <div class="nav-inner">
+      <a class="nav-logo" href="/">Authproof <span>Cloud</span></a>
+      <ul class="nav-links">
+        <li><a href="/#features">Features</a></li>
+        <li><a href="/#pricing">Pricing</a></li>
+        <li><a href="https://github.com/Commonguy25/authproof-sdk">Docs</a></li>
+        <li><a href="/security">Security</a></li>
+        <li><a href="/managed-ai">For Managed AI</a></li>
+        <li><a href="/healthcare">Healthcare</a></li>
+      </ul>
+      <div class="nav-actions">
+        <a href="/login" class="btn btn-outline">Log in</a>
+        <a href="/signup" class="btn btn-primary">Start free</a>
+      </div>
+      <button class="hamburger" id="hamburgerBtn" onclick="toggleMenu()" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<div class="mobile-menu" id="mobileMenu">
+  <a href="/#features" onclick="closeMenu()">Features</a>
+  <a href="/#pricing" onclick="closeMenu()">Pricing</a>
+  <a href="https://github.com/Commonguy25/authproof-sdk" onclick="closeMenu()">Docs</a>
+  <a href="/security" onclick="closeMenu()">Security</a>
+  <a href="/managed-ai" onclick="closeMenu()">For Managed AI</a>
+  <a href="/healthcare" onclick="closeMenu()">Healthcare</a>
+  <a href="/login" class="btn btn-outline">Log in</a>
+  <a href="/signup" class="btn btn-primary">Start free</a>
+</div>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="container">
+    <div class="hero-badge">Security</div>
+    <h1>How we protect your data and your receipts</h1>
+    <p class="hero-sub">Authproof Cloud is built on cryptographic primitives, not policy promises. Here is exactly what we do and how it works.</p>
+  </div>
+</section>
+
+<!-- Section 1 — Cryptographic foundation -->
+<section class="section">
+  <div class="container">
+    <div class="section-label">Cryptographic Foundation</div>
+    <div class="section-headline">The primitives underneath everything</div>
+    <div class="crypto-grid">
+      <div class="crypto-card">
+        <div class="crypto-icon">🔏</div>
+        <h3>ECDSA P-256 Signatures</h3>
+        <p>Every delegation receipt is signed using ECDSA P-256 via the Web Crypto API. This is the same elliptic curve algorithm used in banking and government digital signatures. The user's private key never leaves their hardware secure enclave.</p>
+      </div>
+      <div class="crypto-card">
+        <div class="crypto-icon">#️⃣</div>
+        <h3>SHA-256 Hashing</h3>
+        <p>Operator instructions, scope schemas, and model state commitments are hashed using SHA-256 before being included in the receipt. Any modification to the original content produces a completely different hash and is immediately detectable.</p>
+      </div>
+      <div class="crypto-card">
+        <div class="crypto-icon">🕐</div>
+        <h3>RFC 3161 Timestamps</h3>
+        <p>Every log entry receives a cryptographic timestamp from a trusted timestamping authority. RFC 3161 timestamps are used in legally admissible digital evidence and cannot be backdated or falsified.</p>
+      </div>
+      <div class="crypto-card">
+        <div class="crypto-icon">🔗</div>
+        <h3>Append-Only Log</h3>
+        <p>The action log is append-only by design. Entries can never be modified or deleted — only added. Every entry contains a hash of the previous entry. Modifying any record breaks the chain and is immediately detectable by any verifier.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Section 2 — Infrastructure -->
+<section class="section" style="background:var(--gray-50);">
+  <div class="container">
+    <div class="section-label">Infrastructure</div>
+    <div class="section-headline">How the platform is built and secured</div>
+    <div class="infra-table-wrap">
+      <table class="infra-table">
+        <thead>
+          <tr>
+            <th>What</th>
+            <th>How</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="td-what">Data in transit</td>
+            <td>All API traffic uses TLS 1.3. No unencrypted connections are accepted. HTTPS is enforced on all endpoints.</td>
+          </tr>
+          <tr>
+            <td class="td-what">Data at rest</td>
+            <td>All data stored in Supabase PostgreSQL is encrypted at rest using AES-256. Receipt hashes, verification records, and account data are encrypted in the database.</td>
+          </tr>
+          <tr>
+            <td class="td-what">API authentication</td>
+            <td>API keys are hashed before storage using bcrypt. Plain text API keys are never stored. Keys are transmitted only over HTTPS and never logged.</td>
+          </tr>
+          <tr>
+            <td class="td-what">Infrastructure provider</td>
+            <td>Authproof Cloud runs on Vercel for compute and Supabase for database storage. Both providers maintain SOC 2 Type II certification. Data is stored in US East region by default.</td>
+          </tr>
+          <tr>
+            <td class="td-what">Dependency management</td>
+            <td>The open source SDK has 1,151 tests across 14 suites with zero failures. Dependencies are reviewed and pinned. The SDK is MIT licensed and auditable by anyone.</td>
+          </tr>
+          <tr>
+            <td class="td-what">Secret management</td>
+            <td>Environment variables and secrets are managed through Vercel's encrypted environment system. No secrets are committed to the repository.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- Section 3 — What we store -->
+<section class="section">
+  <div class="container">
+    <div class="section-label">Data Handling</div>
+    <div class="section-headline">What data we store and what we do not</div>
+    <div class="data-grid">
+      <div class="data-col do">
+        <div class="data-col-header green">What we store</div>
+        <ul>
+          <li><strong>Receipt hashes</strong> SHA-256 fingerprints of your delegation receipts</li>
+          <li><strong>Verification event records</strong> Decision, risk score, and timestamp for each verification</li>
+          <li><strong>Tool call metadata</strong> Tool name, arguments hash, and result hash</li>
+          <li><strong>Account information</strong> Email address, API key hash, and plan</li>
+          <li><strong>Session state summaries</strong> Aggregated trust and risk scores per session</li>
+        </ul>
+      </div>
+      <div class="data-col dont">
+        <div class="data-col-header red">What we never store</div>
+        <ul>
+          <li><strong>Raw PHI or patient data</strong> Of any kind, from any source</li>
+          <li><strong>Plain text operator instructions</strong> Only the SHA-256 hash is stored</li>
+          <li><strong>Private keys</strong> These never leave the user's hardware</li>
+          <li><strong>Raw tool call arguments</strong> Only the hash</li>
+          <li><strong>Payment card information</strong> Handled entirely by Stripe</li>
+        </ul>
+      </div>
+    </div>
+    <div class="data-note">
+      <strong>Note:</strong> If you include raw sensitive data in receipt metadata fields, that is your data. We recommend only including identifiers and hashes in receipt metadata — never raw PHI or PII.
+    </div>
+  </div>
+</section>
+
+<!-- Section 4 — Key custody -->
+<section class="section" style="background:var(--gray-50);">
+  <div class="container">
+    <div class="section-label">Key Custody</div>
+    <div class="section-headline">Key custody and user control</div>
+    <div class="prose">
+      <p>Authproof is designed so that your private signing key never leaves your hardware. We use WebAuthn and FIDO2, which leverage your device's secure enclave — the same protected chip that stores Face ID and fingerprint data on modern devices. The secure enclave performs the cryptographic signing operation internally. The private key is never exported, never transmitted, and never accessible to Authproof or any other party.</p>
+      <p>This means that even if Authproof Cloud's infrastructure were completely compromised, an attacker could not forge delegation receipts signed by your users. The receipts require the user's hardware key to create.</p>
+    </div>
+  </div>
+</section>
+
+<!-- Section 5 — Vulnerabilities -->
+<section class="section">
+  <div class="container">
+    <div class="section-label">Responsible Disclosure</div>
+    <div class="section-headline">Security vulnerabilities</div>
+    <div class="prose">
+      <p>If you discover a security vulnerability in Authproof Cloud or the open source SDK, please report it to <a href="mailto:ryan@authproof.dev?subject=Security%20Vulnerability%20Report" style="color:var(--blue);font-weight:500;">ryan@authproof.dev</a> with the subject line <em>Security Vulnerability Report</em>.</p>
+      <p>We will acknowledge your report within 24 hours and provide a timeline for resolution. We do not currently have a formal bug bounty program, but we are grateful for responsible disclosure and will credit researchers who report valid findings.</p>
+      <p>Please do not publicly disclose vulnerabilities until we have had reasonable time to address them.</p>
+    </div>
+  </div>
+</section>
+
+<!-- Section 6 — Roadmap -->
+<section class="section" style="background:var(--gray-50);">
+  <div class="container">
+    <div class="section-label">Transparency</div>
+    <div class="section-headline">What we are working toward</div>
+    <div class="roadmap-box">
+      <p class="roadmap-intro">We believe in transparency about where we are and where we are going. These are security and compliance milestones we have not yet reached:</p>
+      <ul class="roadmap-list">
+        <li><strong>SOC 2 Type II audit — planned.</strong> We are building toward a formal SOC 2 audit. Until that audit is complete, our SOC 2 claims reflect our control design, not a certified attestation.</li>
+        <li><strong>Penetration test — not yet completed.</strong> An independent penetration test of the Authproof Cloud API and infrastructure is on our roadmap.</li>
+        <li><strong>On-chain log anchoring — in development.</strong> Publishing receipt hashes to a public blockchain would remove Authproof as a trusted party in the audit chain entirely. This is our roadmap item for removing centralized log dependency.</li>
+        <li><strong>Bug bounty program — planned.</strong> A formal bug bounty program with defined rewards is planned once the product reaches sufficient maturity.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<div class="cta-section">
+  <div class="container">
+    <div class="cta-inner">
+      <h2>Security questions or concerns?</h2>
+      <a href="mailto:ryan@authproof.dev?subject=Security%20Question" class="btn btn-white">Contact ryan@authproof.dev</a>
+      <p>We respond to all security inquiries within 24 hours.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Footer -->
+<footer>
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <div class="f-brand">Authproof Cloud</div>
+        <div class="f-tagline">Built on cryptographic proof, not operator trust.</div>
+      </div>
+      <div class="f-col">
+        <h4>Product</h4>
+        <ul>
+          <li><a href="/#features">Features</a></li>
+          <li><a href="/#pricing">Pricing</a></li>
+          <li><a href="https://github.com/Commonguy25/authproof-sdk">Documentation</a></li>
+          <li><a href="/support">Status</a></li>
+        </ul>
+      </div>
+      <div class="f-col">
+        <h4>Legal</h4>
+        <ul>
+          <li><a href="/terms">Terms of Service</a></li>
+          <li><a href="/privacy">Privacy Policy</a></li>
+          <li><a href="/baa">BAA</a></li>
+          <li><a href="/compliance">Compliance</a></li>
+          <li><a href="/security">Security</a></li>
+        </ul>
+      </div>
+      <div class="f-col">
+        <h4>Company</h4>
+        <ul>
+          <li><a href="/support">Support</a></li>
+          <li><a href="https://github.com/Commonguy25/authproof-sdk" target="_blank">GitHub</a></li>
+          <li><a href="https://www.npmjs.com/package/authproof" target="_blank">npm</a></li>
+          <li><a href="mailto:ryan@authproof.dev">ryan@authproof.dev</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div class="footer-bottom-text">Authproof is an independent project — ryan@authproof.dev</div>
+      <div class="footer-badges">
+        <span class="f-badge">ECDSA P-256</span>
+        <span class="f-badge">RFC 3161</span>
+        <span class="f-badge">MIT Licensed</span>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+  window.addEventListener('scroll', () => {
+    document.getElementById('nav').classList.toggle('scrolled', window.scrollY > 10);
+  });
+
+  function toggleMenu() {
+    document.getElementById('mobileMenu').classList.toggle('open');
+  }
+  function closeMenu() {
+    document.getElementById('mobileMenu').classList.remove('open');
+  }
+</script>
+
+</body>
+</html>
