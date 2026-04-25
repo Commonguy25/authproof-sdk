@@ -257,21 +257,31 @@
     .footer-badges { display: flex; gap: 10px; }
     .f-badge { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.45); border: 1px solid rgba(255,255,255,0.15); padding: 4px 10px; border-radius: 3px; }
 
-    /* Responsive */
-    @media (max-width: 900px) {
-      .hero-grid, .qs-grid { grid-template-columns: 1fr; gap: 40px; }
-      .features-grid, .steps-grid, .demos-grid, .plugins-grid { grid-template-columns: 1fr; }
-      .integrations-grid { grid-template-columns: 1fr 1fr; }
-      .pricing-grid { grid-template-columns: 1fr; max-width: 440px; margin: 0 auto; }
-      .compare-wrap { border-radius: 4px; }
+    /* Addons */
     .addons-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-top: 56px; }
     .addon-card { border: 1px solid var(--gray-200); border-radius: 14px; padding: 24px; background: var(--white); }
     .addon-name { font-size: 14px; font-weight: 700; color: var(--gray-900); margin-bottom: 6px; }
     .addon-price { font-size: 22px; font-weight: 800; color: var(--blue); letter-spacing: -0.02em; margin-bottom: 4px; }
     .addon-period { font-size: 12px; color: var(--gray-400); margin-bottom: 12px; }
     .addon-desc { font-size: 13px; color: var(--gray-500); line-height: 1.55; }
+
+    /* New conversion-section grids */
+    .who-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 24px; }
+    .audit-trust-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 24px; margin-top: 40px; }
+    .why-pay-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .audit-export-card { border: 1px solid var(--gray-200); border-radius: 8px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); padding: 36px; font-family: var(--mono); font-size: 13px; line-height: 1.9; color: var(--gray-800); overflow-x: auto; }
+
+    /* Responsive */
     @media (max-width: 960px) { .addons-grid { grid-template-columns: 1fr 1fr; } }
-    @media (max-width: 640px) { .addons-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 900px) {
+      .hero-grid, .qs-grid { grid-template-columns: 1fr; gap: 40px; }
+      .features-grid, .steps-grid, .demos-grid, .plugins-grid { grid-template-columns: 1fr; }
+      .integrations-grid { grid-template-columns: 1fr 1fr; }
+      .pricing-grid { grid-template-columns: 1fr; max-width: 440px; margin: 0 auto; }
+      .compare-wrap { border-radius: 4px; }
+      .who-grid, .audit-trust-grid { grid-template-columns: 1fr; }
+      .why-pay-grid { grid-template-columns: 1fr; }
+      .addons-grid { grid-template-columns: 1fr 1fr; }
       .footer-grid { grid-template-columns: 1fr 1fr; gap: 36px; }
     }
     @media (max-width: 640px) {
@@ -282,6 +292,8 @@
       .integrations-grid, .footer-grid { grid-template-columns: 1fr; }
       .comp-badges { flex-direction: column; }
       .trust-items { gap: 20px; }
+      .addons-grid { grid-template-columns: 1fr; }
+      .audit-export-card { padding: 20px 16px; font-size: 11px; }
     }
   </style>
 </head>
@@ -392,10 +404,10 @@
 </div>
 
 <!-- Who is this for -->
-<section style="background:var(--white);padding:80px 0;">
+<section style="background:var(--white);">
   <div class="container">
     <h2 class="section-headline" style="text-align:center;margin-bottom:40px;">Built for teams where AI authorization is not optional</h2>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:24px;">
+    <div class="who-grid">
       <div style="border:1px solid var(--gray-200);border-left:4px solid var(--blue);border-radius:6px;padding:32px;">
         <h3 style="font-size:16px;font-weight:700;color:var(--gray-900);margin-bottom:12px;">Healthcare AI</h3>
         <p style="font-size:14px;color:var(--gray-600);line-height:1.65;margin-bottom:20px;">HIPAA requires proof of what your AI agent was authorized to do before it accessed patient data. System prompts are not access controls. Cryptographic receipts are.</p>
@@ -467,12 +479,12 @@
 </section>
 
 <!-- Audit Export -->
-<section style="background:var(--white);padding:80px 0;">
+<section style="background:var(--white);">
   <div class="container">
     <h2 class="section-headline" style="text-align:center;margin-bottom:12px;">What your auditor actually receives</h2>
     <p style="text-align:center;color:var(--gray-500);font-size:16px;margin-bottom:48px;">This is a real Authproof audit export. Every field is cryptographically signed and independently verifiable.</p>
     <div style="max-width:680px;margin:0 auto;">
-      <div style="border:1px solid var(--gray-200);border-radius:8px;box-shadow:0 4px 24px rgba(0,0,0,0.08);padding:36px;font-family:var(--mono);font-size:13px;line-height:1.9;color:var(--gray-800);">
+      <div class="audit-export-card">
         <div style="font-weight:700;font-size:14px;letter-spacing:0.06em;color:var(--gray-900);margin-bottom:4px;">AUTHPROOF AUDIT EXPORT</div>
         <div style="color:var(--gray-400);margin-bottom:16px;">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</div>
         <div><span style="color:var(--gray-400);display:inline-block;width:180px;">Account:</span>Madewell AI</div>
@@ -506,7 +518,7 @@
         <div style="color:var(--gray-500);font-size:12px;">This export is cryptographically signed.<br>Any modification invalidates the hash.</div>
         <div style="color:var(--gray-400);margin-top:8px;">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</div>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:40px;">
+      <div class="audit-trust-grid">
         <div style="text-align:center;font-size:13px;color:var(--gray-600);line-height:1.55;">
           <div style="font-size:20px;margin-bottom:8px;">🔐</div>
           <strong style="color:var(--gray-800);display:block;margin-bottom:4px;">Signed with ECDSA P-256</strong>
@@ -718,7 +730,7 @@
     <!-- Why pay instead of self-hosting -->
     <div style="margin-top:56px;">
       <h3 style="font-size:22px;font-weight:700;color:var(--gray-900);letter-spacing:-0.02em;margin-bottom:24px;text-align:center;">Why pay instead of self-hosting?</h3>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div class="why-pay-grid">
         <div style="background:var(--gray-50);border:1px solid var(--gray-200);border-radius:6px;padding:28px;">
           <div style="font-size:15px;font-weight:700;color:var(--gray-900);margin-bottom:8px;">Compliance-grade exports</div>
           <div style="font-size:14px;color:var(--gray-600);line-height:1.65;">The hosted log produces RFC 3161 timestamped exports that satisfy HIPAA audit requirements out of the box. Self-hosted requires you to configure and maintain your own timestamping authority.</div>
