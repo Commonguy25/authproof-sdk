@@ -267,6 +267,7 @@
 
     /* New conversion-section grids */
     .who-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 24px; }
+    .contrast-grid { display: grid; grid-template-columns: 1fr 1fr; }
     .audit-trust-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 24px; margin-top: 40px; }
     .why-pay-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
     .audit-export-card { border: 1px solid var(--gray-200); border-radius: 8px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); padding: 36px; font-family: var(--mono); font-size: 13px; line-height: 1.9; color: var(--gray-800); overflow-x: auto; }
@@ -294,6 +295,7 @@
       .trust-items { gap: 20px; }
       .addons-grid { grid-template-columns: 1fr; }
       .audit-export-card { padding: 20px 16px; font-size: 11px; }
+      .contrast-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -341,7 +343,7 @@
       <div>
         <div class="hero-badge">Cryptographic AI Agent Authorization</div>
         <h1>Prove every AI action was authorized before it happened.</h1>
-        <p class="hero-sub">Signed, tamper-proof authorization records for AI agents. Built for audits, compliance, and legal protection.</p>
+        <p class="hero-sub">If your AI can take actions on behalf of users, you need this. Signed proof of authorization before every execution — not reconstructed from logs after something goes wrong.</p>
         <div class="hero-buttons">
           <a href="/signup" class="btn btn-primary">Start free — no card required</a>
           <a href="https://github.com/Commonguy25/authproof-sdk" class="btn btn-outline">View documentation</a>
@@ -427,6 +429,38 @@
   </div>
 </section>
 
+<!-- Without vs With -->
+<section style="background:var(--white);">
+  <div class="container">
+    <h2 style="font-size:clamp(22px,3vw,34px);font-weight:700;color:var(--gray-900);letter-spacing:-0.02em;text-align:center;margin-bottom:40px;">What happens without Authproof</h2>
+    <div class="contrast-grid" style="border:1px solid var(--gray-200);border-radius:8px;overflow:hidden;">
+      <div style="background:#fef2f2;border-right:1px solid #fecaca;">
+        <div style="padding:16px 28px;background:#fee2e2;border-bottom:1px solid #fecaca;">
+          <span style="font-size:13px;font-weight:700;color:#991b1b;letter-spacing:0.06em;text-transform:uppercase;">Without Authproof</span>
+        </div>
+        <div style="padding:0 28px;">
+          <div style="padding:16px 0;border-bottom:1px solid #fecaca;font-size:15px;color:#7f1d1d;">AI agent executes an action</div>
+          <div style="padding:16px 0;border-bottom:1px solid #fecaca;font-size:15px;color:#7f1d1d;">Server log records that it happened</div>
+          <div style="padding:16px 0;border-bottom:1px solid #fecaca;font-size:15px;color:#7f1d1d;">Incident occurs. Company claims user authorized it.</div>
+          <div style="padding:16px 0;font-size:15px;color:#7f1d1d;">No independent proof exists. Your word against theirs.</div>
+        </div>
+      </div>
+      <div style="background:#f0fdf4;">
+        <div style="padding:16px 28px;background:#dcfce7;border-bottom:1px solid #bbf7d0;">
+          <span style="font-size:13px;font-weight:700;color:#14532d;letter-spacing:0.06em;text-transform:uppercase;">With Authproof</span>
+        </div>
+        <div style="padding:0 28px;">
+          <div style="padding:16px 0;border-bottom:1px solid #bbf7d0;font-size:15px;color:#14532d;">User signs exactly what the agent can do</div>
+          <div style="padding:16px 0;border-bottom:1px solid #bbf7d0;font-size:15px;color:#14532d;">Cryptographic receipt is published before execution</div>
+          <div style="padding:16px 0;border-bottom:1px solid #bbf7d0;font-size:15px;color:#14532d;">Incident occurs. Receipt proves what was actually authorized.</div>
+          <div style="padding:16px 0;font-size:15px;color:#14532d;">Proof is cryptographic, timestamped, and independently verifiable.</div>
+        </div>
+      </div>
+    </div>
+    <p style="text-align:center;margin-top:32px;font-size:17px;font-weight:700;color:var(--blue);">The difference is not the log. The difference is when the proof was created.</p>
+  </div>
+</section>
+
 <!-- Features -->
 <section id="features">
   <div class="container">
@@ -462,7 +496,7 @@
       <div class="step">
         <div class="step-num">01</div>
         <h3>Authorize before execution — not after</h3>
-        <p>Define exactly what your agent can and cannot do. Sign it before the session starts. This receipt is your proof — it exists before the agent acts, not after something goes wrong.</p>
+        <p>Most AI systems log what happened. Authproof proves what was authorized before it happened. The receipt exists before the agent acts. That is not the same thing as a log.</p>
       </div>
       <div class="step">
         <div class="step-num">02</div>
@@ -663,6 +697,7 @@
       <div class="comp-badge"><span class="bi">🇪🇺</span>EU AI Act Compliant</div>
       <div class="comp-badge"><span class="bi">💳</span>PCI-DSS Logging</div>
     </div>
+    <p style="font-size:17px;font-weight:700;color:var(--gray-900);margin-bottom:20px;">Logs tell you what happened. Receipts prove what was authorized.</p>
     <div class="comp-quote">
       <p>"Audit logs are post-hoc evidence. Receipts are pre-hoc constraints."</p>
     </div>
