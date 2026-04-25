@@ -597,7 +597,7 @@
         <div class="p-price">$49</div>
         <div class="p-period">per month, billed monthly</div>
         <ul class="p-features">
-          <li>Unlimited receipts</li>
+          <li>10,000 receipts/month</li>
           <li>Everything in Free</li>
           <li>Priority support</li>
           <li>99.5% uptime SLA</li>
@@ -643,7 +643,7 @@
           <tr>
             <td class="feat-name">Receipts per month</td>
             <td><span class="ct-text">1,000</span></td>
-            <td><span class="ct-text">Unlimited</span></td>
+            <td><span class="ct-text">10,000</span></td>
             <td><span class="ct-text">Unlimited</span></td>
           </tr>
           <tr>
@@ -871,37 +871,4 @@
     <div class="footer-bottom">
       <div class="footer-bottom-text">Authproof is an independent project — ryan@authproof.dev</div>
       <div class="footer-badges">
-        <span class="f-badge">MIT License</span>
-        <span class="f-badge">HIPAA Ready</span>
-      </div>
-    </div>
-  </div>
-</footer>
-
-<script>
-  // Sticky nav shadow on scroll
-  window.addEventListener('scroll', () => {
-    document.getElementById('nav').classList.toggle('scrolled', window.scrollY > 10);
-  });
-
-  // Mobile menu
-  function toggleMenu() {
-    document.getElementById('mobileMenu').classList.toggle('open');
-  }
-  function closeMenu() {
-    document.getElementById('mobileMenu').classList.remove('open');
-  }
-
-  // Copy code button
-  function copyCode() {
-    const code = document.getElementById('codeBlock').innerText;
-    navigator.clipboard.writeText(code).then(() => {
-      const btn = document.getElementById('copyBtn');
-      btn.textContent = 'Copied!';
-      setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
-    });
-  }
-</script>
-
-</body>
-</html>
+        <span 
