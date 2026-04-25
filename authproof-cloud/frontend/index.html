@@ -180,8 +180,8 @@
     .comp-badges { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 40px; }
     .comp-badge { border: 1px solid var(--gray-200); border-radius: 6px; padding: 16px 24px; text-align: center; font-size: 14px; font-weight: 600; color: var(--gray-700); background: var(--white); flex: 1; min-width: 160px; }
     .comp-badge .bi { font-size: 24px; margin-bottom: 8px; display: block; }
-    .comp-quote { background: var(--blue-lt); border-left: 4px solid var(--blue); padding: 24px 28px; border-radius: 0 6px 6px 0; max-width: 640px; }
-    .comp-quote p { font-size: 18px; font-weight: 600; color: var(--blue-dk); line-height: 1.5; font-style: italic; }
+    .comp-quote { background: var(--blue-lt); border-left: 6px solid var(--blue); padding: 32px 40px; border-radius: 0 6px 6px 0; max-width: 700px; }
+    .comp-quote p { font-size: 22px; font-weight: 700; color: var(--blue-dk); line-height: 1.45; font-style: italic; }
 
     /* Pricing */
     .pricing-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; }
@@ -328,8 +328,8 @@
     <div class="hero-grid">
       <div>
         <div class="hero-badge">Cryptographic AI Agent Authorization</div>
-        <h1>Your AI agents need a log they cannot lie about.</h1>
-        <p class="hero-sub">Authproof Cloud stores cryptographic delegation receipts before every agent action. Tamper-evident. Independently verifiable. HIPAA and SOC2 ready.</p>
+        <h1>Prove every AI action was authorized before it happened.</h1>
+        <p class="hero-sub">Signed, tamper-proof authorization records for AI agents. Built for audits, compliance, and legal protection.</p>
         <div class="hero-buttons">
           <a href="/signup" class="btn btn-primary">Start free — no card required</a>
           <a href="https://github.com/Commonguy25/authproof-sdk" class="btn btn-outline">View documentation</a>
@@ -391,6 +391,30 @@
   </div>
 </div>
 
+<!-- Who is this for -->
+<section style="background:var(--white);padding:80px 0;">
+  <div class="container">
+    <h2 class="section-headline" style="text-align:center;margin-bottom:40px;">Built for teams where AI authorization is not optional</h2>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:24px;">
+      <div style="border:1px solid var(--gray-200);border-left:4px solid var(--blue);border-radius:6px;padding:32px;">
+        <h3 style="font-size:16px;font-weight:700;color:var(--gray-900);margin-bottom:12px;">Healthcare AI</h3>
+        <p style="font-size:14px;color:var(--gray-600);line-height:1.65;margin-bottom:20px;">HIPAA requires proof of what your AI agent was authorized to do before it accessed patient data. System prompts are not access controls. Cryptographic receipts are.</p>
+        <a href="/healthcare" style="color:var(--blue);font-size:14px;font-weight:600;">See healthcare compliance →</a>
+      </div>
+      <div style="border:1px solid var(--gray-200);border-left:4px solid var(--blue);border-radius:6px;padding:32px;">
+        <h3 style="font-size:16px;font-weight:700;color:var(--gray-900);margin-bottom:12px;">Managed AI Companies</h3>
+        <p style="font-size:14px;color:var(--gray-600);line-height:1.65;margin-bottom:20px;">You deploy agents on behalf of clients in regulated industries. When something goes wrong your client asks for the authorization trail. Give them one they can verify independently.</p>
+        <a href="/managed-ai" style="color:var(--blue);font-size:14px;font-weight:600;">See managed AI pricing →</a>
+      </div>
+      <div style="border:1px solid var(--gray-200);border-left:4px solid var(--blue);border-radius:6px;padding:32px;">
+        <h3 style="font-size:16px;font-weight:700;color:var(--gray-900);margin-bottom:12px;">Enterprise Internal AI</h3>
+        <p style="font-size:14px;color:var(--gray-600);line-height:1.65;margin-bottom:20px;">Your internal AI tools touch sensitive data, financial records, and customer information. Your compliance team needs proof of authorization that does not live on your own servers.</p>
+        <a href="mailto:ryan@authproof.dev?subject=Enterprise Inquiry" style="color:var(--blue);font-size:14px;font-weight:600;">Talk to us →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- Features -->
 <section id="features">
   <div class="container">
@@ -399,19 +423,19 @@
     <p class="section-sub">From pre-execution gates to tamper-evident audit trails — the compliance infrastructure your team needs, ready to ship today.</p>
     <div class="features-grid">
       <div class="feature-card">
-        <div class="feat-icon">🛡️</div>
-        <h3>Pre-execution authorization</h3>
-        <p>Every agent action is verified against a signed receipt before execution starts. The receipt exists before the agent acts — not reconstructed from logs after the fact.</p>
+        <div class="feat-icon">🔏</div>
+        <h3>Pre-execution authorization proof</h3>
+        <p>The receipt is signed and published before the agent acts. Not reconstructed from logs after the fact. Not the operator's word. Cryptographic proof that predates execution.</p>
       </div>
       <div class="feature-card">
         <div class="feat-icon">🔒</div>
         <h3>Tamper-evident audit trail</h3>
-        <p>Every action chains to the previous entry. Modify any record and the chain breaks. RFC 3161 timestamps make every entry independently and legally verifiable.</p>
+        <p>Every action chains to the previous entry with RFC 3161 timestamps. Modify any record and the chain breaks. Independently verifiable by any auditor without trusting your infrastructure.</p>
       </div>
       <div class="feature-card">
-        <div class="feat-icon">📊</div>
-        <h3>Real-time trust scoring</h3>
-        <p>Session state tracks behavioral anomalies. Trust decays when something looks wrong. Sessions suspend automatically before incidents happen — not after.</p>
+        <div class="feat-icon">📋</div>
+        <h3>One-click compliance exports</h3>
+        <p>Generate a signed audit package for any compliance review — HIPAA, SOC2, EU AI Act, PCI-DSS. The export hash can be independently verified. Ready for your auditor in seconds.</p>
       </div>
     </div>
   </div>
@@ -425,8 +449,8 @@
     <div class="steps-grid">
       <div class="step">
         <div class="step-num">01</div>
-        <h3>Sign your scope</h3>
-        <p>Define exactly what your agent can and cannot do. Sign it with your key before the session starts. The scope is committed to the log before any action occurs.</p>
+        <h3>Authorize before execution — not after</h3>
+        <p>Define exactly what your agent can and cannot do. Sign it before the session starts. This receipt is your proof — it exists before the agent acts, not after something goes wrong.</p>
       </div>
       <div class="step">
         <div class="step-num">02</div>
@@ -437,6 +461,67 @@
         <div class="step-num">03</div>
         <h3>Audit trail is ready</h3>
         <p>Every action is logged with cryptographic proof. Export a signed audit package for any compliance review — HIPAA, SOC2, or internal governance.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Audit Export -->
+<section style="background:var(--white);padding:80px 0;">
+  <div class="container">
+    <h2 class="section-headline" style="text-align:center;margin-bottom:12px;">What your auditor actually receives</h2>
+    <p style="text-align:center;color:var(--gray-500);font-size:16px;margin-bottom:48px;">This is a real Authproof audit export. Every field is cryptographically signed and independently verifiable.</p>
+    <div style="max-width:680px;margin:0 auto;">
+      <div style="border:1px solid var(--gray-200);border-radius:8px;box-shadow:0 4px 24px rgba(0,0,0,0.08);padding:36px;font-family:var(--mono);font-size:13px;line-height:1.9;color:var(--gray-800);">
+        <div style="font-weight:700;font-size:14px;letter-spacing:0.06em;color:var(--gray-900);margin-bottom:4px;">AUTHPROOF AUDIT EXPORT</div>
+        <div style="color:var(--gray-400);margin-bottom:16px;">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</div>
+        <div><span style="color:var(--gray-400);display:inline-block;width:180px;">Account:</span>Madewell AI</div>
+        <div><span style="color:var(--gray-400);display:inline-block;width:180px;">Client Org:</span>St. Mary's Health System</div>
+        <div><span style="color:var(--gray-400);display:inline-block;width:180px;">Period:</span>January 1 2026 — March 31 2026</div>
+        <div><span style="color:var(--gray-400);display:inline-block;width:180px;">Framework:</span>HIPAA</div>
+        <div><span style="color:var(--gray-400);display:inline-block;width:180px;">Generated:</span>2026-04-20T14:32:00Z</div>
+        <div style="color:var(--gray-400);margin:16px 0;">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</div>
+        <div style="font-weight:700;letter-spacing:0.06em;color:var(--gray-900);margin-bottom:8px;">AUTHORIZATION SUMMARY</div>
+        <div><span style="color:var(--gray-400);display:inline-block;width:260px;">Total receipts:</span>2,847</div>
+        <div><span style="color:var(--gray-400);display:inline-block;width:260px;">Authorized actions:</span>2,831</div>
+        <div><span style="color:var(--gray-400);display:inline-block;width:260px;">Blocked actions:</span>16</div>
+        <div><span style="color:var(--gray-400);display:inline-block;width:260px;">Sensitive data events:</span>3</div>
+        <div><span style="color:var(--gray-400);display:inline-block;width:260px;">Sessions suspended:</span>1</div>
+        <div style="color:var(--gray-400);margin:16px 0;">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</div>
+        <div style="font-weight:700;letter-spacing:0.06em;color:var(--gray-900);margin-bottom:8px;">SAMPLE RECEIPT</div>
+        <div><span style="color:var(--gray-400);display:inline-block;width:180px;">Receipt ID:</span>rec_8f4d2a1b3c9e7f2a</div>
+        <div><span style="color:var(--gray-400);display:inline-block;width:180px;">Authorized by:</span>clinician_key_0x4a2f...</div>
+        <div><span style="color:var(--gray-400);display:inline-block;width:180px;">Scope:</span>[read:patient_records, write:scheduling]</div>
+        <div><span style="color:var(--gray-400);display:inline-block;width:180px;">Denied:</span>[delete:*, send:external]</div>
+        <div><span style="color:var(--gray-400);display:inline-block;width:180px;">Issued:</span>2026-01-14T09:31:00Z</div>
+        <div><span style="color:var(--gray-400);display:inline-block;width:180px;">Expires:</span>2026-01-14T11:31:00Z</div>
+        <div><span style="color:var(--gray-400);display:inline-block;width:180px;">Signature:</span>ECDSA_P256:9a3f2c1d...</div>
+        <div><span style="color:var(--gray-400);display:inline-block;width:180px;">Status:</span><span style="color:#16a34a;font-weight:700;">VERIFIED</span></div>
+        <div style="color:var(--gray-400);margin:16px 0;">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</div>
+        <div style="font-weight:700;letter-spacing:0.06em;color:var(--gray-900);margin-bottom:8px;">EXPORT VERIFICATION</div>
+        <div><span style="color:var(--gray-400);display:inline-block;width:180px;">Export hash:</span>sha256:8f4d2a1b9c3e...</div>
+        <div><span style="color:var(--gray-400);display:inline-block;width:180px;">Signed:</span>2026-04-20T14:32:00Z</div>
+        <div><span style="color:var(--gray-400);display:inline-block;width:180px;">Verify at:</span>cloud.authproof.dev/verify</div>
+        <div style="color:var(--gray-400);margin:16px 0 8px;">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</div>
+        <div style="color:var(--gray-500);font-size:12px;">This export is cryptographically signed.<br>Any modification invalidates the hash.</div>
+        <div style="color:var(--gray-400);margin-top:8px;">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:40px;">
+        <div style="text-align:center;font-size:13px;color:var(--gray-600);line-height:1.55;">
+          <div style="font-size:20px;margin-bottom:8px;">🔐</div>
+          <strong style="color:var(--gray-800);display:block;margin-bottom:4px;">Signed with ECDSA P-256</strong>
+          Same algorithm used in banking
+        </div>
+        <div style="text-align:center;font-size:13px;color:var(--gray-600);line-height:1.55;">
+          <div style="font-size:20px;margin-bottom:8px;">🕐</div>
+          <strong style="color:var(--gray-800);display:block;margin-bottom:4px;">RFC 3161 timestamps</strong>
+          Legally verifiable time ordering
+        </div>
+        <div style="text-align:center;font-size:13px;color:var(--gray-600);line-height:1.55;">
+          <div style="font-size:20px;margin-bottom:8px;">✅</div>
+          <strong style="color:var(--gray-800);display:block;margin-bottom:4px;">Independent verification</strong>
+          No need to trust our servers
+        </div>
       </div>
     </div>
   </div>
@@ -629,6 +714,30 @@
       </div>
     </div>
     <p class="pricing-note">All plans include MIT-licensed open source SDK access. No vendor lock-in ever.</p>
+
+    <!-- Why pay instead of self-hosting -->
+    <div style="margin-top:56px;">
+      <h3 style="font-size:22px;font-weight:700;color:var(--gray-900);letter-spacing:-0.02em;margin-bottom:24px;text-align:center;">Why pay instead of self-hosting?</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        <div style="background:var(--gray-50);border:1px solid var(--gray-200);border-radius:6px;padding:28px;">
+          <div style="font-size:15px;font-weight:700;color:var(--gray-900);margin-bottom:8px;">Compliance-grade exports</div>
+          <div style="font-size:14px;color:var(--gray-600);line-height:1.65;">The hosted log produces RFC 3161 timestamped exports that satisfy HIPAA audit requirements out of the box. Self-hosted requires you to configure and maintain your own timestamping authority.</div>
+        </div>
+        <div style="background:var(--gray-50);border:1px solid var(--gray-200);border-radius:6px;padding:28px;">
+          <div style="font-size:15px;font-weight:700;color:var(--gray-900);margin-bottom:8px;">Managed retention and legal hold</div>
+          <div style="font-size:14px;color:var(--gray-600);line-height:1.65;">Pro includes 90-day retention. Enterprise includes up to 6-year retention and legal hold for litigation. Running this yourself means managing backup, redundancy, and legal hold infrastructure.</div>
+        </div>
+        <div style="background:var(--gray-50);border:1px solid var(--gray-200);border-radius:6px;padding:28px;">
+          <div style="font-size:15px;font-weight:700;color:var(--gray-900);margin-bottom:8px;">Instant BAA</div>
+          <div style="font-size:14px;color:var(--gray-600);line-height:1.65;">A Business Associate Agreement is available immediately on paid plans. Self-hosted means you are your own BAA counterparty — which means nothing to an auditor.</div>
+        </div>
+        <div style="background:var(--gray-50);border:1px solid var(--gray-200);border-radius:6px;padding:28px;">
+          <div style="font-size:15px;font-weight:700;color:var(--gray-900);margin-bottom:8px;">Alerting on unauthorized attempts</div>
+          <div style="font-size:14px;color:var(--gray-600);line-height:1.65;">Webhook notifications fire the moment an action is blocked or a session degrades. Your security team knows instantly without building a monitoring stack.</div>
+        </div>
+      </div>
+    </div>
+
     <div class="compare-wrap">
       <table class="compare-table">
         <thead>
