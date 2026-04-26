@@ -269,7 +269,33 @@
 
 <script>
   let savedApiKey = '';
-  const isPro = new URLSearchParams(window.location.search).get('plan') === 'pro';
+  const params      = new URLSearchParams(window.location.search);
+  const isPro       = params.get('plan') === 'pro';
+  const inviteToken = params.get('invite');
+
+  // Decode invite token (JWT payload, base64url)
+  function decodeInviteToken(token) {
+    try {
+      const parts = token.split('.');
+      if (parts.length !== 3) return null;
+      const payload = JSON.parse(atob(parts[1].replace(/-/g,'+').replace(/_/g,'/')));
+      if (payload.type !== 'invite') return null;
+      return payload;
+    } catch { return null; }
+  }
+
+  // If there's an invite token, customise the UI
+  if (inviteToken) {
+    const invite = decodeInviteToken(inviteToken);
+    if (invite) {
+      document.querySelector('.card-eyebrow').textContent = 'Team invitation';
+      document.querySelector('.card-title').textContent   = 'Accept your invitation';
+      document.querySelector('.card-sub').innerHTML       = `You&rsquo;ve been invited as <strong>${invite.role?.replace(/_/g,' ')}</strong>. Create a password to access the account.`;
+      document.getElementById('submitBtn').textContent    = 'Accept invitation';
+      // Pre-fill email if encoded in token
+      if (invite.email) document.getElementById('email').value = invite.email;
+    }
+  }
 
   async function handleSignup(e) {
     e.preventDefault();
@@ -280,9 +306,36 @@
 
     errorBox.style.display = 'none';
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner"></span>Creating account\u2026';
+    btn.innerHTML = '<span class="spinner"></span>' + (inviteToken ? 'Accepting\u2026' : 'Creating account\u2026');
 
     try {
+      // If this is an invite flow, we need to create a Supabase auth user
+      // then call accept-invite to get a session JWT
+      if (inviteToken) {
+        // Create Supabase auth account so they can log back in later
+        const signupRes = await fetch('/auth/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        });
+        // Ignore "email already registered" error \u2014 they might already have an account
+        // Either way proceed to accept the invite
+
+        const acceptRes = await fetch('/team/accept-invite', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: inviteToken }),
+        });
+        const acceptData = await acceptRes.json();
+        if (!acceptRes.ok) throw new Error(acceptData.error || 'Could not accept invitation');
+
+        // Store session token and redirect to dashboard
+        localStorage.setItem('ap_key',   acceptData.sessionToken);
+        localStorage.setItem('ap_token', acceptData.sessionToken); // used as auth guard
+        window.location.href = '/dashboard';
+        return;
+      }
+
       const res = await fetch('/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -305,7 +358,7 @@
       errorBox.textContent = err.message;
       errorBox.style.display = 'block';
       btn.disabled = false;
-      btn.textContent = 'Create free account';
+      btn.textContent = inviteToken ? 'Accept invitation' : 'Create free account';
     }
   }
 

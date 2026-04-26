@@ -396,15 +396,31 @@
     btn.innerHTML = '<span class="spinner"></span>Logging in\u2026';
 
     try {
+      // Try regular account login first
       const res = await fetch('/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Login failed');
-      localStorage.setItem('ap_token', data.token);
-      localStorage.setItem('ap_key', data.apiKey);
+
+      if (res.ok) {
+        localStorage.setItem('ap_token', data.token);
+        localStorage.setItem('ap_key',   data.apiKey);
+        window.location.href = '/dashboard';
+        return;
+      }
+
+      // Fall back to team member login
+      const teamRes = await fetch('/team/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      const teamData = await teamRes.json();
+      if (!teamRes.ok) throw new Error(data.error || 'Login failed');
+      localStorage.setItem('ap_token', teamData.sessionToken);
+      localStorage.setItem('ap_key',   teamData.sessionToken);
       window.location.href = '/dashboard';
     } catch (err) {
       errorBox.textContent = err.message;

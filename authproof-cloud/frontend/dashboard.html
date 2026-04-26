@@ -1471,8 +1471,8 @@
     </div>
   </div>
 
-  <!-- API Key Management -->
-  <div class="section section-last">
+  <!-- API Key Management (hidden for team member sessions) -->
+  <div class="section section-last" id="apiKeySection">
     <div class="container">
       <div class="section-header">
         <span class="section-title">API Key</span>
@@ -1484,6 +1484,20 @@
           <button class="btn-copy" id="keyMgmtCopyBtn" onclick="copyApiKey('keyMgmtCopyBtn')">Copy</button>
         </div>
         <button class="btn-regen" onclick="openRegenModal()">Regenerate key</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Team Member Session Banner (shown instead of API key section) -->
+  <div class="section section-last" id="teamMemberBanner" style="display:none;">
+    <div class="container">
+      <div class="key-mgmt-card" style="background:#f0f7ff;border-color:#bfdbfe;">
+        <div class="key-mgmt-left">
+          <span class="key-label">Logged in as</span>
+          <span class="key-value" id="teamMemberEmail" style="font-family:inherit;"></span>
+          <span class="plan-badge" id="teamMemberRoleBadge" style="margin-left:4px;"></span>
+        </div>
+        <button class="btn-regen" style="border-color:var(--blue);color:var(--blue);" onclick="localStorage.clear();window.location.href='/login'">Sign out</button>
       </div>
     </div>
   </div>
@@ -1687,8 +1701,8 @@
   }
 
   // ── Render overview ─────────────────────────────────────────────────────────
-  function renderOverview({ account }) {
-    document.getElementById('navEmail').textContent = account.email || '';
+  function renderOverview({ account, teamMember }) {
+    document.getElementById('navEmail').textContent = teamMember ? teamMember.email : (account.email || '');
 
     const badge = document.getElementById('planBadge');
     badge.textContent = account.plan.toUpperCase();
@@ -1705,9 +1719,17 @@
     if (pct >= 90) fill.classList.add('danger');
     else if (pct >= 75) fill.classList.add('warn');
 
-    const masked = AP_KEY ? AP_KEY.slice(0, 8) + '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022' : '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022';
-    document.getElementById('apikeyMasked').textContent = masked;
-    document.getElementById('keyMgmtMasked').textContent = masked;
+    if (teamMember) {
+      document.getElementById('apiKeySection').style.display    = 'none';
+      document.getElementById('teamMemberBanner').style.display = 'block';
+      document.getElementById('teamMemberEmail').textContent    = teamMember.email;
+      document.getElementById('teamMemberRoleBadge').textContent = teamMember.role.replace(/_/g, ' ');
+      document.getElementById('apikeyMasked').closest('.apikey-wrap').style.display = 'none';
+    } else {
+      const masked = AP_KEY ? AP_KEY.slice(0, 8) + '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022' : '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022';
+      document.getElementById('apikeyMasked').textContent  = masked;
+      document.getElementById('keyMgmtMasked').textContent = masked;
+    }
 
     if (account.plan === 'free') {
       document.getElementById('upgradeBtn').style.display = 'inline-block';

@@ -206,14 +206,34 @@ ${disclaimer ? `<div class="disclaimer">${disclaimer}</div>` : ''}
 
 async function requireApiKey(req, res, next) {
   const auth = req.headers.authorization;
-  const apiKey = auth?.startsWith('Bearer ') ? auth.slice(7) : req.query.apiKey;
-  if (!apiKey) {
+  const token = auth?.startsWith('Bearer ') ? auth.slice(7) : req.query.apiKey;
+  if (!token) {
     return res.status(401).json({ error: 'API key required' });
   }
+
+  // Team member JWT session (3-part JWT)
+  if (token.split('.').length === 3) {
+    const payload = jwtVerify(token);
+    if (!payload || payload.type !== 'session') {
+      return res.status(401).json({ error: 'Invalid or expired session token' });
+    }
+    const [{ data: account }, { data: member }] = await Promise.all([
+      supabaseAdmin.from('accounts').select('*').eq('id', payload.accountId).single(),
+      supabaseAdmin.from('team_members').select('*').eq('id', payload.memberId).eq('status', 'accepted').single(),
+    ]);
+    if (!account || !member) return res.status(401).json({ error: 'Session invalid — please log in again' });
+    // Update last_active_at (fire and forget)
+    supabaseAdmin.from('team_members').update({ last_active_at: new Date().toISOString() }).eq('id', member.id).then(() => {}).catch(() => {});
+    req.account    = account;
+    req.teamMember = member;
+    return next();
+  }
+
+  // API key lookup
   const { data: account, error } = await supabaseAdmin
     .from('accounts')
     .select('*')
-    .eq('api_key', apiKey)
+    .eq('api_key', token)
     .single();
   if (error || !account) return res.status(401).json({ error: 'Invalid API key' });
   req.account = account;
@@ -1007,6 +1027,7 @@ app.get('/api/dashboard', requireApiKey, async (req, res) => {
       monthlyLimit: isPro ? null : account.monthly_limit,
       usagePercent: isPro ? null : usagePercent,
     },
+    teamMember: req.teamMember ? { id: req.teamMember.id, email: req.teamMember.email, role: req.teamMember.role } : null,
     recentReceipts: receiptsResult.data || [],
     recentVerifications: verificationsResult.data || [],
     recentToolCalls: toolCallsResult.data || [],
@@ -1891,7 +1912,35 @@ app.post('/team/accept-invite', async (req, res) => {
     .single();
 
   if (error || !member) return res.status(400).json({ error: 'Invite not found or already accepted' });
-  res.json({ success: true, memberId: member.id, role: member.role });
+
+  // Issue a session JWT for the team member
+  const sessionToken = jwtSign({ type: 'session', memberId: member.id, accountId: member.account_id, role: member.role }, 30 * 24 * 3600); // 30 days
+  res.json({ success: true, memberId: member.id, role: member.role, sessionToken });
+});
+
+// Team member login — email + password via Supabase, issues session JWT
+app.post('/team/login', authLimiter, async (req, res) => {
+  const { email, password } = req.body || {};
+  if (!email || !password) return res.status(400).json({ error: 'email and password are required' });
+
+  // Authenticate via Supabase
+  const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password });
+  if (authError || !authData?.user) return res.status(401).json({ error: 'Invalid email or password' });
+
+  // Find accepted team membership
+  const { data: member } = await supabaseAdmin
+    .from('team_members')
+    .select('*')
+    .eq('email', email)
+    .eq('status', 'accepted')
+    .order('invited_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (!member) return res.status(403).json({ error: 'No active team membership found for this email. Ask your account owner to invite you.' });
+
+  const sessionToken = jwtSign({ type: 'session', memberId: member.id, accountId: member.account_id, role: member.role }, 30 * 24 * 3600);
+  res.json({ sessionToken, role: member.role, accountId: member.account_id });
 });
 
 // ─── misc ─────────────────────────────────────────────────────────────────────
