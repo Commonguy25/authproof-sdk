@@ -2324,6 +2324,26 @@
     document.getElementById('inviteModal').classList.remove('open');
     btn.disabled = false; btn.textContent = 'Send Invitation';
     await loadTeamMembers();
+
+    // If email delivery failed, show the invite link so the inviter can share it manually
+    if (!data.emailSent) {
+      const msg = data.emailError
+        ? `Invite created, but the email failed to send (${data.emailError}). Share this link manually:`
+        : 'Invite created. Share this link with your team member:';
+      const link = data.inviteUrl || '';
+      // Show a non-blocking notification at the top of the team section
+      const notifId = 'inviteLinkNotif';
+      let notif = document.getElementById(notifId);
+      if (!notif) {
+        notif = document.createElement('div');
+        notif.id = notifId;
+        notif.style.cssText = 'background:#fef9c3;border:1px solid #fde047;border-radius:8px;padding:14px 16px;font-size:13px;color:#713f12;margin-bottom:16px;line-height:1.6;word-break:break-all;';
+        const teamContainer = document.querySelector('#teamSection .container');
+        if (teamContainer) teamContainer.insertBefore(notif, teamContainer.firstChild);
+      }
+      notif.innerHTML = `<strong>⚠ Email not sent.</strong> ${msg}<br><a href="${link}" style="color:#1a56db;font-weight:600;">${link}</a> <button onclick="navigator.clipboard.writeText('${link}');this.textContent='Copied!'" style="margin-left:8px;font-size:12px;padding:2px 8px;border:1px solid #1a56db;border-radius:4px;background:#fff;color:#1a56db;cursor:pointer;">Copy</button>`;
+      notif.style.display = 'block';
+    }
   }
 
   async function loadAccessLog() {

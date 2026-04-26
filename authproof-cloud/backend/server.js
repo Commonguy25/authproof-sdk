@@ -363,15 +363,17 @@ function logAccessEvent(req, action, resource, resourceId = null) {
 
 async function sendInviteEmail(toEmail, fromAccountEmail, role, inviteUrl) {
   const resendKey = process.env.RESEND_API_KEY;
-  if (!resendKey) return;
+  if (!resendKey) return { ok: false, error: 'RESEND_API_KEY is not configured' };
   const roleLabels = {
     admin:              'full access except billing and account deletion — can manage team members',
     compliance_officer: 'read-only access to audit logs, receipts, legal holds, and compliance reports',
     viewer:             'dashboard summary — can view receipts, verifications, and tool calls',
   };
+  // Use process.env.RESEND_FROM if set (requires verified domain), otherwise fall back to Resend's shared domain
+  const fromAddress = process.env.RESEND_FROM || 'Authproof Cloud <onboarding@resend.dev>';
   const https = require('https');
   const body = JSON.stringify({
-    from: 'Authproof Cloud <noreply@authproof.dev>',
+    from: fromAddress,
     to: [toEmail],
     subject: `You have been invited to join ${fromAccountEmail} on Authproof Cloud`,
     html: `<div style="font-family:system-ui,sans-serif;max-width:520px;margin:0 auto;padding:40px 24px;background:#fff">
@@ -382,12 +384,21 @@ async function sendInviteEmail(toEmail, fromAccountEmail, role, inviteUrl) {
       <p style="color:#999;font-size:12px;margin-top:28px;line-height:1.6">This invitation expires in 7 days. If you didn't expect this, you can safely ignore this email.</p>
     </div>`,
   });
-  const r2 = https.request({
-    hostname: 'api.resend.com', path: '/emails', method: 'POST',
-    headers: { 'Authorization': `Bearer ${resendKey}`, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
-  }, (r) => { let raw = ''; r.on('data', c => raw += c); r.on('end', () => console.log('[Resend invite]', r.statusCode, raw)); });
-  r2.on('error', e => console.error('[Resend invite]', e.message));
-  r2.write(body); r2.end();
+  return new Promise((resolve) => {
+    const r2 = https.request({
+      hostname: 'api.resend.com', path: '/emails', method: 'POST',
+      headers: { 'Authorization': `Bearer ${resendKey}`, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+    }, (r) => {
+      let raw = '';
+      r.on('data', c => raw += c);
+      r.on('end', () => {
+        console.log('[Resend invite]', r.statusCode, raw);
+        resolve(r.statusCode >= 200 && r.statusCode < 300 ? { ok: true } : { ok: false, error: JSON.parse(raw)?.message || `Resend error ${r.statusCode}` });
+      });
+    });
+    r2.on('error', e => { console.error('[Resend invite]', e.message); resolve({ ok: false, error: e.message }); });
+    r2.write(body); r2.end();
+  });
 }
 
 // ─── auth ────────────────────────────────────────────────────────────────────
@@ -1824,10 +1835,18 @@ app.post('/team/invite', requireApiKey, requireEnterprise, checkPermission('team
   const token     = jwtSign({ memberId: member.id, accountId: req.account.id, role, type: 'invite' });
   const inviteUrl = `${process.env.BASE_URL || 'https://cloud.authproof.dev'}/signup?invite=${encodeURIComponent(token)}`;
 
-  await sendInviteEmail(email, req.account.email, role, inviteUrl);
+  const emailResult = await sendInviteEmail(email, req.account.email, role, inviteUrl);
   logAccessEvent(req, 'team.invite', 'team_member', member.id);
 
-  res.status(201).json({ id: member.id, email: member.email, role: member.role, status: member.status });
+  res.status(201).json({
+    id: member.id,
+    email: member.email,
+    role: member.role,
+    status: member.status,
+    emailSent: emailResult.ok,
+    emailError: emailResult.error || null,
+    inviteUrl, // Always include so the inviter can copy/share it manually if email fails
+  });
 });
 
 app.put('/team/:memberId/role', requireApiKey, requireEnterprise, checkPermission('team.change_role'), async (req, res) => {
@@ -1896,11 +1915,32 @@ app.get('/team/access-log', requireApiKey, requireEnterprise, async (req, res) =
 });
 
 app.post('/team/accept-invite', async (req, res) => {
-  const { token } = req.body || {};
+  const { token, email, password } = req.body || {};
   if (!token) return res.status(400).json({ error: 'token is required' });
+  if (!email || !password) return res.status(400).json({ error: 'email and password are required' });
 
   const payload = jwtVerify(token);
   if (!payload || payload.type !== 'invite') return res.status(400).json({ error: 'Invalid or expired invite token' });
+
+  // Create (or update) a confirmed Supabase auth user — no verification email sent
+  const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
+  const existingUser = existingUsers?.users?.find(u => u.email === email);
+
+  if (existingUser) {
+    // User exists — update their password and ensure confirmed
+    await supabaseAdmin.auth.admin.updateUserById(existingUser.id, {
+      password,
+      email_confirm: true,
+    });
+  } else {
+    // Create new user with email pre-confirmed
+    const { error: createError } = await supabaseAdmin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+    });
+    if (createError) return res.status(400).json({ error: createError.message });
+  }
 
   const { data: member, error } = await supabaseAdmin
     .from('team_members')

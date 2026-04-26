@@ -309,22 +309,12 @@
     btn.innerHTML = '<span class="spinner"></span>' + (inviteToken ? 'Accepting\u2026' : 'Creating account\u2026');
 
     try {
-      // If this is an invite flow, we need to create a Supabase auth user
-      // then call accept-invite to get a session JWT
       if (inviteToken) {
-        // Create Supabase auth account so they can log back in later
-        const signupRes = await fetch('/auth/signup', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password }),
-        });
-        // Ignore "email already registered" error \u2014 they might already have an account
-        // Either way proceed to accept the invite
-
+        // accept-invite creates a pre-confirmed Supabase user — no separate /auth/signup call needed
         const acceptRes = await fetch('/team/accept-invite', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token: inviteToken }),
+          body: JSON.stringify({ token: inviteToken, email, password }),
         });
         const acceptData = await acceptRes.json();
         if (!acceptRes.ok) throw new Error(acceptData.error || 'Could not accept invitation');
