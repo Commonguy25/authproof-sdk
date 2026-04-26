@@ -342,6 +342,7 @@
     <div class="hero-grid">
       <div>
         <div class="hero-badge">Cryptographic AI Agent Authorization</div>
+        <p style="font-size:16px;color:var(--gray-500);font-style:italic;margin-bottom:14px;">If your AI made a critical action today, could you prove the user explicitly approved it?</p>
         <h1>Prove every AI action was authorized before it happened.</h1>
         <p class="hero-sub">If your AI can take actions on behalf of users, you need this. Signed proof of authorization before every execution — not reconstructed from logs after something goes wrong.</p>
         <div class="hero-buttons">
@@ -956,76 +957,4 @@
             <div class="qs-content">
               <h4>Delegate and verify</h4>
               <p>Issue signed receipts before each agent action. Stored, chained, and verifiable by any third party immediately.</p>
-            </div>
-          </li>
-        </ul>
-      </div>
-      <div class="code-block">
-        <div class="code-block-header">
-          <span>JavaScript</span>
-          <button class="copy-btn" id="copyBtn" onclick="copyCode()">Copy</button>
-        </div>
-        <pre id="codeBlock"><span class="kw">import</span> { AuthProofClient } <span class="kw">from</span> <span class="st">'authproof'</span>
-
-<span class="kw">const</span> client = <span class="kw">new</span> <span class="fn">AuthProofClient</span>({
-  logEndpoint: <span class="st">'https://cloud.authproof.dev'</span>,
-  apiKey: process.env.<span class="fn">AUTHPROOF_API_KEY</span>
-})
-
-<span class="kw">const</span> receipt = <span class="kw">await</span> client.<span class="fn">delegate</span>({
-  scope,
-  operatorInstructions,
-  expiresIn: <span class="st">'2h'</span>
-})
-<span class="cm">// Receipt stored in hosted log automatically</span>
-<span class="cm">// Verifiable by any third party instantly</span>
-
-<span class="cm">// Pre-execution check</span>
-<span class="kw">const</span> result = <span class="kw">await</span> client.<span class="fn">verify</span>(receipt.id)
-<span class="cm">// { valid: true, trustScore: 97.3, decision: 'ALLOW' }</span></pre>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- Footer -->
-<footer>
-  <div class="container">
-    <div class="footer-grid">
-      <div>
-        <div class="f-brand">Authproof Cloud</div>
-        <div class="f-tagline">Built on cryptographic proof, not operator trust.</div>
-      </div>
-      <div class="f-col">
-        <h4>Product</h4>
-        <ul>
-          <li><a href="#features">Features</a></li>
-          <li><a href="#pricing">Pricing</a></li>
-          <li><a href="https://github.com/Commonguy25/authproof-sdk">Documentation</a></li>
-          <li><a href="/support">Status</a></li>
-        </ul>
-      </div>
-      <div class="f-col">
-        <h4>Legal</h4>
-        <ul>
-          <li><a href="/terms">Terms of Service</a></li>
-          <li><a href="/privacy">Privacy Policy</a></li>
-          <li><a href="/baa">BAA</a></li>
-          <li><a href="/compliance">Compliance</a></li>
-          <li><a href="/security">Security</a></li>
-        </ul>
-      </div>
-      <div class="f-col">
-        <h4>Company</h4>
-        <ul>
-          <li><a href="/support">Support</a></li>
-          <li><a href="https://github.com/Commonguy25/authproof-sdk" target="_blank">GitHub</a></li>
-          <li><a href="https://www.npmjs.com/package/authproof" target="_blank">npm</a></li>
-          <li><a href="mailto:ryan@authproof.dev">ryan@authproof.dev</a></li>
-        </ul>
-      </div>
-    </div>
-    <div class="footer-bottom">
-      <div class="footer-bottom-text">Authproof is an independent project — ryan@authproof.dev</div>
-      <div class="footer-badges">
-        <span 
+          
