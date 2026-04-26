@@ -2340,7 +2340,7 @@
     if (!res.ok) return;
     const data = await res.json();
     wlConfigExists = true;
-    renderWhiteLabelForm(data.config);
+    renderWhiteLabelForm(data);
   }
 
   function renderWhiteLabelForm(cfg) {
@@ -2352,7 +2352,7 @@
     document.getElementById('wlContactPhone').value  = cfg?.contact_phone  || '';
     document.getElementById('wlAddress').value       = cfg?.address        || '';
     document.getElementById('wlFooterText').value    = cfg?.footer_text    || '';
-    document.getElementById('wlDisclaimer').value    = cfg?.disclaimer     || '';
+    document.getElementById('wlDisclaimer').value    = cfg?.report_disclaimer || '';
 
     const primary   = cfg?.primary_color   || '#1a56db';
     const secondary = cfg?.secondary_color || '#6b7280';
