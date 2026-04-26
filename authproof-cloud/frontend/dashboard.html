@@ -2432,14 +2432,14 @@
     errEl.style.display = 'none';
 
     const body = {
-      company_name:    document.getElementById('wlCompanyName').value.trim()   || null,
-      primary_color:   document.getElementById('wlPrimaryColor').value         || null,
-      secondary_color: document.getElementById('wlSecondaryColor').value       || null,
-      contact_email:   document.getElementById('wlContactEmail').value.trim()  || null,
-      contact_phone:   document.getElementById('wlContactPhone').value.trim()  || null,
-      address:         document.getElementById('wlAddress').value.trim()       || null,
-      footer_text:     document.getElementById('wlFooterText').value.trim()    || null,
-      disclaimer:      document.getElementById('wlDisclaimer').value.trim()    || null,
+      companyName:      document.getElementById('wlCompanyName').value.trim()   || null,
+      primaryColor:     document.getElementById('wlPrimaryColor').value         || null,
+      secondaryColor:   document.getElementById('wlSecondaryColor').value       || null,
+      contactEmail:     document.getElementById('wlContactEmail').value.trim()  || null,
+      contactPhone:     document.getElementById('wlContactPhone').value.trim()  || null,
+      address:          document.getElementById('wlAddress').value.trim()       || null,
+      footerText:       document.getElementById('wlFooterText').value.trim()    || null,
+      reportDisclaimer: document.getElementById('wlDisclaimer').value.trim()    || null,
     };
 
     const method = wlConfigExists ? 'PUT' : 'POST';
@@ -2479,10 +2479,17 @@
   }
 
   async function previewWhiteLabel() {
+    const win = window.open('', '_blank');
+    if (!win) { alert('Allow popups for this site to preview reports.'); return; }
+    win.document.write('<p style="font-family:sans-serif;padding:40px;color:#555">Loading preview…</p>');
     const res = await apiFetch('/white-label/preview');
-    if (!res || !res.ok) { alert('Preview failed. Please save your config first.'); return; }
+    if (!res || !res.ok) {
+      win.close();
+      alert('Preview failed. Please save your config first.');
+      return;
+    }
     const html = await res.text();
-    const win  = window.open('', '_blank');
+    win.document.open();
     win.document.write(html);
     win.document.close();
   }
