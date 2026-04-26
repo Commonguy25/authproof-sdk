@@ -144,7 +144,7 @@ function buildComplianceReportHtml({ account, wlConfig, receipts, toolCalls, fro
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     body{font-family:system-ui,-apple-system,sans-serif;font-size:13px;color:#111;background:#fff;padding:48px}
     @page{size:letter;margin:.75in}
-    @media print{body{padding:0}.page-break{page-break-after:always}}
+    @media print{body{padding:0}.page-break{page-break-after:always}.print-btn{display:none}}
     .cover{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:84vh;text-align:center;gap:20px;padding:60px 40px}
     .cover-logo{margin-bottom:4px}
     .cover-company{font-size:13px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#777}
@@ -174,6 +174,7 @@ function buildComplianceReportHtml({ account, wlConfig, receipts, toolCalls, fro
   </style>
 </head>
 <body>
+<button class="print-btn" onclick="window.print()" style="position:fixed;top:20px;right:24px;z-index:999;background:${brandColor};color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.15)">&#128438; Print / Save PDF</button>
 ${coverPage}
 <div class="rpt-header">
   <h1>${brandName} \u2014 Compliance Audit Report</h1>
