@@ -336,7 +336,7 @@ function logAccessEvent(req, action, resource, resourceId = null) {
     action,
     resource,
     resource_id: resourceId != null ? String(resourceId) : null,
-    ip_address:  ip,
+    ip:          ip,
   }).then(() => {}).catch(err => console.error('[accessLog]', err.message));
 }
 
