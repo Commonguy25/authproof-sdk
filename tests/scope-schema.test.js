@@ -53,13 +53,9 @@ async function run() {
   assert(schema.deniedActions.length === 2, 'deniedActions stored correctly');
   assert(schema.maxDuration === '4h', 'maxDuration stored correctly');
 
-  // Test 2: throws when version missing
-  try {
-    new ScopeSchema({ allowedActions: [] });
-    assert(false, 'Should throw when version is missing');
-  } catch (e) {
-    assert(e.message.includes('version'), 'throws for missing version');
-  }
+  // Test 2: version defaults to '1.0' when omitted (Bug 3 fix)
+  const schemaNoVersion = new ScopeSchema({ allowedActions: [] });
+  assert(schemaNoVersion.version === '1.0', 'Should throw when version is missing');
 
   // Test 3: throws when version is not a string
   try {

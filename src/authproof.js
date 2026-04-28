@@ -11,6 +11,11 @@
 
 'use strict';
 
+import { webcrypto } from 'node:crypto'
+if (typeof globalThis.crypto === 'undefined') {
+  globalThis.crypto = webcrypto
+}
+
 // ─────────────────────────────────────────────
 // CRYPTO PRIMITIVES
 // ─────────────────────────────────────────────
@@ -598,8 +603,7 @@ class ScopeSchema {
    * @param {object[]} [opts.deniedActions]   — Actions that are always denied. Default: [].
    * @param {string}   [opts.maxDuration]    — Optional maximum delegation duration (e.g. "4h").
    */
-  constructor({ version, allowedActions = [], deniedActions = [], maxDuration, manifestHash } = {}) {
-    if (!version) throw new Error('ScopeSchema: version is required');
+  constructor({ version = '1.0', allowedActions = [], deniedActions = [], maxDuration, manifestHash } = {}) {
     if (typeof version !== 'string') throw new Error('ScopeSchema: version must be a string');
     if (!Array.isArray(allowedActions)) throw new Error('ScopeSchema: allowedActions must be an array');
     if (!Array.isArray(deniedActions))  throw new Error('ScopeSchema: deniedActions must be an array');
@@ -2879,6 +2883,10 @@ class AuthProofClient {
     this._sessionAware = sessionAware;
   }
 
+  async generateKeyPair() {
+    return await generateKey()
+  }
+
   /**
    * Create a signed Delegation Receipt with optional TEE measurement binding.
    *
@@ -2908,6 +2916,7 @@ class AuthProofClient {
     boundaries = 'No boundaries specified.',
     operatorInstructions,
     expiresIn = '1h',
+    metadata,
     privateKey,
     publicJwk,
     teeConfig,
@@ -2941,6 +2950,7 @@ class AuthProofClient {
       boundaries,
       instructions: operatorInstructions ?? scope,
       ttlHours,
+      metadata,
       privateKey,
       publicJwk,
     });

@@ -148,6 +148,49 @@ async function run() {
     assert(e.message.includes('instructions'), 'Throws for missing instructions');
   }
 
+  // ── Bug Fix Tests ───────────────────────────────────────────────────
+
+  // Bug 1: client.generateKeyPair() on AuthProofClient
+  console.log('\nBug Fix 1 — AuthProofClient.generateKeyPair()');
+  const client = new AuthProof.AuthProofClient();
+  const kp = await client.generateKeyPair();
+  assert(kp && typeof kp === 'object', 'generateKeyPair() returns an object');
+  assert(kp.privateKey instanceof CryptoKey, 'generateKeyPair() returns privateKey as CryptoKey');
+  assert(kp.publicJwk && typeof kp.publicJwk === 'object', 'generateKeyPair() returns publicJwk');
+  assert(kp.publicJwk.kty === 'EC', 'generateKeyPair() publicJwk has kty=EC');
+
+  // Bug 2: metadata passes through delegate() into the receipt
+  console.log('\nBug Fix 2 — delegate() passes metadata through');
+  const clientForMeta = new AuthProof.AuthProofClient();
+  const testMeta = { requestId: 'req-123', caller: 'test-suite' };
+  const delegated = await clientForMeta.delegate({
+    scope: 'Test metadata scope',
+    operatorInstructions: 'Test metadata instructions',
+    metadata: testMeta,
+    privateKey,
+    publicJwk,
+  });
+  assert(delegated.receipt.metadata && typeof delegated.receipt.metadata === 'object',
+    'metadata is present in the delegated receipt');
+  assert(delegated.receipt.metadata.requestId === 'req-123',
+    'metadata.requestId preserved in receipt');
+  assert(delegated.receipt.metadata.caller === 'test-suite',
+    'metadata.caller preserved in receipt');
+
+  // Bug 3: ScopeSchema works without a version field (defaults to '1.0')
+  console.log('\nBug Fix 3 — ScopeSchema version defaults to 1.0');
+  const schema = new AuthProof.ScopeSchema({
+    allowedActions: [{ operation: 'read', resource: 'calendar' }],
+  });
+  assert(schema.version === '1.0', 'ScopeSchema.version defaults to "1.0"');
+  const schemaValidation = schema.validate({ operation: 'read', resource: 'calendar' });
+  assert(schemaValidation.valid === true, 'Default-versioned ScopeSchema validates actions correctly');
+
+  // Bug 4: globalThis.crypto polyfill — SDK loads without throwing (crypto is available)
+  console.log('\nBug Fix 4 — globalThis.crypto polyfill');
+  assert(typeof globalThis.crypto !== 'undefined', 'globalThis.crypto is defined after SDK load');
+  assert(typeof globalThis.crypto.subtle !== 'undefined', 'globalThis.crypto.subtle is available');
+
   // ── Summary ────────────────────────────────────────────────────────
   console.log(`\n${'─'.repeat(40)}`);
   console.log(`Results: ${passed} passed, ${failed} failed`);
