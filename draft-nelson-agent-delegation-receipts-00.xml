@@ -1,0 +1,1999 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude"
+     version="3"
+     docName="draft-nelson-agent-delegation-receipts-00"
+     ipr="trust200902"
+     submissionType="independent"
+     category="info"
+     xml:lang="en">
+
+  <front>
+    <title abbrev="Agent Delegation Receipts">
+      Delegation Receipt Protocol for AI Agent Authorization
+    </title>
+
+    <seriesInfo name="Internet-Draft"
+                value="draft-nelson-agent-delegation-receipts-00"/>
+
+    <author fullname="Ryan Nelson" initials="R." surname="Nelson">
+      <organization>Authproof</organization>
+      <address>
+        <email>ryan@authproof.dev</email>
+        <uri>https://authproof.dev</uri>
+      </address>
+    </author>
+
+    <date year="2026" month="April" day="26"/>
+
+    <area>Security</area>
+
+    <keyword>AI agent</keyword>
+    <keyword>delegation</keyword>
+    <keyword>authorization</keyword>
+    <keyword>cryptography</keyword>
+    <keyword>append-only log</keyword>
+    <keyword>delegation receipt</keyword>
+    <keyword>agent authorization</keyword>
+
+    <abstract>
+      <t>
+        This document defines the Delegation Receipt Protocol (DRP),
+        a cryptographic authorization primitive for AI agent
+        deployments.  Before any agent action executes, the
+        authorizing user signs an Authorization Object containing
+        scope boundaries, time window, operator instruction hash,
+        and model state commitment.  This signed receipt is
+        published to an append-only log before the agent runtime
+        receives control.  The protocol removes the operator as a
+        trusted third party by making the user's private key the
+        sole signing authority over the delegation record.
+      </t>
+    </abstract>
+  </front>
+
+  <middle>
+
+    <!-- ============================================================ -->
+    <section anchor="sec-intro" numbered="true">
+      <name>Introduction</name>
+      <t>
+        Agentic AI systems execute actions on behalf of human
+        principals using natural language instructions as their
+        primary authorization artifact.  This creates a structural
+        gap between the authorization a user believes they granted
+        and the instructions an operator delivers to the agent at
+        runtime.  No existing cryptographic mechanism makes that
+        gap detectable.
+      </t>
+      <t>
+        This document specifies the Delegation Receipt Protocol
+        (DRP), a cryptographic authorization primitive that
+        addresses this gap.  DRP requires every agent action to be
+        preceded by a user-signed Authorization Object -- the
+        Delegation Receipt -- anchored to a tamper-evident
+        append-only log.  The receipt commits the user's authorized
+        scope, operational boundaries, validity window, and a
+        cryptographic hash of the operator's stated instructions.
+        Any deviation by the operator from those instructions is
+        provable from the public log without additional trust
+        assumptions.
+      </t>
+      <t>
+        DRP is not a replacement for existing IETF agent
+        authorization work.  WIMSE, AIP, and OAuth 2.0 Token
+        Exchange <xref target="RFC8693"/> address service-to-agent
+        trust.  DRP addresses the upstream layer: user-to-operator
+        trust.  In a complete agentic trust stack, these layers are
+        complementary.
+      </t>
+      <t>
+        The protocol is implemented in the open-source authproof-sdk
+        at <eref target="https://github.com/Commonguy25/authproof-sdk"/>.
+      </t>
+    </section>
+
+    <!-- ============================================================ -->
+    <section anchor="sec-terminology" numbered="true">
+      <name>Terminology</name>
+      <t>
+        The key words "<bcp14>MUST</bcp14>", "<bcp14>MUST NOT</bcp14>",
+        "<bcp14>REQUIRED</bcp14>", "<bcp14>SHALL</bcp14>",
+        "<bcp14>SHALL NOT</bcp14>", "<bcp14>SHOULD</bcp14>",
+        "<bcp14>SHOULD NOT</bcp14>", "<bcp14>RECOMMENDED</bcp14>",
+        "<bcp14>NOT RECOMMENDED</bcp14>", "<bcp14>MAY</bcp14>", and
+        "<bcp14>OPTIONAL</bcp14>" in this document are to be
+        interpreted as described in BCP&#160;14 <xref target="RFC2119"/>
+        <xref target="RFC8174"/> when, and only when, they appear in
+        all capitals, as shown here.
+      </t>
+      <t>The following terms are used throughout this document:</t>
+      <dl newline="true" spacing="normal">
+        <dt>Delegation Receipt:</dt>
+        <dd>
+          A signed Authorization Object produced by the User prior
+          to any agent action.  Contains scope, boundaries, time
+          window, and operator instruction hash.
+          <bcp14>MUST</bcp14> be anchored to an append-only log
+          before the agent runtime receives control.
+        </dd>
+
+        <dt>Authorization Object:</dt>
+        <dd>
+          The canonical JSON body that is signed to produce a
+          Delegation Receipt.  The receipt ID is the SHA-256 hash
+          of this body in its canonical serialization.
+        </dd>
+
+        <dt>User:</dt>
+        <dd>
+          The human principal whose resources and authority are
+          being delegated.  The User's private key is the sole
+          signing authority for Delegation Receipts.
+        </dd>
+
+        <dt>Operator:</dt>
+        <dd>
+          The developer or organization that builds and deploys the
+          agent.  The Operator provides instructions to the agent
+          and is bound by the instruction hash committed in the
+          receipt.
+        </dd>
+
+        <dt>Agent:</dt>
+        <dd>
+          The AI system taking actions on behalf of the User.
+          The Agent <bcp14>MUST</bcp14> verify a valid Delegation
+          Receipt before executing any action.
+        </dd>
+
+        <dt>Append-Only Log:</dt>
+        <dd>
+          A tamper-evident ledger to which Delegation Receipts are
+          anchored prior to execution.  Implementations
+          <bcp14>SHOULD</bcp14> use a decentralized transparency
+          log following the Certificate Transparency model.
+        </dd>
+
+        <dt>Log Anchor:</dt>
+        <dd>
+          An inclusion proof returned by the append-only log after
+          a receipt is submitted.  The log anchor establishes the
+          authoritative issuance timestamp.
+        </dd>
+
+        <dt>Scope:</dt>
+        <dd>
+          An explicit allowlist of permitted operations embedded in
+          a Delegation Receipt.  Operations are classified as
+          reads, writes, deletes, or executes.  All operations not
+          listed are denied by default.
+        </dd>
+
+        <dt>Boundaries:</dt>
+        <dd>
+          Explicit prohibitions embedded in a Delegation Receipt
+          that survive any subsequent Operator instruction.
+          Boundaries <bcp14>MUST NOT</bcp14> be waived or
+          overridden by the Operator.
+        </dd>
+
+        <dt>Instruction Hash:</dt>
+        <dd>
+          The SHA-256 hash of the Operator's stated instructions at
+          delegation time.  Any change to the Operator's
+          instructions after receipt issuance is detectable by
+          recomputing this hash.
+        </dd>
+
+        <dt>Micro-Receipt:</dt>
+        <dd>
+          A minimal Delegation Receipt covering a single action not
+          included in the parent receipt's scope.
+          <bcp14>MUST</bcp14> reference the parent receipt hash.
+        </dd>
+
+        <dt>Model State Commitment:</dt>
+        <dd>
+          A cryptographic measurement binding a specific model
+          identity, version, system prompt hash, and runtime
+          configuration hash to a Delegation Receipt.
+        </dd>
+
+        <dt>Scope Discovery:</dt>
+        <dd>
+          A protocol that derives authorized scope from sandboxed
+          observation of agent behavior rather than upfront user
+          specification.
+        </dd>
+
+        <dt>Session State:</dt>
+        <dd>
+          A live, stateful risk evaluation layer that tracks trust
+          decay, sensitivity classification, and behavioral
+          anomalies across the lifetime of an agent session.
+        </dd>
+      </dl>
+    </section>
+
+    <!-- ============================================================ -->
+    <section anchor="sec-problem" numbered="true">
+      <name>Problem Statement</name>
+
+      <section anchor="sec-delegation-chain" numbered="true">
+        <name>The Agentic Delegation Chain</name>
+        <t>
+          Agentic AI systems involve at minimum three principals:
+        </t>
+        <ul spacing="normal">
+          <li>
+            User -- the human whose resources and authority are
+            delegated.
+          </li>
+          <li>
+            Operator -- the developer or company that builds and
+            deploys the agent.
+          </li>
+          <li>
+            Agent -- the AI system taking actions on the User's
+            behalf.
+          </li>
+        </ul>
+        <t>The delegation chain is:</t>
+        <artwork type="ascii-art" align="left"><![CDATA[
+   User --> Operator --> Agent --> Services
+]]></artwork>
+        <t>
+          The User grants authority to the Operator.  The Operator
+          translates that authority into instructions for the Agent.
+          The Agent acts on downstream services.  At each step,
+          fidelity to the User's original intent depends entirely on
+          the honesty and competence of the intermediate party.
+        </t>
+      </section>
+
+      <section anchor="sec-missing-anchor" numbered="true">
+        <name>The Missing Cryptographic Anchor</name>
+        <t>
+          In current agentic deployments, the User's authorization
+          is captured in natural language -- a chat message, a
+          consent checkbox, a terms-of-service agreement.  None of
+          these produce a cryptographically verifiable record of
+          what the User actually authorized at the moment of
+          delegation.
+        </t>
+        <t>This creates three compounding problems:</t>
+        <dl newline="false" spacing="normal">
+          <dt>The repudiation problem:</dt>
+          <dd>
+            If an agent takes an action the User did not authorize,
+            there is no cryptographic evidence of what the User did
+            authorize.  The Operator's account of the authorization
+            is the only record, and it is unverifiable.
+          </dd>
+
+          <dt>The drift problem:</dt>
+          <dd>
+            Operators may update system prompts, change agent
+            behavior, or respond to external pressure in ways that
+            diverge from the User's original authorization.  Nothing
+            in the current architecture makes this divergence
+            detectable.
+          </dd>
+
+          <dt>The audit problem:</dt>
+          <dd>
+            Regulators auditing agentic behavior have no evidence
+            chain connecting agent actions to original user consent.
+            The Operator's logs are the only source of truth,
+            controlled by the party whose conduct is under scrutiny.
+          </dd>
+        </dl>
+      </section>
+
+      <section anchor="sec-ietf-analysis" numbered="true">
+        <name>IETF Framework Analysis</name>
+        <t>
+          Several IETF working groups have produced or are producing
+          specifications for agent identity and authorization.  Each
+          addresses a different trust boundary; none addresses
+          user-to-operator trust.
+        </t>
+        <t>
+          WIMSE (Workload Identity in Multi-System Environments)
+          addresses service-to-service authentication: can service B
+          verify that a request came from legitimate workload A?
+          It does not address whether the workload was authorized by
+          the User to make that request in the first place.
+        </t>
+        <t>
+          AIP (Agent Identity Protocol) defines credential structures
+          for agent principals and addresses how agents present
+          identity to services they call.  Like WIMSE, its trust
+          model is downstream of the Operator -- it assumes the
+          Operator has correctly represented the User's
+          authorization.
+        </t>
+        <t>
+          draft-klrc-aiagent-auth addresses OAuth-style
+          authorization flows for AI agents, allowing agents to
+          obtain access tokens for downstream APIs.  It solves the
+          service authorization problem -- whether the agent can
+          call an API -- but not the delegation integrity problem
+          -- whether the Operator's instructions faithfully
+          represent the User's authorization.
+        </t>
+        <t>
+          OAuth 2.0 Token Exchange <xref target="RFC8693"/> and
+          Rich Authorization Requests <xref target="RFC9396"/>
+          provide mechanisms for scoped token issuance and
+          delegation chains between services but operate at the
+          service layer.  The User's intent is represented by the
+          OAuth grant, which is under Operator control.
+        </t>
+        <t>
+          The gap is consistent across all existing frameworks:
+          user-to-operator trust is taken as a precondition.  DRP
+          addresses that precondition directly.
+        </t>
+      </section>
+    </section>
+
+    <!-- ============================================================ -->
+    <section anchor="sec-receipt" numbered="true">
+      <name>The Delegation Receipt</name>
+
+      <section anchor="sec-receipt-structure" numbered="true">
+        <name>Receipt Structure</name>
+        <t>
+          A Delegation Receipt is a JSON object with the following
+          <bcp14>REQUIRED</bcp14> fields:
+        </t>
+        <dl newline="true" spacing="normal">
+          <dt>delegationId:</dt>
+          <dd>
+            The SHA-256 hash of the canonical serialization of the
+            Authorization Object body (all fields except
+            delegationId and signature).  Encoded as the string
+            "sha256:" followed by the lowercase hex digest.
+          </dd>
+
+          <dt>version:</dt>
+          <dd>
+            Protocol version string.  This document defines version
+            "1".
+          </dd>
+
+          <dt>scope:</dt>
+          <dd>
+            An object with four keys: "reads", "writes", "deletes",
+            and "executes", each containing an array of permitted
+            resource:operation strings.  The "executes" array
+            <bcp14>MUST</bcp14> contain SHA-256 hashes of the
+            static capability DAG of each authorized program;
+            program names or URIs <bcp14>MUST NOT</bcp14> be used
+            in the "executes" array.  Natural language
+            <bcp14>MUST NOT</bcp14> appear in any scope field.
+          </dd>
+
+          <dt>boundaries:</dt>
+          <dd>
+            An array of prohibition strings that
+            <bcp14>MUST</bcp14> be enforced regardless of Operator
+            instruction.  The array <bcp14>MUST NOT</bcp14> be
+            empty; implementations with no explicit prohibitions
+            <bcp14>SHOULD</bcp14> populate a conservative default.
+          </dd>
+
+          <dt>timeWindow:</dt>
+          <dd>
+            An object with "notBefore" and "notAfter" fields, each
+            an ISO 8601 timestamp.  The authoritative time
+            reference is the log timestamp
+            (see <xref target="sec-timestamp-auth"/>), not the
+            client clock.
+          </dd>
+
+          <dt>instructionHash:</dt>
+          <dd>
+            The SHA-256 hash of the Operator's stated instructions
+            at delegation time, encoded as "sha256:" followed by
+            the lowercase hex digest.
+          </dd>
+
+          <dt>operatorInstructions:</dt>
+          <dd>
+            The plaintext instruction string whose SHA-256 hash is
+            recorded in instructionHash.
+          </dd>
+
+          <dt>signerPublicKey:</dt>
+          <dd>
+            The User's public key as a JSON Web Key
+            <xref target="RFC7517"/>.  Implementations
+            <bcp14>SHOULD</bcp14> use ECDSA P-256 (crv: "P-256")
+            <xref target="RFC7518"/> keys.
+          </dd>
+
+          <dt>signature:</dt>
+          <dd>
+            The ECDSA P-256 signature over the canonical
+            serialization of the Authorization Object body, encoded
+            as base64url.
+          </dd>
+        </dl>
+        <t>
+          The following <bcp14>OPTIONAL</bcp14> fields are defined
+          by this document:
+        </t>
+        <dl newline="true" spacing="normal">
+          <dt>teeMeasurement:</dt>
+          <dd>
+            Model state commitment object binding the receipt to a
+            specific TEE enclave measurement.
+            See <xref target="sec-attestation"/>.
+          </dd>
+
+          <dt>scopeSchema:</dt>
+          <dd>
+            Machine-readable structured allowlist and denylist
+            derived from the Scope Discovery Protocol.
+            See <xref target="sec-scope-discovery"/>.
+          </dd>
+        </dl>
+        <t>The complete structure is illustrated below:</t>
+        <sourcecode type="json" name="receipt-structure.json"><![CDATA[
+{
+  "delegationId":  "<sha256-of-canonical-body>",
+  "version":       "1",
+  "scope": {
+    "reads":    ["<resource>:<operation>"],
+    "writes":   ["<resource>:<operation>"],
+    "deletes":  ["<resource>:<operation>"],
+    "executes": ["sha256:<capability-dag-hash>"]
+  },
+  "boundaries": ["<prohibition-string>"],
+  "timeWindow": {
+    "notBefore": "<ISO-8601-timestamp>",
+    "notAfter":  "<ISO-8601-timestamp>"
+  },
+  "instructionHash":      "sha256:<hex-digest>",
+  "operatorInstructions": "<operator-instruction-text>",
+  "signerPublicKey":      { "<JWK per RFC 7517>" },
+  "signature":            "<base64url-ecdsa-p256-signature>"
+}
+]]></sourcecode>
+      </section>
+
+      <section anchor="sec-canonical-serial" numbered="true">
+        <name>Canonical Serialization</name>
+        <t>
+          The canonical serialization of a receipt body is defined
+          as follows:
+        </t>
+        <ol spacing="normal" type="1">
+          <li>
+            Serialize the Authorization Object as JSON with keys
+            sorted in lexicographic ascending order at every nesting
+            level.
+          </li>
+          <li>
+            Remove all insignificant whitespace (no spaces, no
+            newlines outside of string values).
+          </li>
+          <li>Encode the result as UTF-8.</li>
+        </ol>
+        <t>The delegationId is computed as:</t>
+        <sourcecode type="pseudocode"><![CDATA[
+delegationId = "sha256:" ||
+               lowercase_hex(SHA-256(canonical_body))
+]]></sourcecode>
+        <t>
+          Implementations <bcp14>MUST</bcp14> compute the
+          delegationId over the body before the signature field is
+          added.  The signature field <bcp14>MUST NOT</bcp14> be
+          included in the data that is signed.
+        </t>
+      </section>
+
+      <section anchor="sec-signing-procedure" numbered="true">
+        <name>Signing Procedure</name>
+        <t>
+          Receipt issuance <bcp14>MUST</bcp14> follow this
+          sequence:
+        </t>
+        <ol spacing="normal" type="1">
+          <li>
+            The Operator presents their intended instructions to the
+            User, along with the proposed scope, boundaries, and
+            time window.
+          </li>
+          <li>
+            The User reviews the scope, boundaries, time window, and
+            Operator instructions.
+          </li>
+          <li>
+            The User signs the canonical Authorization Object body
+            using their private key via the WebAuthn/FIDO2 API
+            <xref target="W3C-WebAuthn"/> <xref target="FIDO2"/>.  Hardware key custody (Trusted
+            Platform Module or device secure enclave) is
+            <bcp14>RECOMMENDED</bcp14>.
+          </li>
+          <li>
+            The signed receipt is submitted to a decentralized
+            append-only log.
+          </li>
+          <li>
+            The log assigns a timestamp and returns a log anchor
+            (inclusion proof).
+          </li>
+          <li>
+            No agent action <bcp14>MAY</bcp14> begin until the log
+            anchor is confirmed.
+          </li>
+        </ol>
+        <t>
+          The log timestamp established in step 5 is the
+          authoritative issuance time.  Client clocks
+          <bcp14>MUST NOT</bcp14> be used as the time reference for
+          receipt validation.
+        </t>
+      </section>
+    </section>
+
+    <!-- ============================================================ -->
+    <section anchor="sec-log" numbered="true">
+      <name>The Append-Only Log</name>
+
+      <section anchor="sec-log-entry" numbered="true">
+        <name>Log Entry Structure</name>
+        <t>
+          Each entry in the append-only log
+          <bcp14>MUST</bcp14> contain:
+        </t>
+        <ul spacing="normal">
+          <li>The Delegation Receipt hash (delegationId).</li>
+          <li>
+            The SHA-256 hash of the preceding log entry (for chain
+            linking; see <xref target="sec-chain-linking"/>).
+          </li>
+          <li>
+            A trusted timestamp conforming to
+            <xref target="RFC3161"/>.
+          </li>
+          <li>The submitter's public key hash.</li>
+          <li>A monotonically increasing entry sequence number.</li>
+        </ul>
+        <t>
+          Implementations <bcp14>SHOULD</bcp14> use a log format
+          compatible with Certificate Transparency
+          <xref target="RFC6962"/> to enable standard log
+          consistency verification.
+        </t>
+        <t>
+          Action log entries produced during agent execution follow
+          the same structure.  Each action log entry
+          <bcp14>MUST</bcp14> include:
+        </t>
+        <ul spacing="normal">
+          <li>The receipt hash authorizing the action.</li>
+          <li>The action type, payload hash, and destination.</li>
+          <li>
+            The SHA-256 hash of the preceding action log entry.
+          </li>
+          <li>
+            An RFC 3161 timestamp and the agent's ECDSA P-256
+            signature over the entry body.
+          </li>
+        </ul>
+      </section>
+
+      <section anchor="sec-chain-linking" numbered="true">
+        <name>Chain Linking</name>
+        <t>
+          Each log entry <bcp14>MUST</bcp14> include the SHA-256
+          hash of the immediately preceding entry.  This chain
+          structure guarantees:
+        </t>
+        <ol spacing="normal" type="1">
+          <li>
+            Log entries cannot be inserted retroactively without
+            producing a detectable chain break.
+          </li>
+          <li>
+            Log entries cannot be deleted without invalidating the
+            chain hash of the subsequent entry.
+          </li>
+          <li>
+            Any two parties holding the same entry hash can verify
+            independently that they share the same log view up to
+            that entry.
+          </li>
+        </ol>
+        <t>
+          The chain structure makes it impossible to insert or
+          delete individual action records without producing a
+          detectable inconsistency that any log monitor can
+          identify.
+        </t>
+      </section>
+
+      <section anchor="sec-timestamp-auth" numbered="true">
+        <name>Timestamp Authority</name>
+        <t>
+          Implementations <bcp14>MUST</bcp14> use an RFC 3161
+          <xref target="RFC3161"/> Time-Stamp Authority (TSA) to
+          produce the authoritative timestamp for each Delegation
+          Receipt anchored to the log.  The TSA timestamp:
+        </t>
+        <ol spacing="normal" type="1">
+          <li>
+            Establishes the authoritative notBefore time for the
+            associated Delegation Receipt.
+          </li>
+          <li>
+            Is used in lieu of the client clock for all time window
+            validation
+            (see <xref target="sec-verify-checks"/>).
+          </li>
+          <li>
+            Is included in the log anchor returned to the
+            submitter.
+          </li>
+        </ol>
+        <t>
+          If the TSA is unreachable, implementations
+          <bcp14>MAY</bcp14> record a local-clock timestamp marked
+          "UNVERIFIED_TIMESTAMP".  An agent verifier
+          <bcp14>MUST</bcp14> treat UNVERIFIED_TIMESTAMP as
+          insufficient evidence of authorization time in production
+          deployments.
+        </t>
+      </section>
+    </section>
+
+    <!-- ============================================================ -->
+    <section anchor="sec-verification" numbered="true">
+      <name>Pre-Execution Verification</name>
+
+      <section anchor="sec-verify-checks" numbered="true">
+        <name>Verification Checks</name>
+        <t>
+          Before executing any action, the Agent
+          <bcp14>MUST</bcp14> perform all of the following checks
+          in order.  All checks <bcp14>MUST</bcp14> pass; any
+          single failure <bcp14>MUST</bcp14> abort the action
+          without partial execution.
+        </t>
+        <t>The complete verification procedure is:</t>
+        <sourcecode type="pseudocode" name="verify-procedure"><![CDATA[
+Verify(receipt, action):
+  (1) if Revoked(receipt.delegationId)
+                                      -> fail
+  (2) if not VerifySig(receipt.signature,
+                       canonical(receipt.body),
+                       receipt.signerPublicKey)
+                                      -> fail
+  (3) if not InTimeWindow(receipt.timeWindow,
+                          logTimestamp)
+                                      -> fail
+  (4) if not InScope(action, receipt.scope)
+                                      -> fail
+  (5) if ViolatesBoundary(action, receipt.boundaries)
+                                      -> fail
+  (6) if action.type == EXECUTE and
+         Hash(SafescriptDAG(program))
+         != receipt.scope.executes[n]
+                                      -> fail
+  (7) if Hash(currentOperatorInstructions)
+         != receipt.instructionHash
+                                      -> fail
+  return true
+]]></sourcecode>
+        <t>
+          The revocation pre-check (step 1)
+          <bcp14>MUST</bcp14> be performed before any other check.
+          A revoked receipt <bcp14>MUST</bcp14> fail immediately
+          regardless of whether other checks would pass.
+        </t>
+      </section>
+
+      <section anchor="sec-check-ordering" numbered="true">
+        <name>Check Ordering</name>
+        <t>
+          The check ordering reflects distinct security properties;
+          each step eliminates a distinct attack surface.
+        </t>
+        <dl newline="false" spacing="normal">
+          <dt>Revocation check (1):</dt>
+          <dd>
+            Ensures a receipt explicitly invalidated by the User
+            cannot authorize further actions, regardless of its
+            cryptographic validity.
+          </dd>
+
+          <dt>Signature check (2):</dt>
+          <dd>
+            Confirms the receipt was signed by the holder of the
+            User's private key and has not been altered since
+            signing.  Any tampering with the receipt body
+            invalidates the signature under ECDSA P-256.
+          </dd>
+
+          <dt>Time window check (3):</dt>
+          <dd>
+            Validates the action against the log-assigned TSA
+            timestamp, not the client clock.  Prevents time
+            manipulation attacks in which an agent extends its own
+            authorization window by adjusting local time.
+          </dd>
+
+          <dt>Scope check (4):</dt>
+          <dd>
+            Enforces the deny-by-default allowlist.  If the action
+            is not explicitly listed, it <bcp14>MUST</bcp14> fail
+            regardless of Operator instruction.
+          </dd>
+
+          <dt>Boundary check (5):</dt>
+          <dd>
+            Enforces the User's hard limits, which survive any
+            subsequent Operator instruction or override.
+          </dd>
+
+          <dt>Execution hash check (6):</dt>
+          <dd>
+            Computes the static capability signature of the actual
+            program the agent has been given and compares it to the
+            hash committed in the "executes" scope field.
+            Substituting a different program after the receipt is
+            signed is detectable without runtime introspection.
+          </dd>
+
+          <dt>Instruction hash check (7):</dt>
+          <dd>
+            Compares the SHA-256 hash of the Operator's current
+            instructions against the hash committed at delegation
+            time.  If the Operator has changed its instructions
+            since the receipt was issued, the mismatch is
+            immediately detectable from the log entry, with no
+            reliance on the Operator's own account.
+          </dd>
+        </dl>
+      </section>
+
+      <section anchor="sec-failure-handling" numbered="true">
+        <name>Failure Handling</name>
+        <t>
+          When any verification check fails, the Agent
+          <bcp14>MUST</bcp14>:
+        </t>
+        <ol spacing="normal" type="1">
+          <li>
+            Abort the action immediately.  No partial execution is
+            permitted.
+          </li>
+          <li>
+            Record the failure in the action log, including the
+            specific check that failed and the reason string.
+          </li>
+          <li>
+            Not fall back to Operator instruction.  A failed
+            verification check <bcp14>MUST NOT</bcp14> be
+            overridden by any runtime parameter, environment
+            variable, or Operator-supplied flag.
+          </li>
+          <li>
+            Surface the failure to the User when the failing check
+            is one of: revocation (1), instruction hash mismatch
+            (7), or execution hash mismatch (6).  These failures
+            indicate possible Operator deviation from the committed
+            authorization and <bcp14>SHOULD</bcp14> be escalated.
+          </li>
+        </ol>
+        <t>
+          When a scope check (4) fails because an action is outside
+          the current receipt's scope, the Agent
+          <bcp14>MAY</bcp14> pause execution and request a
+          Micro-Receipt from the User covering the specific action.
+          The Micro-Receipt <bcp14>MUST</bcp14> reference the
+          parent receipt hash and <bcp14>MUST</bcp14> be anchored
+          to the append-only log before the action is attempted.
+        </t>
+      </section>
+    </section>
+
+    <!-- ============================================================ -->
+    <section anchor="sec-attestation" numbered="true">
+      <name>Model State Attestation</name>
+
+      <section anchor="sec-commitment" numbered="true">
+        <name>Commitment Binding</name>
+        <t>
+          A valid Delegation Receipt proves that a User authorized
+          an Agent to act within defined scope.  It does not prove
+          that the model executing the receipt is the model the User
+          authorized.  An Operator could silently substitute a
+          fine-tuned model variant after the receipt is signed; all
+          verification checks would pass because the receipt itself
+          is genuine.
+        </t>
+        <t>
+          Model State Attestation closes this gap with a two-phase
+          cryptographic protocol that binds the receipt to a
+          measurement of model state at both delegation time and
+          execution time.
+        </t>
+        <t>Phase 1 -- Commitment (at delegation time):</t>
+        <t>
+          The Operator commits to the exact model state that will
+          execute.  The commitment is a SHA-256 measurement of five
+          components concatenated in canonical order:
+        </t>
+        <sourcecode type="pseudocode" name="model-measurement"><![CDATA[
+modelMeasurement = SHA-256(
+  normalize(modelId)       ||
+  normalize(modelVersion)  ||
+  systemPromptHash         ||
+  runtimeConfigHash        ||
+  receiptHash
+)
+]]></sourcecode>
+        <t>
+          Including receiptHash as the fifth component binds the
+          model measurement to the specific delegation.  The same
+          model with the same system prompt but a different receipt
+          produces a different measurement.  A commitment
+          <bcp14>MUST NOT</bcp14> be reused across delegations.
+        </t>
+        <t>
+          The commitment is signed by the Operator's ECDSA P-256
+          key and attested by the TEE runtime, producing a sealed
+          artifact that includes modelId, modelVersion,
+          systemPromptHash, runtimeConfigHash, committedAt, the
+          Operator's signature, and a TEE attestation quote.
+        </t>
+        <t>Phase 2 -- Verification (at execution time):</t>
+        <t>
+          Immediately before the agent function executes, the
+          current model state is measured using the same
+          five-component computation.  The resulting measurement
+          <bcp14>MUST</bcp14> equal the committed measurement.
+          If the two measurements differ for any reason, execution
+          <bcp14>MUST</bcp14> be blocked with a
+          ModelDriftDetected error identifying exactly which
+          components changed.
+        </t>
+        <t>
+          With Model State Attestation in place, the complete
+          verifiable chain of accountability is:
+        </t>
+        <artwork type="ascii-art" align="left"
+                 name="five-layer-chain"><![CDATA[
+   +---------------------------+
+   |    Delegation Receipt     |  <-- User signed
+   +---------------------------+
+              |
+   +---------------------------+
+   |  Model State Commitment   |  <-- Hardware measured
+   +---------------------------+
+              |
+   +---------------------------+
+   |  Execution Attestation    |  <-- TEE verified
+   +---------------------------+
+              |
+   +---------------------------+
+   |     Action Log Entry      |  <-- Chain linked
+   +---------------------------+
+              |
+   +---------------------------+
+   |    Data Flow Receipt      |  <-- Output policy
+   +---------------------------+
+]]></artwork>
+        <t>
+          An auditor presented with a chain proof can verify each
+          layer independently and confirm that a logged action was
+          taken by the model the User authorized, acting within the
+          defined scope, under conditions unaltered since
+          authorization was granted.
+        </t>
+      </section>
+
+      <section anchor="sec-provider-update" numbered="true">
+        <name>Provider Update Handling</name>
+        <t>
+          Hosted model providers may silently update the underlying
+          model behind a versioned alias without Operator action.
+          Treating this identically to a deliberate substitution
+          attack is too blunt: it would block legitimate executions
+          whenever a provider retires a model version, forcing
+          operators to recommit on every provider maintenance cycle.
+        </t>
+        <t>
+          Model State Attestation distinguishes two categories of
+          measurement mismatch:
+        </t>
+        <dl newline="true" spacing="normal">
+          <dt>MaliciousSubstitution:</dt>
+          <dd>
+            <t>
+              The Operator explicitly changed the model identifier,
+              system prompt, or runtime configuration after the
+              commitment was signed.  This <bcp14>MUST</bcp14>
+              always be a hard block.  Indicators are any of:
+            </t>
+            <ul spacing="normal">
+              <li>currentModelId != committedModelId, OR</li>
+              <li>
+                currentSystemPromptHash !=
+                committedSystemPromptHash, OR
+              </li>
+              <li>
+                currentRuntimeConfigHash !=
+                committedRuntimeConfigHash
+              </li>
+            </ul>
+          </dd>
+
+          <dt>ProviderUpdate:</dt>
+          <dd>
+            <t>
+              The model version changed, but the Operator's
+              configured modelId is unchanged.  The provider
+              updated the model behind a stable alias.  Indicators
+              are all of:
+            </t>
+            <ul spacing="normal">
+              <li>currentModelId == committedModelId, AND</li>
+              <li>
+                currentModelVersion != committedModelVersion
+              </li>
+            </ul>
+          </dd>
+        </dl>
+        <t>
+          Operators declare how provider updates are handled at
+          construction time via the providerUpdatePolicy field:
+        </t>
+        <dl newline="true" spacing="normal">
+          <dt>"block":</dt>
+          <dd>
+            Treat provider updates identically to
+            MaliciousSubstitution.  Any version change
+            <bcp14>MUST</bcp14> block execution immediately.
+            <bcp14>RECOMMENDED</bcp14> when strict model pinning
+            is required.
+          </dd>
+
+          <dt>"reauthorize" (default):</dt>
+          <dd>
+            When a provider update is detected, return
+            { allowed: false, reason: "PROVIDER_UPDATE_DETECTED",
+            requiresReauthorization: true } and block all
+            subsequent executions under this attestation instance
+            until the User explicitly acknowledges the change.
+          </dd>
+        </dl>
+        <t>
+          The "reauthorize" policy preserves a recovery path.  The
+          provider update is flagged and the system halts, but the
+          cause is identified as a non-malicious provider action.
+          A human <bcp14>MUST</bcp14> explicitly invoke
+          reauthorize() with userApproval: true before execution
+          resumes.  This is an explicit human-in-the-loop
+          checkpoint; the system <bcp14>MUST NOT</bcp14> silently
+          resume execution after a provider update.
+        </t>
+      </section>
+
+      <section anchor="sec-substitution" numbered="true">
+        <name>Malicious Substitution Detection</name>
+        <t>
+          The per-component comparison in the Phase 2 verification
+          identifies exactly which aspects of model state changed:
+          model identity, version, system prompt, or runtime
+          configuration.  This enables forensic analysis of how an
+          unauthorized execution occurred.
+        </t>
+        <t>
+          The full SHA-256 measurement comparison is performed in
+          addition to per-component comparison.  This is redundant
+          given the component checks but provides a cryptographic
+          guarantee: even if the component comparison logic contains
+          a bug, the measurement comparison will detect any state
+          change.
+        </t>
+        <t>Model State Attestation proves:</t>
+        <ol spacing="normal" type="1">
+          <li>
+            Model identity at commitment time.  The Operator
+            committed to a specific (modelId, modelVersion,
+            systemPromptHash, runtimeConfigHash) tuple before
+            execution began.  The ECDSA signature and TEE
+            attestation prove this commitment was made inside a
+            trusted environment and has not been altered.
+          </li>
+          <li>
+            Model state at execution time.  The TEE verification
+            attestation proves the measurement was recomputed
+            inside the enclave immediately before execution, and
+            that the recomputed measurement matched the committed
+            measurement.
+          </li>
+          <li>
+            Delegation binding.  The receiptHash component ensures
+            the commitment is irrevocably bound to the specific
+            delegation.  A commitment made under receipt A
+            <bcp14>MUST NOT</bcp14> be presented as valid under
+            receipt B.
+          </li>
+        </ol>
+        <t>
+          Model State Attestation does not prove
+          that the committed model is safe, aligned, or correctly
+          configured.  It does not inspect the content of the
+          system prompt.  In simulation mode (the default for
+          testing), attestations are signed with a software ECDSA
+          key rather than produced by real TEE hardware.  Production
+          deployments <bcp14>SHOULD</bcp14> use Intel SGX, Intel
+          TDX, or ARM TrustZone attestation.
+        </t>
+      </section>
+    </section>
+
+    <!-- ============================================================ -->
+    <section anchor="sec-scope-discovery" numbered="true">
+      <name>Scope Discovery Protocol</name>
+      <t>
+        The Scope Discovery Protocol addresses the upstream
+        authorization gap: a User cannot correctly define agent
+        scope before observing agent behavior.  Asking users to
+        define scope upfront produces one of two failure modes:
+      </t>
+      <dl newline="false" spacing="normal">
+        <dt>Over-authorization:</dt>
+        <dd>
+          The User grants broad permissions to avoid blocking the
+          agent.  The agent is then authorized to perform operations
+          the User never intended to permit.
+        </dd>
+
+        <dt>Under-authorization:</dt>
+        <dd>
+          The User grants narrow permissions and the agent fails
+          mid-task, requiring repeated round-trips to expand scope.
+          Users respond by granting progressively wider permissions
+          under frustration.
+        </dd>
+      </dl>
+      <t>
+        Neither outcome produces a receipt that reflects the User's
+        actual intent.  The scope field becomes a legal fiction
+        rather than a genuine authorization boundary.
+      </t>
+      <t>
+        The Scope Discovery Protocol inverts the authorization
+        sequence.  Instead of asking Users to define scope before
+        running the agent, it runs the agent first in a sandboxed
+        simulation and uses the observed behavior to derive the
+        scope definition.
+      </t>
+      <t>The protocol proceeds in four stages:</t>
+      <dl newline="true" spacing="normal">
+        <dt>Stage 1 -- Sandboxed observation:</dt>
+        <dd>
+          The agent function is wrapped with transparent proxies
+          for every supported resource type (email, calendar,
+          payment, files, database, network).  Every operation call
+          is intercepted, timestamped, and appended to an
+          observation log.  Mock data matching the expected
+          structure is returned so the agent proceeds normally.
+          No real I/O occurs; no side effects are produced.
+        </dd>
+
+        <dt>Stage 2 -- Scope generation:</dt>
+        <dd>
+          <t>The observation log is analyzed to produce:</t>
+          <ol spacing="normal" type="a">
+            <li>
+              A draftScope with an allowedActions list
+              (de-duplicated observed operations) and conservative
+              deniedActions defaults for delete, execute, and
+              payment operations.
+            </li>
+            <li>
+              A plainSummary in non-technical language suitable for
+              end-user review.
+            </li>
+            <li>
+              riskFlags for: delete operations, execute operations,
+              payment operations, external send and write
+              operations, and any operation called more than 50
+              times in the observation session.
+            </li>
+            <li>
+              suggestedDenials for dangerous operations the agent
+              did not use, with per-entry explanations.
+            </li>
+          </ol>
+        </dd>
+
+        <dt>Stage 3 -- Plain language review:</dt>
+        <dd>
+          The Operator or User reviews the plain summary, risk
+          flags, and suggested denials before approving.  An
+          approve() call accepts "remove" and "add" arrays for
+          surgical modification of the draft scope.  This is the
+          moment of genuine human authorization, grounded in
+          observed behavior rather than speculation.
+        </dd>
+
+        <dt>Stage 4 -- Cryptographic commitment:</dt>
+        <dd>
+          The approved scope is embedded into a Delegation Receipt
+          using the standard signing procedure
+          (<xref target="sec-signing-procedure"/>).  The receipt
+          includes a scopeSchema field with the structured
+          allowedActions and deniedActions lists, and a
+          discoveryMetadata field recording observation count, any
+          timeout abort, and the risk flags at generation time.
+        </dd>
+      </dl>
+      <t>
+        The receipt produced by Scope Discovery is structurally
+        identical to one produced by direct issuance.  It carries
+        all standard fields and <bcp14>MUST</bcp14> be verifiable
+        by the standard Verify procedure
+        (<xref target="sec-verify-checks"/>) without modification.
+      </t>
+      <t>
+        The critical property of observation-based scope generation
+        is grounding: every entry in allowedActions corresponds to
+        an operation the agent actually performed during a
+        representative run.  This is a structural record of what
+        the agent did, not a user estimate of what it might need.
+      </t>
+      <t>Grounding has three practical consequences:</t>
+      <dl newline="false" spacing="normal">
+        <dt>Precision:</dt>
+        <dd>
+          The allowedActions list contains exactly the
+          resource/operation pairs observed.  An agent that reads
+          email but never writes it receives a receipt authorizing
+          read on email, not write.
+        </dd>
+
+        <dt>Defensibility:</dt>
+        <dd>
+          The discoveryMetadata.observationCount and riskFlags
+          fields provide evidence that scope was derived from
+          observation.  The audit trail runs from observation to
+          draft to approval to receipt.
+        </dd>
+
+        <dt>Ratcheting:</dt>
+        <dd>
+          Each time the agent's behavior changes, a new observation
+          session produces a new draft.  If the agent begins calling
+          a new operation class in a new version, that operation
+          surfaces in the risk flags before any receipt is issued
+          for the updated agent.  Drift in agent behavior is
+          detectable before it is authorized.
+        </dd>
+      </dl>
+      <t>
+        For operators who trust their agent's observed behavior and
+        do not require manual review, a guided mode provides a
+        single-call end-to-end flow that runs observe, generate,
+        approve, and finalize automatically.  The returned riskFlags
+        allow operators to inspect what was flagged even when they
+        choose not to gate on it.
+      </t>
+    </section>
+
+    <!-- ============================================================ -->
+    <section anchor="sec-session-state" numbered="true">
+      <name>Session State and Adaptive Authorization</name>
+      <t>
+        A Delegation Receipt is a static artifact.  It answers one
+        question at one moment in time: did this User authorize this
+        Agent to perform this class of actions?  It cannot answer
+        whether a specific action is safe to take right now, given
+        everything that has happened in this session.
+      </t>
+      <t>
+        Static receipts have three blind spots for long-running
+        sessions:
+      </t>
+      <dl newline="false" spacing="normal">
+        <dt>The drift problem:</dt>
+        <dd>
+          A receipt issued for "manage my calendar" remains
+          technically valid after the agent has sent 400 emails and
+          received a prompt injection payload.  The receipt scope
+          string has not changed and cannot reflect runtime events.
+        </dd>
+
+        <dt>The escalation problem:</dt>
+        <dd>
+          A receipt with a generous scope becomes progressively more
+          dangerous as the agent accumulates sensitive data and
+          accesses external services.  Risk is not static -- it
+          depends on what came before.
+        </dd>
+
+        <dt>The injection problem:</dt>
+        <dd>
+          A receipt cannot detect that the agent's input pipeline
+          has been compromised mid-session by a prompt injection
+          attack embedded in retrieved content.  The receipt was
+          signed before the session began; it has no knowledge of
+          runtime inputs.
+        </dd>
+      </dl>
+      <t>
+        SessionState closes these gaps by maintaining a live,
+        stateful view of each session that evolves with every
+        action.  It tracks a trustScore for each session,
+        initialized at 100 and bounded between 0 and 100.
+      </t>
+      <t>Trust decays when anomalies are detected:</t>
+      <sourcecode type="pseudocode"><![CDATA[
+trustScore -= anomaly.severity * trustDecayRate
+]]></sourcecode>
+      <t>Anomaly severity levels are defined as:</t>
+      <sourcecode type="pseudocode"><![CDATA[
+Prompt injection detected        : severity 5
+Sensitive data in external dest. : severity 4
+Frequency spike                  : severity 3
+Scope edge usage                 : severity 2
+First-time action                : severity 1
+]]></sourcecode>
+      <t>Trust recovers slightly on each clean action:</t>
+      <sourcecode type="pseudocode"><![CDATA[
+trustScore += trustRecoveryRate  (default: 0.01)
+]]></sourcecode>
+      <t>Session status is driven by trust score thresholds:</t>
+      <sourcecode type="pseudocode"><![CDATA[
+trustScore >= 30 : ACTIVE    -- normal operation
+trustScore <  30 : DEGRADED  -- risk scores amplified
+trustScore <  10 : SUSPENDED -- all actions blocked
+]]></sourcecode>
+      <t>
+        The DEGRADED state does not block operations directly.
+        Instead, it causes the risk scorer to apply a multiplier to
+        every score, making previously marginal decisions tip into
+        REQUIRE_APPROVAL or BLOCK territory.
+      </t>
+      <t>
+        Before each action, every payload is classified into one of
+        four sensitivity levels:
+      </t>
+      <sourcecode type="pseudocode"><![CDATA[
+RESTRICTED   : SSN, credit card, medical identifiers, API keys
+CONFIDENTIAL : Internal email addresses, system prompts,
+               database schemas, config files
+INTERNAL     : Company domain references, internal project
+               names, user IDs
+PUBLIC       : Everything else
+]]></sourcecode>
+      <t>
+        Each level modifies the block and approval thresholds:
+      </t>
+      <sourcecode type="pseudocode"><![CDATA[
+RESTRICTED   : Block threshold drops to at most 60
+CONFIDENTIAL : Approval threshold drops to at most 40
+INTERNAL     : No change
+PUBLIC       : All thresholds relax by +10
+]]></sourcecode>
+      <t>
+        The complete decision engine evaluates five risk checks and
+        maps the final score to one of three outcomes:
+      </t>
+      <sourcecode type="pseudocode" name="decision-engine"><![CDATA[
+Check 1 -- Sensitive data scan:
+  SSN pattern              +35
+  Credit card pattern      +35
+  API key pattern          +30
+  High-entropy string      +20
+  Prompt injection pattern +40
+  Password keyword         +25
+
+Check 2 -- External exfiltration:
+  External domain + sensitive data  +30
+  First-time external domain        +15
+
+Check 3 -- Frequency anomaly:
+  Same action type >10x in 60s  +25
+  >50 total actions in session  +15
+
+Check 4 -- Scope edge usage:
+  New permission class   +10
+  At scope boundary      +10
+
+Check 5 -- Trust multiplier:
+  finalScore = rawScore * (1 + (100 - trust) / 100)
+
+if session.status == SUSPENDED       --> BLOCK
+if finalScore >= blockThreshold      --> BLOCK
+if finalScore >= approvalThreshold   --> REQUIRE_APPROVAL
+else                                 --> ALLOW
+]]></sourcecode>
+      <t>
+        The checks are deterministic and ordered.  The same action,
+        payload, and session state always produce the same score.
+        Every BLOCK or REQUIRE_APPROVAL decision
+        <bcp14>SHOULD</bcp14> be accompanied by a structured reason
+        object identifying which specific checks contributed to the
+        score.
+      </t>
+      <t>
+        SessionState <bcp14>MUST</bcp14> be integrated with the
+        PreExecutionVerifier as a final check, running after all
+        static receipt checks pass
+        (see <xref target="sec-verify-checks"/>).  An action that
+        passes all cryptographic checks but produces a BLOCK outcome
+        from session risk evaluation
+        <bcp14>MUST NOT</bcp14> execute.
+      </t>
+      <t>
+        The architectural insight is that authorization is not
+        binary.  A valid receipt is a necessary condition for
+        execution, not a sufficient one.  Real-world safety requires
+        a live, stateful layer that observes behavior and adapts its
+        decisions based on the full session context.
+      </t>
+    </section>
+
+    <!-- ============================================================ -->
+    <section anchor="sec-multi-agent" numbered="true">
+      <name>Multi-Agent Delegation Chains</name>
+      <t>
+        When a delegated Agent needs to hand off a subtask to
+        another Agent, the chain of authority
+        <bcp14>MUST</bcp14> remain auditable and bounded.  DRP
+        enforces three invariants at every delegation hop.
+      </t>
+
+      <section anchor="sec-scope-attenuation" numbered="true">
+        <name>Scope Attenuation</name>
+        <t>
+          Each delegation step <bcp14>MUST</bcp14> produce a
+          strict proper subset of the parent's authorized scope.
+          Specifically:
+        </t>
+        <ol spacing="normal" type="1">
+          <li>
+            Every action the child Agent is permitted
+            <bcp14>MUST</bcp14> already appear in the parent's
+            allowedActions list.  An Agent
+            <bcp14>MUST NOT</bcp14> grant permissions it was not
+            itself given.
+          </li>
+          <li>
+            The child <bcp14>MUST</bcp14> have strictly fewer
+            permitted actions than the parent.  Equal scope
+            <bcp14>MUST</bcp14> be rejected.
+          </li>
+          <li>
+            Every action explicitly denied by the parent in
+            deniedActions <bcp14>MUST</bcp14> be carried forward
+            to the child.  A child <bcp14>MAY</bcp14> add new
+            denied actions but <bcp14>MUST NOT</bcp14> remove any
+            denial that the parent established.
+          </li>
+        </ol>
+        <t>
+          The receipt chain <bcp14>MUST</bcp14> track delegation
+          depth.  The root receipt, signed directly by the User,
+          is at depth 0.  Each delegation increments depth by 1.
+          When a delegation would produce a receipt at depth
+          &gt;= maxDepth, the implementation
+          <bcp14>MUST</bcp14> raise a MaxDepthExceeded error
+          before creating the receipt.  The default maxDepth is 3,
+          meaning at most three levels of agent-to-agent hand-off
+          before the chain <bcp14>MUST</bcp14> be re-anchored at
+          the User level.
+        </t>
+        <t>
+          The root receipt <bcp14>MUST</bcp14> carry a valid
+          ECDSA P-256 signature from the User's key.  If the root
+          could be generated by an Agent or Operator without User
+          involvement, the entire chain could be bootstrapped
+          unilaterally, defeating the protocol.  Any downstream
+          Agent that wants to prove its authority can walk the
+          chain to the root and demonstrate a continuous path of
+          scope-narrowing receipts.
+        </t>
+      </section>
+
+      <section anchor="sec-cascade-revocation" numbered="true">
+        <name>Cascade Revocation</name>
+        <t>
+          Revocation of a receipt in a multi-agent chain
+          <bcp14>MAY</bcp14> or may not cascade to
+          child receipts, depending on the revocation call.
+        </t>
+        <dl newline="true" spacing="normal">
+          <dt>When cascadeToChildren is true:</dt>
+          <dd>
+            A breadth-first traversal of all descendants
+            <bcp14>MUST</bcp14> be performed and each descendant
+            marked revoked.  The cascade
+            <bcp14>SHOULD</bcp14> be anchored to the append-only
+            log before agents are notified, to prevent a race
+            condition where a child Agent completes an action
+            between the parent revocation and cascade propagation.
+          </dd>
+
+          <dt>When cascadeToChildren is false:</dt>
+          <dd>
+            Only the named receipt is invalidated.  Its children
+            remain valid until explicitly revoked.  This allows
+            surgical removal of one Agent from a chain without
+            disrupting sibling branches.
+          </dd>
+        </dl>
+        <t>
+          Cascade revocation entries <bcp14>MUST</bcp14> be signed
+          by the User's private key and anchored to the append-only
+          log with the same requirements as the original revocation
+          procedure
+          (see <xref target="sec-threat-model"/>).
+        </t>
+      </section>
+    </section>
+
+    <!-- ============================================================ -->
+    <section anchor="sec-security" numbered="true">
+      <name>Security Considerations</name>
+
+      <section anchor="sec-threat-model" numbered="true">
+        <name>Threat Model</name>
+        <t>
+          DRP considers the following adversaries and mitigations:
+        </t>
+        <dl newline="true" spacing="normal">
+          <dt>Compromised Operator:</dt>
+          <dd>
+            An attacker who gains control of the Operator's systems
+            can alter the instructions delivered to the Agent.
+            Under DRP, any instruction diverging from the hash
+            committed in the Delegation Receipt is immediately
+            detectable at step (7) of Verify.  The attacker cannot
+            issue instructions that pass hash verification without
+            the User's private key.
+          </dd>
+
+          <dt>Malicious Operator:</dt>
+          <dd>
+            An Operator who intentionally instructs the Agent to
+            exceed the User's authorization -- under commercial
+            pressure, legal compulsion, or bad faith -- produces a
+            detectable instruction hash mismatch.  The discrepancy
+            between committed and actual instructions is an
+            auditable fact in the append-only log.  The Operator
+            cannot alter the log entry and cannot alter the signed
+            receipt.
+          </dd>
+
+          <dt>Log Integrity:</dt>
+          <dd>
+            The security of the protocol depends on the
+            tamper-evidence of the append-only log.
+            Implementations <bcp14>SHOULD</bcp14> use decentralized
+            log implementations following the Certificate
+            Transparency model that do not depend on a single
+            operator for integrity.  Log fork detection follows
+            established approaches from CT ecosystems
+            <xref target="RFC6962"/>.
+          </dd>
+
+          <dt>Key Compromise:</dt>
+          <dd>
+            If the User's signing key is compromised, an attacker
+            can issue Delegation Receipts in the User's name.
+            Hardware key custody using a FIDO2 authenticator
+            <xref target="FIDO2"/> significantly reduces this risk
+            by making key extraction technically infeasible on
+            modern devices with secure enclaves.
+          </dd>
+
+          <dt>Revocation:</dt>
+          <dd>
+            <t>
+              When a User wishes to revoke a Delegation Receipt,
+              they <bcp14>MUST</bcp14>:
+            </t>
+            <ol spacing="normal" type="1">
+              <li>
+                Construct a revocation record containing: the
+                SHA-256 hash of the original receipt, a reason
+                string, and a revocation timestamp.
+              </li>
+              <li>
+                Sign the revocation record with the same private
+                key used to sign the original receipt.
+              </li>
+              <li>
+                Publish the signed revocation record to the
+                append-only log, producing an immutable log anchor.
+              </li>
+            </ol>
+            <t>
+              The log anchor establishes the authoritative
+              revocation time.  Actions taken before this timestamp
+              under the original receipt remain valid.  Actions
+              attempted after this timestamp
+              <bcp14>MUST</bcp14> fail.
+            </t>
+            <t>
+              Verification <bcp14>MUST</bcp14> check revocation
+              before any other check
+              (<xref target="sec-verify-checks"/>, step 1).
+              Because the revocation record is itself signed by the
+              User and anchored to the log, it carries the same
+              evidentiary weight as the original receipt.
+              Revocation is auditable, tamper-evident, and does not
+              depend on the Operator to propagate or acknowledge it.
+            </t>
+          </dd>
+
+          <dt>Model Substitution:</dt>
+          <dd>
+            An Operator could silently substitute a fine-tuned
+            model variant after receipt issuance.  Model State
+            Attestation (<xref target="sec-attestation"/>) closes
+            this gap by binding a cryptographic measurement of the
+            model state to the receipt at delegation time and
+            re-verifying inside a TEE at execution time.
+          </dd>
+
+          <dt>Micro-Receipt Fatigue:</dt>
+          <dd>
+            A malicious Operator could structure a workflow to
+            generate many micro-receipt requests in rapid
+            succession, inducing the User to approve actions they
+            do not meaningfully review.  This is analogous to
+            notification fatigue attacks against MFA prompts.  The
+            protocol makes every approval a signed, auditable
+            artifact.  Rate-limiting and UI affordances are the
+            primary mitigation; protocol implementations
+            <bcp14>SHOULD</bcp14> enforce a minimum inter-request
+            interval for micro-receipt prompts.
+          </dd>
+
+          <dt>Non-Repudiation:</dt>
+          <dd>
+            Let R be a Delegation Receipt with content C, user
+            signature sigma, and log anchor L.  Under the ECDSA
+            P-256 EUF-CMA unforgeability assumption, no party
+            without the User's private key can produce a valid
+            sigma for any C.  Therefore, the existence of a valid
+            receipt on the log is non-repudiable evidence that the
+            holder of the private key authorized the content of C
+            at time L.
+          </dd>
+
+          <dt>Soundness:</dt>
+          <dd>
+            For any action a where Verify(R, a) = true: (i) a
+            falls within the scope allowlist in C; (ii) a does not
+            violate any boundary in C; (iii) if a is an execution
+            action, the program's capability signature matches the
+            hash committed in C; and (iv) the Operator's
+            instructions at execution time hash to the value
+            committed in C.  Any deviation from (i)-(iv) causes
+            Verify to return false.  The Operator cannot alter C
+            without invalidating sigma; the Operator cannot alter
+            L by the tamper-evidence property of the append-only
+            log.
+          </dd>
+        </dl>
+      </section>
+
+      <section anchor="sec-semantic-gap" numbered="true">
+        <name>Semantic Gap</name>
+        <t>
+          The protocol does not eliminate the semantic gap between
+          authorized scope and authorized intent.  A User who
+          authorizes "write to calendar" may not intend to authorize
+          deletion of all existing events.  The Scope Discovery
+          Protocol (<xref target="sec-scope-discovery"/>) narrows
+          this gap by grounding scope definitions in observed agent
+          behavior rather than user speculation.
+        </t>
+        <t>
+          The "executes" scope class narrows the gap further for
+          code execution by requiring the SHA-256 hash of the
+          program's static capability DAG rather than a program
+          name or URI.  A program identified by name or URI can be
+          silently replaced; a program identified by its capability
+          signature <bcp14>MUST</bcp14> have the same capability
+          set as the authorized version.  Any capability addition
+          or removal changes the signature.
+        </t>
+        <t>
+          Natural language <bcp14>MUST NOT</bcp14> appear in any
+          scope field.  Scope entries <bcp14>MUST</bcp14> be
+          structured resource:operation pairs.  This restriction
+          exists because natural language scope definitions are
+          ambiguous, subject to interpretation, and cannot be used
+          for deterministic validation.  A scope entry of "manage
+          email" does not deterministically resolve to a set of
+          permitted or denied operations.
+        </t>
+        <t>
+          Cryptographic primitive upgrade path: DRP uses SHA-256
+          throughout for receipt ID computation, instruction hash
+          commitment, manifest body hashing, action log chain
+          linking, and revocation record linking.  The version
+          field in the receipt structure provides a migration path
+          to SHA-3-256 (FIPS 202) or BLAKE3 in a future protocol
+          version.  Both are drop-in replacements for the SHA-256
+          role in this protocol.  No structural redesign is
+          required for a hash function migration.
+        </t>
+        <t>
+          Quantum resistance: ECDSA P-256 is vulnerable to Shor's
+          algorithm on a sufficiently capable quantum computer.
+          The signing layer of the protocol is therefore not
+          post-quantum secure under current implementations.  The
+          migration path is through the FIDO2/WebAuthn credential
+          layer: because all DRP signing is abstracted behind the
+          WebAuthn API, a platform-level upgrade to post-quantum
+          FIDO2 authenticators (e.g., CRYSTALS-Dilithium, FALCON)
+          upgrades the protocol's quantum resistance without
+          protocol-layer changes.  The append-only log and hash
+          commitment structures are unaffected -- SHA-256 preimage
+          resistance is not threatened by known quantum algorithms.
+        </t>
+        <t>
+          For broader AI-specific risk management considerations
+          beyond the cryptographic scope of this protocol, see
+          the NIST AI Risk Management Framework
+          <xref target="NIST-AI-100-1"/>.
+        </t>
+      </section>
+
+      <section anchor="sec-tee-enforcement" numbered="true">
+        <name>TEE Enforcement</name>
+        <t>
+          Cryptographic receipt verification alone cannot prevent a
+          compromised agent runtime from calling the verifier with
+          a spoofed receipt, receiving an "allowed" result, and
+          then ignoring the scope.  A three-layer enforcement model
+          addresses this:
+        </t>
+        <dl newline="true" spacing="normal">
+          <dt>Layer 1 -- Receipt:</dt>
+          <dd>
+            Cryptographic proof of User authorization (what).  The
+            User signs a Delegation Receipt specifying scope,
+            boundaries, and Operator instructions.  Any tampering
+            is immediately detectable.
+          </dd>
+
+          <dt>Layer 2 -- TEE:</dt>
+          <dd>
+            Hardware-measured execution environment (where and
+            how).  The Agent runs inside an attested enclave whose
+            measurement is bound to the receipt via the
+            teeMeasurement.expectedMrenclave field.  Any
+            substitution of model weights, verifier code, or
+            platform produces a different measurement and is
+            detectable before execution.
+          </dd>
+
+          <dt>Layer 3 -- eBPF:</dt>
+          <dd>
+            Kernel-level enforcement.  An eBPF LSM hook validates
+            a signed capability token on every relevant syscall
+            (security_file_open, security_socket_connect,
+            security_task_execve).  Scope violations
+            <bcp14>MUST</bcp14> be denied at the kernel level
+            before they reach userspace.
+          </dd>
+        </dl>
+        <t>
+          Without Layer 3, a compromised agent runtime could bypass
+          the verifier.  The eBPF LSM runs in kernel space and
+          cannot be disabled by userspace code, including a
+          compromised agent runtime.  All three layers
+          <bcp14>MUST</bcp14> be present for the enforcement model
+          to be complete and non-bypassable.
+        </t>
+        <t>
+          Intel TDX and AMD SEV-SNP provide encrypted memory pages
+          inaccessible to the host OS and hypervisor,
+          hardware-rooted attestation quotes signed by the CPU
+          vendor's key, and measured boot that hashes every
+          component loaded into the enclave.  DRP binds delegation
+          receipts to enclave measurements via:
+        </t>
+        <sourcecode type="pseudocode"><![CDATA[
+mrenclave = SHA-256(
+  platform || verifierHash || modelHash
+)
+]]></sourcecode>
+        <t>
+          This value is committed into the receipt's
+          teeMeasurement.expectedMrenclave field at delegation
+          time.  At execution time, the runtime recomputes
+          mrenclave from its runtime parameters and
+          <bcp14>MUST</bcp14> reject execution if there is any
+          mismatch.
+        </t>
+        <t>The token injection sequence is:</t>
+        <ol spacing="normal" type="1">
+          <li>
+            ConfidentialRuntime.launch() computes mrenclave and
+            verifies the receipt measurement.
+          </li>
+          <li>
+            PreExecutionVerifier.check() gates execution -- no
+            valid receipt means no execution.
+          </li>
+          <li>
+            TokenPreparer.prepare() builds a signed capability
+            token binding receipt hash, scope hash, and TEE quote
+            hash.
+          </li>
+          <li>
+            The token is injected into the agent process context.
+          </li>
+          <li>
+            The eBPF LSM validates the token on every relevant
+            syscall.
+          </li>
+          <li>
+            Any operation not covered by the token's scope
+            <bcp14>MUST</bcp14> be denied at the kernel level.
+          </li>
+        </ol>
+      </section>
+    </section>
+
+    <!-- ============================================================ -->
+    <section anchor="sec-iana" numbered="true">
+      <name>IANA Considerations</name>
+      <t>This document has no IANA actions.</t>
+    </section>
+
+  </middle>
+
+  <back>
+
+    <references anchor="sec-normative">
+      <name>Normative References</name>
+
+      <reference anchor="RFC2119"
+                 target="https://www.rfc-editor.org/info/rfc2119">
+        <front>
+          <title>
+            Key words for use in RFCs to Indicate Requirement
+            Levels
+          </title>
+          <author initials="S." surname="Bradner"
+                  fullname="S. Bradner">
+            <organization/>
+          </author>
+          <date year="1997" month="March"/>
+        </front>
+        <seriesInfo name="BCP" value="14"/>
+        <seriesInfo name="RFC" value="2119"/>
+        <seriesInfo name="DOI" value="10.17487/RFC2119"/>
+      </reference>
+
+      <reference anchor="RFC8174"
+                 target="https://www.rfc-editor.org/info/rfc8174">
+        <front>
+          <title>
+            Ambiguity of Uppercase vs Lowercase in RFC 2119 Key
+            Words
+          </title>
+          <author initials="B." surname="Leiba"
+                  fullname="B. Leiba">
+            <organization/>
+          </author>
+          <date year="2017" month="May"/>
+        </front>
+        <seriesInfo name="BCP" value="14"/>
+        <seriesInfo name="RFC" value="8174"/>
+        <seriesInfo name="DOI" value="10.17487/RFC8174"/>
+      </reference>
+
+      <reference anchor="RFC3161"
+                 target="https://www.rfc-editor.org/info/rfc3161">
+        <front>
+          <title>
+            Internet X.509 Public Key Infrastructure Time-Stamp
+            Protocol (TSP)
+          </title>
+          <author initials="C." surname="Adams"
+                  fullname="C. Adams">
+            <organization/>
+          </author>
+          <author initials="P." surname="Cain"
+                  fullname="P. Cain">
+            <organization/>
+          </author>
+          <author initials="D." surname="Pinkas"
+                  fullname="D. Pinkas">
+            <organization/>
+          </author>
+          <author initials="R." surname="Zuccherato"
+                  fullname="R. Zuccherato">
+            <organization/>
+          </author>
+          <date year="2001" month="August"/>
+        </front>
+        <seriesInfo name="RFC" value="3161"/>
+        <seriesInfo name="DOI" value="10.17487/RFC3161"/>
+      </reference>
+
+      <reference anchor="RFC7517"
+                 target="https://www.rfc-editor.org/info/rfc7517">
+        <front>
+          <title>JSON Web Key (JWK)</title>
+          <author initials="M." surname="Jones"
+                  fullname="M. Jones">
+            <organization/>
+          </author>
+          <date year="2015" month="May"/>
+        </front>
+        <seriesInfo name="RFC" value="7517"/>
+        <seriesInfo name="DOI" value="10.17487/RFC7517"/>
+      </reference>
+
+      <reference anchor="RFC7518"
+                 target="https://www.rfc-editor.org/info/rfc7518">
+        <front>
+          <title>JSON Web Algorithms (JWA)</title>
+          <author initials="M." surname="Jones"
+                  fullname="M. Jones">
+            <organization/>
+          </author>
+          <date year="2015" month="May"/>
+        </front>
+        <seriesInfo name="RFC" value="7518"/>
+        <seriesInfo name="DOI" value="10.17487/RFC7518"/>
+      </reference>
+    </references>
+
+    <references anchor="sec-informative">
+      <name>Informative References</name>
+
+      <reference anchor="NIST-AI-100-1"
+                 target="https://doi.org/10.6028/NIST.AI.100-1">
+        <front>
+          <title>
+            Artificial Intelligence Risk Management Framework
+            (AI RMF 1.0)
+          </title>
+          <author>
+            <organization>
+              National Institute of Standards and Technology
+            </organization>
+          </author>
+          <date year="2023" month="January"/>
+        </front>
+        <seriesInfo name="NIST AI" value="100-1"/>
+      </reference>
+
+      <reference anchor="W3C-WebAuthn"
+                 target="https://www.w3.org/TR/webauthn-2/">
+        <front>
+          <title>
+            Web Authentication: An API for Accessing Public Key
+            Credentials Level 2
+          </title>
+          <author initials="D." surname="Balfanz"
+                  fullname="D. Balfanz">
+            <organization/>
+          </author>
+          <date year="2021" month="April"/>
+        </front>
+        <seriesInfo name="W3C Recommendation"
+                    value="webauthn-2"/>
+      </reference>
+
+      <reference anchor="FIDO2"
+                 target="https://fidoalliance.org/specs/fido-v2.1-ps-20210615/fido-client-to-authenticator-protocol-v2.1-ps-20210615.html">
+        <front>
+          <title>Client to Authenticator Protocol (CTAP)</title>
+          <author>
+            <organization>FIDO Alliance</organization>
+          </author>
+          <date year="2021" month="June"/>
+        </front>
+        <seriesInfo name="FIDO Alliance Proposed Standard"
+                    value="CTAP-v2.1"/>
+      </reference>
+
+      <reference anchor="RFC6962"
+                 target="https://www.rfc-editor.org/info/rfc6962">
+        <front>
+          <title>Certificate Transparency</title>
+          <author initials="B." surname="Laurie"
+                  fullname="B. Laurie">
+            <organization/>
+          </author>
+          <author initials="A." surname="Langley"
+                  fullname="A. Langley">
+            <organization/>
+          </author>
+          <author initials="E." surname="Kasper"
+                  fullname="E. Kasper">
+            <organization/>
+          </author>
+          <date year="2013" month="June"/>
+        </front>
+        <seriesInfo name="RFC" value="6962"/>
+        <seriesInfo name="DOI" value="10.17487/RFC6962"/>
+      </reference>
+
+      <reference anchor="RFC8693"
+                 target="https://www.rfc-editor.org/info/rfc8693">
+        <front>
+          <title>OAuth 2.0 Token Exchange</title>
+          <author initials="M." surname="Jones"
+                  fullname="M. Jones">
+            <organization/>
+          </author>
+          <author initials="A." surname="Nadalin"
+                  fullname="A. Nadalin">
+            <organization/>
+          </author>
+          <author initials="B." surname="Campbell"
+                  fullname="B. Campbell">
+            <organization/>
+          </author>
+          <author initials="J." surname="Bradley"
+                  fullname="J. Bradley">
+            <organization/>
+          </author>
+          <author initials="C." surname="Mortimore"
+                  fullname="C. Mortimore">
+            <organization/>
+          </author>
+          <date year="2020" month="January"/>
+        </front>
+        <seriesInfo name="RFC" value="8693"/>
+        <seriesInfo name="DOI" value="10.17487/RFC8693"/>
+      </reference>
+
+      <reference anchor="RFC9396"
+                 target="https://www.rfc-editor.org/info/rfc9396">
+        <front>
+          <title>OAuth 2.0 Rich Authorization Requests</title>
+          <author initials="T." surname="Lodderstedt"
+                  fullname="T. Lodderstedt">
+            <organization/>
+          </author>
+          <author initials="J." surname="Richer"
+                  fullname="J. Richer">
+            <organization/>
+          </author>
+          <author initials="B." surname="Campbell"
+                  fullname="B. Campbell">
+            <organization/>
+          </author>
+          <date year="2023" month="May"/>
+        </front>
+        <seriesInfo name="RFC" value="9396"/>
+        <seriesInfo name="DOI" value="10.17487/RFC9396"/>
+      </reference>
+    </references>
+
+    <section anchor="sec-acknowledgements" numbered="false">
+      <name>Acknowledgements</name>
+      <t>
+        The authors thank the IETF WIMSE, OAuth, and SCITT working
+        groups for their work on workload identity, token exchange,
+        and supply chain integrity, which informed the design of
+        this protocol.
+      </t>
+    </section>
+
+  </back>
+</rfc>
