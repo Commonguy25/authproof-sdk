@@ -8,6 +8,16 @@
 
 Agentic AI systems introduce a novel trust problem that existing identity and authorization frameworks do not address: the gap between a user's original authorization intent and the instructions an operator delivers to an agent on the user's behalf. This paper describes the AuthProof protocol, which uses cryptographic delegation receipts anchored to a decentralized append-only log to make user-to-operator trust verifiable and operator deviation from stated instructions provable. The protocol comprises three interlocking layers — a signed capability manifest at the discovery layer, a Delegation Receipt at the authorization layer, and Safescript-bound execution at the runtime layer — that together eliminate three categories of trusted third party from the agentic trust stack. We describe the full protocol design, analyze its security properties, and compare it to existing approaches including WIMSE, AIP, and OAuth 2.0 Token Exchange.
 
+### Novel Contributions
+
+Three cryptographic primitives in this paper do not appear in any competing agent authorization framework or IETF Internet-Draft as of April 2026:
+
+**Model State Attestation** binds the delegation receipt to a cryptographic measurement of the model executing the receipt. If the operator substitutes a different model after the user signs, the measurement changes and execution is blocked. This closes the operator model substitution attack vector that no existing framework addresses. The protocol distinguishes malicious substitution (always blocked) from provider-initiated version updates (requires user reauthorization).
+
+**Scope Discovery Protocol** runs the agent in a sandboxed observation mode before authorization. The agent simulates its intended task against mock resources and records every operation it attempts. This produces a scope definition grounded in actual agent behavior rather than user guesswork. The user reviews a plain-language summary and signs only what they explicitly approve — eliminating the over-authorization and under-authorization failure modes that plague design-time scope specification.
+
+**Session State and Adaptive Authorization** maintains a live trust score across the session lifetime. Trust decays on anomaly detection (prompt injection, sensitive data exfiltration, frequency spikes) and recovers slowly on clean behavior. Decision thresholds tighten automatically as trust degrades, and sessions suspend entirely when trust falls below a configurable floor. This extends the static receipt model to cover dynamic session-level risk that cannot be captured at delegation time.
+
 ---
 
 ## 1. Problem Statement
@@ -311,6 +321,8 @@ The Data Flow Receipt provides the following guarantees:
 
 ## 9. Model State Attestation: Closing the Model Identity Gap
 
+> **NOTE:** Model State Attestation is not present in any competing agent authorization framework or IETF Internet-Draft as of April 2026. This primitive is unique to the Delegation Receipt Protocol.
+
 ### 9.1 The Problem — Operator Model Substitution Attack
 
 The Delegation Receipt described in Section 2 proves that a human authorized a specific agent to act within defined scope and boundaries. It does not prove that the model executing the receipt is the same model the user thought they were authorizing.
@@ -534,6 +546,8 @@ The distinction also preserves the audit trail. Both event types are recorded wi
 
 ## 10. Scope Discovery Protocol — Closing the Upstream Authorization Gap
 
+> **NOTE:** The Scope Discovery Protocol is not present in any competing agent authorization framework or IETF Internet-Draft as of April 2026. This primitive is unique to the Delegation Receipt Protocol.
+
 ### 10.1 The Design-Time Problem
 
 The Delegation Receipt solves the *transmission* problem: once a user has defined what an agent may do, the receipt cryptographically binds and verifies that definition. But this solution assumes the user can correctly define scope upfront. In practice, they cannot.
@@ -636,6 +650,8 @@ Automated observation eliminates the guesswork that produces over-broad receipts
 ---
 
 ## 11. Session State and Adaptive Authorization
+
+> **NOTE:** Session State and Adaptive Authorization with trust decay is not present in any competing agent authorization framework or IETF Internet-Draft as of April 2026. This primitive is unique to the Delegation Receipt Protocol.
 
 ### 11.1 Why Static Scope Is Insufficient for Long-Running Sessions
 
