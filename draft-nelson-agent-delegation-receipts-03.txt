@@ -99,7 +99,11 @@ Table of Contents
    13. Normative References  . . . . . . . . . . . . . . . . . . . .  28
    14. Informative References  . . . . . . . . . . . . . . . . . . .  28
    Acknowledgements  . . . . . . . . . . . . . . . . . . . . . . . .  29
-   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  29
+   Appendix A.  JSON Schema Definitions  . . . . . . . . . . . . . .  30
+     A.1.  Delegation Receipt Schema . . . . . . . . . . . . . . . .  30
+     A.2.  Action Log Entry Schema  . . . . . . . . . . . . . . . . .  33
+     A.3.  Session State Schema . . . . . . . . . . . . . . . . . . .  35
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  37
 
 1.  Introduction
 
@@ -1753,6 +1757,330 @@ Acknowledgements
    The authors thank the IETF WIMSE, OAuth, and SCITT working groups for
    their work on workload identity, token exchange, and supply chain
    integrity, which informed the design of this protocol.
+
+Appendix A.  JSON Schema Definitions
+
+A.1.  Delegation Receipt Schema
+
+   The following JSON Schema (draft-07) defines the structure of a
+   Delegation Receipt as specified in Section 4.
+
+   {
+     "$schema": "http://json-schema.org/draft-07/schema#",
+     "$id": "https://authproof.dev/schemas/delegation-receipt-1.0.json",
+     "title": "DelegationReceipt",
+     "type": "object",
+     "required": [
+       "receiptId",
+       "schemaVersion",
+       "createdAt",
+       "expiresAt",
+       "publicKey",
+       "scope",
+       "operatorInstructionsHash",
+       "canonicalPayload",
+       "signature"
+     ],
+     "properties": {
+       "receiptId": {
+         "type": "string",
+         "description": "Unique receipt identifier.",
+         "pattern": "^rec_[0-9a-f]{16,}$"
+       },
+       "schemaVersion": {
+         "type": "string",
+         "description": "Schema version. MUST be 1.0.",
+         "enum": ["1.0"]
+       },
+       "createdAt": {
+         "type": "string",
+         "format": "date-time",
+         "description": "ISO 8601 datetime at which this receipt
+                         was created and signed."
+       },
+       "expiresAt": {
+         "type": "string",
+         "format": "date-time",
+         "description": "ISO 8601 datetime at which this receipt
+                         expires.  Verification MUST fail after
+                         this time."
+       },
+       "publicKey": {
+         "type": "object",
+         "description": "The authorizing user's public key in
+                         JSON Web Key format (RFC 7517).",
+         "required": ["kty", "crv", "x", "y"],
+         "properties": {
+           "kty": {
+             "type": "string",
+             "enum": ["EC"]
+           },
+           "crv": {
+             "type": "string",
+             "enum": ["P-256"]
+           },
+           "x": {
+             "type": "string",
+             "description": "Base64url-encoded x coordinate."
+           },
+           "y": {
+             "type": "string",
+             "description": "Base64url-encoded y coordinate."
+           }
+         }
+       },
+       "scope": {
+         "$ref": "#/definitions/ScopeSchema"
+       },
+       "operatorInstructionsHash": {
+         "type": "string",
+         "description": "SHA-256 hash of the canonical operator
+                         instructions string, formatted as
+                         sha256:<hex>.",
+         "pattern": "^sha256:[0-9a-f]{64}$"
+       },
+       "modelCommitment": {
+         "type": "string",
+         "description": "OPTIONAL. Cryptographic measurement of
+                         the model state at authorization time,
+                         formatted as sha256:<hex>.  When present,
+                         verification MUST fail if the current
+                         model measurement does not match.",
+         "pattern": "^sha256:[0-9a-f]{64}$"
+       },
+       "metadata": {
+         "type": "object",
+         "description": "OPTIONAL. Arbitrary key-value pairs
+                         included in the canonical payload and
+                         covered by the signature.  MAY include
+                         external delegation identifiers.",
+         "additionalProperties": {
+           "type": "string"
+         }
+       },
+       "canonicalPayload": {
+         "type": "string",
+         "description": "Base64url-encoded canonical JSON
+                         serialization of all fields except
+                         signature, over which the signature
+                         is computed."
+       },
+       "signature": {
+         "type": "string",
+         "description": "Base64url-encoded ECDSA P-256 signature
+                         over canonicalPayload."
+       },
+       "logEntryHash": {
+         "type": "string",
+         "description": "OPTIONAL. SHA-256 hash of the append-only
+                         log entry produced when this receipt was
+                         published, formatted as sha256:<hex>.",
+         "pattern": "^sha256:[0-9a-f]{64}$"
+       }
+     },
+     "definitions": {
+       "ScopeSchema": {
+         "type": "object",
+         "required": ["version", "allowedActions"],
+         "properties": {
+           "version": {
+             "type": "string",
+             "description": "Scope schema version.",
+             "default": "1.0"
+           },
+           "allowedActions": {
+             "type": "array",
+             "description": "Explicit list of permitted actions.",
+             "items": {
+               "$ref": "#/definitions/ActionConstraint"
+             }
+           },
+           "deniedActions": {
+             "type": "array",
+             "description": "Explicit list of prohibited actions.
+                             Deny rules take precedence over allow
+                             rules.",
+             "items": {
+               "$ref": "#/definitions/ActionConstraint"
+             }
+           }
+         }
+       },
+       "ActionConstraint": {
+         "type": "object",
+         "required": ["operation", "resource"],
+         "properties": {
+           "operation": {
+             "type": "string",
+             "description": "The operation type. Wildcards (*) are
+                             supported.",
+             "examples": ["read", "write", "delete", "send", "*"]
+           },
+           "resource": {
+             "type": "string",
+             "description": "The resource identifier. Wildcards (*)
+                             are supported.",
+             "examples": ["email", "calendar", "database/*", "*"]
+           },
+           "constraints": {
+             "type": "object",
+             "description": "OPTIONAL. Argument-level constraints
+                             on the action.",
+             "additionalProperties": true
+           }
+         }
+       }
+     }
+   }
+
+A.2.  Action Log Entry Schema
+
+   The following JSON Schema defines the structure of an Action Log
+   Entry as specified in Section 5.
+
+   {
+     "$schema": "http://json-schema.org/draft-07/schema#",
+     "$id": "https://authproof.dev/schemas/action-log-entry-1.0.json",
+     "title": "ActionLogEntry",
+     "type": "object",
+     "required": [
+       "entryId",
+       "receiptHash",
+       "operation",
+       "resource",
+       "timestamp",
+       "previousEntryHash",
+       "entryHash"
+     ],
+     "properties": {
+       "entryId": {
+         "type": "string",
+         "description": "Unique identifier for this log entry."
+       },
+       "receiptHash": {
+         "type": "string",
+         "description": "SHA-256 hash of the delegation receipt
+                         that authorized this action, formatted
+                         as sha256:<hex>.",
+         "pattern": "^sha256:[0-9a-f]{64}$"
+       },
+       "operation": {
+         "type": "string",
+         "description": "The operation that was executed."
+       },
+       "resource": {
+         "type": "string",
+         "description": "The resource that was accessed."
+       },
+       "timestamp": {
+         "type": "string",
+         "format": "date-time",
+         "description": "RFC 3161 trusted timestamp of this
+                         log entry."
+       },
+       "previousEntryHash": {
+         "type": "string",
+         "description": "SHA-256 hash of the previous log entry.
+                         The first entry in a log uses a
+                         well-known genesis hash.",
+         "pattern": "^sha256:[0-9a-f]{64}$"
+       },
+       "entryHash": {
+         "type": "string",
+         "description": "SHA-256 hash of this entry's canonical
+                         serialization excluding entryHash.",
+         "pattern": "^sha256:[0-9a-f]{64}$"
+       },
+       "decision": {
+         "type": "string",
+         "description": "The verification decision for this
+                         action.",
+         "enum": ["ALLOW", "REQUIRE_APPROVAL", "BLOCK"]
+       },
+       "riskScore": {
+         "type": "number",
+         "description": "OPTIONAL. Session risk score at the
+                         time of this action.",
+         "minimum": 0,
+         "maximum": 100
+       }
+     }
+   }
+
+A.3.  Session State Schema
+
+   The following JSON Schema defines the structure of a Session State
+   object as specified in Section 9.
+
+   {
+     "$schema": "http://json-schema.org/draft-07/schema#",
+     "$id": "https://authproof.dev/schemas/session-state-1.0.json",
+     "title": "SessionState",
+     "type": "object",
+     "required": [
+       "sessionId",
+       "receiptHash",
+       "trustScore",
+       "status",
+       "startedAt",
+       "actionCount"
+     ],
+     "properties": {
+       "sessionId": {
+         "type": "string",
+         "description": "Unique session identifier."
+       },
+       "receiptHash": {
+         "type": "string",
+         "description": "SHA-256 hash of the delegation receipt
+                         that initiated this session.",
+         "pattern": "^sha256:[0-9a-f]{64}$"
+       },
+       "trustScore": {
+         "type": "number",
+         "description": "Current session trust score. Starts at
+                         100 and decays on anomaly detection.",
+         "minimum": 0,
+         "maximum": 100
+       },
+       "status": {
+         "type": "string",
+         "description": "Current session status.",
+         "enum": ["ACTIVE", "DEGRADED", "SUSPENDED"]
+       },
+       "startedAt": {
+         "type": "string",
+         "format": "date-time",
+         "description": "ISO 8601 datetime at which this session
+                         was initiated."
+       },
+       "lastActionAt": {
+         "type": "string",
+         "format": "date-time",
+         "description": "ISO 8601 datetime of the most recent
+                         action in this session."
+       },
+       "actionCount": {
+         "type": "integer",
+         "description": "Total number of actions evaluated in
+                         this session.",
+         "minimum": 0
+       },
+       "anomalyCount": {
+         "type": "integer",
+         "description": "Total number of anomalies detected in
+                         this session.",
+         "minimum": 0
+       },
+       "sensitivityLevel": {
+         "type": "string",
+         "description": "Highest sensitivity level detected in
+                         this session.",
+         "enum": ["PUBLIC", "INTERNAL", "CONFIDENTIAL",
+                  "RESTRICTED"]
+       }
+     }
+   }
 
 Author's Address
 
