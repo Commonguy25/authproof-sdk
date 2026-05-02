@@ -301,6 +301,23 @@
 </head>
 <body>
 
+<!-- PocketOS incident banner -->
+<div id="pocketos-banner" style="background:#92400E; color:#fff; width:100%; padding:10px 16px; display:flex; align-items:center; justify-content:center; gap:12px; font-size:13px; line-height:1.4; box-sizing:border-box; position:relative;">
+  <span style="max-width:820px; text-align:center;">
+    The PocketOS incident showed what happens when AI agents act without cryptographic authorization constraints.&nbsp;
+    <a href="https://www.linkedin.com/groups/12470752/" style="color:white; text-decoration:underline;" target="_blank" rel="noopener"
+       onerror="this.href='https://datatracker.ietf.org/doc/draft-nelson-agent-delegation-receipts/'">Read the technical analysis →</a>
+  </span>
+  <button onclick="document.getElementById('pocketos-banner').style.display='none'; localStorage.setItem('pocketos-banner-dismissed','1');"
+    style="background:none; border:none; color:#fff; font-size:18px; line-height:1; cursor:pointer; padding:0 4px; position:absolute; right:16px; top:50%; transform:translateY(-50%); opacity:0.8;"
+    aria-label="Dismiss">×</button>
+</div>
+<script>
+  if (localStorage.getItem('pocketos-banner-dismissed') === '1') {
+    document.getElementById('pocketos-banner').style.display = 'none';
+  }
+</script>
+
 <!-- Nav -->
 <nav id="nav">
   <div class="container">
