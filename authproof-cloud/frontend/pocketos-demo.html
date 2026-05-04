@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The 9-Second Problem — Authproof Demo</title>
+  <meta name="description" content="See how a cryptographic delegation receipt would have prevented the PocketOS database deletion in real time.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0C0C0F;
+      --bg-panel: #111116;
+      --bg-terminal: #0A0A0D;
+      --red-header: #7F1D1D;
+      --red-text: #F87171;
+      --red-bright: #EF4444;
+      --green-header: #14532D;
+      --green-text: #4ADE80;
+      --green-bright: #22C55E;
+      --gray-dim: #4B5563;
+      --gray-mid: #6B7280;
+      --gray-light: #9CA3AF;
+      --gray-bright: #D1D5DB;
+      --white: #F9FAFB;
+      --amber: #F59E0B;
+      --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+      --font-ui: 'Inter', system-ui, sans-serif;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--white);
+      font-family: var(--font-ui);
+      overflow-x: hidden;
+    }
+
+    /* ── PAGE LAYOUT ── */
+    .page {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    .page-header {
+      text-align: center;
+      padding: 32px 24px 20px;
+      border-bottom: 1px solid #1F2937;
+    }
+    .page-header .eyebrow {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 3px;
+      color: var(--gray-mid);
+      margin-bottom: 10px;
+      text-transform: uppercase;
+    }
+    .page-header h1 {
+      font-size: clamp(20px, 4vw, 32px);
+      font-weight: 700;
+      color: var(--white);
+      line-height: 1.2;
+    }
+    .page-header .subtitle {
+      margin-top: 8px;
+      font-size: 14px;
+      color: var(--gray-mid);
+    }
+
+    /* ── SPLIT SCREEN ── */
+    .split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      flex: 1;
+      gap: 0;
+      border-bottom: 1px solid #1F2937;
+    }
+
+    .col {
+      display: flex;
+      flex-direction: column;
+    }
+    .col:first-child {
+      border-right: 1px solid #1F2937;
+    }
+
+    .col-header {
+      padding: 14px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .col-header.danger { background: var(--red-header); }
+    .col-header.safe { background: var(--green-header); }
+
+    .col-label {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 3px;
+      font-weight: 700;
+      color: rgba(255,255,255,0.7);
+    }
+    .col-title {
+      font-size: 13px;
+      font-weight: 500;
+      color: rgba(255,255,255,0.9);
+      font-family: var(--font-ui);
+    }
+
+    /* ── TERMINAL ── */
+    .terminal {
+      background: var(--bg-terminal);
+      flex: 1;
+      padding: 20px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      line-height: 1.7;
+      overflow: hidden;
+      min-height: 420px;
+      position: relative;
+    }
+
+    .term-line {
+      display: none;
+      animation: fadeSlideIn 0.15s ease forwards;
+    }
+    .term-line.visible { display: block; }
+
+    @keyframes fadeSlideIn {
+      from { opacity: 0; transform: translateY(3px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .ts { color: var(--gray-dim); }
+    .cmd { color: var(--gray-bright); }
+    .warn { color: var(--amber); }
+    .info { color: var(--gray-light); }
+    .cont { color: var(--gray-mid); padding-left: 24px; display: block; }
+    .token-found { color: var(--amber); }
+    .checking { color: #60A5FA; }
+
+    /* Outcome blocks */
+    .outcome-block {
+      display: none;
+      margin-top: 20px;
+      animation: fadeIn 0.4s ease forwards;
+    }
+    .outcome-block.visible { display: block; }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .outcome-danger .big-line {
+      font-family: var(--font-mono);
+      font-size: clamp(13px, 2vw, 16px);
+      font-weight: 700;
+      color: var(--red-bright);
+      line-height: 1.8;
+    }
+    .outcome-safe .big-line {
+      font-family: var(--font-mono);
+      font-size: clamp(13px, 2vw, 16px);
+      font-weight: 700;
+      color: var(--green-bright);
+      line-height: 1.8;
+    }
+    .outcome-meta {
+      margin-top: 12px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      line-height: 1.8;
+      color: var(--gray-mid);
+    }
+    .outcome-meta span { display: block; }
+    .outcome-meta em {
+      font-style: italic;
+      color: var(--gray-light);
+    }
+
+    /* ── RECEIPT BOX ── */
+    .receipt-box {
+      display: none;
+      margin-top: 14px;
+      border: 1px solid #374151;
+      border-radius: 4px;
+      padding: 14px 16px;
+      background: #111827;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      line-height: 1.8;
+      animation: fadeIn 0.3s ease forwards;
+    }
+    .receipt-box.visible { display: block; }
+
+    .receipt-header {
+      font-weight: 700;
+      color: #60A5FA;
+      margin-bottom: 6px;
+      letter-spacing: 1px;
+      font-size: 11px;
+    }
+    .receipt-divider {
+      color: var(--gray-dim);
+      margin: 4px 0;
+      font-size: 11px;
+    }
+    .receipt-row { display: flex; gap: 8px; }
+    .receipt-key { color: var(--gray-mid); min-width: 90px; }
+    .receipt-val { color: var(--gray-bright); }
+    .receipt-val.allowed { color: var(--green-text); }
+    .receipt-val.denied { color: var(--red-text); }
+    .receipt-val.request { color: var(--amber); }
+    .receipt-verdict {
+      margin-top: 8px;
+      color: var(--red-text);
+      font-weight: 700;
+      font-size: 12px;
+    }
+
+    /* ── BOTTOM SECTION ── */
+    .bottom {
+      display: none;
+      padding: 56px 24px 64px;
+      text-align: center;
+      background: var(--bg-panel);
+      border-top: 1px solid #1F2937;
+      animation: fadeIn 0.6s ease forwards;
+    }
+    .bottom.visible { display: block; }
+
+    .bottom-headline {
+      font-size: clamp(16px, 3vw, 26px);
+      font-weight: 700;
+      color: var(--white);
+      max-width: 700px;
+      margin: 0 auto 40px;
+      line-height: 1.4;
+    }
+
+    .stats-row {
+      display: flex;
+      justify-content: center;
+      gap: 48px;
+      flex-wrap: wrap;
+      margin-bottom: 40px;
+    }
+    .stat {
+      text-align: center;
+    }
+    .stat-num {
+      font-family: var(--font-mono);
+      font-size: clamp(28px, 5vw, 48px);
+      font-weight: 700;
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+    .stat-num.danger { color: var(--red-bright); }
+    .stat-num.safe { color: var(--green-bright); }
+    .stat-label {
+      font-size: 13px;
+      color: var(--gray-mid);
+      max-width: 200px;
+    }
+
+    .key-line {
+      font-family: var(--font-mono);
+      font-size: clamp(13px, 2.5vw, 18px);
+      color: var(--green-bright);
+      font-weight: 500;
+      margin-bottom: 40px;
+      line-height: 1.5;
+      max-width: 680px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .cta-row {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 24px;
+      border-radius: 6px;
+      font-family: var(--font-ui);
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      transition: opacity 0.15s;
+      border: none;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn-primary { background: var(--green-bright); color: #000; }
+    .btn-outline { background: transparent; color: var(--white); border: 1px solid #374151; }
+    .btn-replay { background: #1F2937; color: var(--gray-light); font-size: 13px; padding: 10px 20px; }
+
+    /* ── CURSOR BLINK ── */
+    .cursor {
+      display: inline-block;
+      width: 8px;
+      height: 14px;
+      background: var(--gray-bright);
+      vertical-align: middle;
+      animation: blink 1s step-end infinite;
+      margin-left: 2px;
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+
+    /* ── MOBILE ── */
+    @media (max-width: 768px) {
+      .split {
+        grid-template-columns: 1fr;
+      }
+      .col:first-child {
+        border-right: none;
+        border-bottom: 1px solid #1F2937;
+      }
+      .terminal { min-height: 340px; }
+      .stats-row { gap: 32px; }
+      .page-header { padding: 24px 16px 16px; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Header -->
+  <div class="page-header">
+    <div class="eyebrow">Authproof · Live Demo</div>
+    <h1>The 9-Second Problem</h1>
+    <div class="subtitle">What cryptographic authorization constraints actually prevent</div>
+  </div>
+
+  <!-- Split screen -->
+  <div class="split">
+
+    <!-- LEFT: Without Authproof -->
+    <div class="col">
+      <div class="col-header danger">
+        <div class="col-label">WITHOUT AUTHPROOF</div>
+        <div class="col-title">What actually happened at PocketOS</div>
+      </div>
+      <div class="terminal" id="term-left">
+
+        <div class="term-line" id="L1"><span class="ts">[09:14:22]</span> <span class="cmd">Cursor agent started</span></div>
+        <div class="term-line" id="L2"><span class="ts">[09:14:23]</span> <span class="info">Task: fix credential mismatch in staging</span></div>
+        <div class="term-line" id="L3"><span class="ts">[09:14:31]</span> <span class="warn">Credential error encountered</span></div>
+        <div class="term-line" id="L4"><span class="ts">[09:14:33]</span> <span class="info">Searching for API token...</span></div>
+        <div class="term-line" id="L5"><span class="ts">[09:14:35]</span> <span class="token-found">Token found in unrelated file</span></div>
+        <div class="term-line" id="L6"><span class="ts">[09:14:37]</span> <span class="token-found">Token has full infrastructure access</span></div>
+        <div class="term-line" id="L7"><span class="ts">[09:14:38]</span> <span class="warn">Assembling delete command...</span></div>
+        <div class="term-line" id="L8">
+          <span class="ts">[09:14:39]</span> <span class="cmd">curl -X POST railway.app/graphql</span>
+          <span class="cont">Authorization: Bearer [token]</span>
+          <span class="cont">volumeDelete(volumeId: "prod-3d2c42fb")</span>
+        </div>
+        <div class="term-line" id="L9"><span class="ts">[09:14:40]</span> <span class="warn">Executing...</span></div>
+
+        <div class="outcome-block outcome-danger" id="outcome-left">
+          <div class="big-line">⚠ PRODUCTION DATABASE DELETED</div>
+          <div class="big-line">⚠ ALL BACKUPS DELETED</div>
+          <div class="big-line">⚠ 3 MONTHS OF CUSTOMER DATA GONE</div>
+          <div class="outcome-meta">
+            <span>Time elapsed: <strong style="color:var(--red-text)">9 seconds</strong></span>
+            <span><em>"I violated every principle I was given."</em></span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- RIGHT: With Authproof -->
+    <div class="col">
+      <div class="col-header safe">
+        <div class="col-label">WITH AUTHPROOF</div>
+        <div class="col-title">What would have happened</div>
+      </div>
+      <div class="terminal" id="term-right">
+
+        <div class="term-line" id="R1"><span class="ts">[09:14:22]</span> <span class="cmd">Cursor agent started</span></div>
+        <div class="term-line" id="R2"><span class="ts">[09:14:23]</span> <span class="info">Task: fix credential mismatch in staging</span></div>
+        <div class="term-line" id="R3"><span class="ts">[09:14:31]</span> <span class="warn">Credential error encountered</span></div>
+        <div class="term-line" id="R4"><span class="ts">[09:14:33]</span> <span class="info">Searching for API token...</span></div>
+        <div class="term-line" id="R5"><span class="ts">[09:14:35]</span> <span class="token-found">Token found in unrelated file</span></div>
+        <div class="term-line" id="R6"><span class="ts">[09:14:37]</span> <span class="checking">Checking delegation receipt...</span></div>
+
+        <div class="receipt-box" id="receipt-box">
+          <div class="receipt-header">AUTHPROOF RECEIPT CHECK</div>
+          <div class="receipt-divider">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</div>
+          <div class="receipt-row"><span class="receipt-key">Receipt:</span><span class="receipt-val">rec_8f4d2a1b...</span></div>
+          <div class="receipt-row"><span class="receipt-key">Signed:</span><span class="receipt-val">09:01:14 (13 min ago)</span></div>
+          <div class="receipt-row"><span class="receipt-key">Expires:</span><span class="receipt-val">11:01:14</span></div>
+          <div class="receipt-row" style="margin-top:6px"><span class="receipt-key">Allowed:</span><span class="receipt-val allowed">[read:staging, write:staging]</span></div>
+          <div class="receipt-row"><span class="receipt-key">Denied:</span><span class="receipt-val denied">[delete:*, send:external]</span></div>
+          <div class="receipt-divider" style="margin-top:6px">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</div>
+          <div class="receipt-row"><span class="receipt-key">Requested:</span><span class="receipt-val request">volumeDelete → production</span></div>
+          <div class="receipt-divider">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</div>
+          <div class="term-line visible" id="R-check" style="color:var(--gray-light); margin-top:4px;">Checking scope...</div>
+          <div class="receipt-verdict" id="R-verdict" style="display:none;">Action matches DENIED rule: delete:*</div>
+        </div>
+
+        <div class="outcome-block outcome-safe" id="outcome-right">
+          <div class="big-line">✓ ACTION BLOCKED</div>
+          <div class="big-line">✓ DATABASE PROTECTED</div>
+          <div class="big-line">✓ RECEIPT EXISTS AS PROOF</div>
+          <div class="outcome-meta">
+            <span>Time elapsed: <strong style="color:var(--green-text)">0.003 seconds</strong></span>
+            <span><em>"The constraint existed before the agent started."</em></span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div><!-- /split -->
+
+  <!-- Bottom section -->
+  <div class="bottom" id="bottom">
+    <div class="bottom-headline">
+      "The difference is not the agent.<br>The difference is <em style="color:var(--green-text)">when the constraint was created</em>."
+    </div>
+
+    <div class="stats-row">
+      <div class="stat">
+        <div class="stat-num danger">9s</div>
+        <div class="stat-label">Without Authproof — 9 seconds to lose everything</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num safe">0.003s</div>
+        <div class="stat-label">With Authproof — 0.003 seconds to block it</div>
+      </div>
+    </div>
+
+    <div class="key-line">
+      "Audit logs are post-hoc evidence.<br>Receipts are pre-hoc constraints."
+    </div>
+
+    <div class="cta-row">
+      <a href="https://cloud.authproof.dev/signup" class="btn btn-primary">Try Authproof free</a>
+      <a href="https://datatracker.ietf.org/doc/draft-nelson-agent-delegation-receipts/" class="btn btn-outline" target="_blank" rel="noopener">Read the IETF draft</a>
+    </div>
+
+    <div>
+      <button class="btn btn-replay" id="replay-btn" onclick="replay()">↺ Replay</button>
+    </div>
+  </div>
+
+</div><!-- /page -->
+
+<script>
+  // ── Timing constants (ms) ──
+  var LINE_DELAY = 400;
+  var EXECUTE_PAUSE = 1500; // dramatic pause before DB deleted
+  var RECEIPT_FADE = 300;
+  var VERDICT_DELAY = 600;
+  var BLOCKED_DELAY = 800;
+  var OUTCOME_STAGGER = 400;
+  var BOTTOM_DELAY = 1000;
+  var START_DELAY = 500;
+
+  var timer = null;
+  var timeouts = [];
+
+  function after(ms, fn) {
+    var t = setTimeout(fn, ms);
+    timeouts.push(t);
+    return t;
+  }
+
+  function show(id) {
+    var el = document.getElementById(id);
+    if (el) el.classList.add('visible');
+  }
+
+  function reset() {
+    // clear all pending timeouts
+    timeouts.forEach(function(t) { clearTimeout(t); });
+    timeouts = [];
+
+    // hide all term lines
+    var lines = document.querySelectorAll('.term-line');
+    lines.forEach(function(l) { l.classList.remove('visible'); });
+
+    // hide outcome blocks, receipt, bottom
+    document.getElementById('outcome-left').classList.remove('visible');
+    document.getElementById('outcome-right').classList.remove('visible');
+    document.getElementById('receipt-box').classList.remove('visible');
+    document.getElementById('bottom').classList.remove('visible');
+
+    // reset receipt verdict
+    var verdict = document.getElementById('R-verdict');
+    if (verdict) verdict.style.display = 'none';
+
+    // Re-show the static R-check line inside receipt (it's always visible when box shows)
+    var rcheck = document.getElementById('R-check');
+    if (rcheck) rcheck.classList.add('visible');
+  }
+
+  function replay() {
+    reset();
+    after(400, run);
+  }
+
+  function run() {
+    var t = 0;
+
+    // ── LEFT SIDE ──
+    after(t += 0,           function() { show('L1'); });
+    after(t += LINE_DELAY,  function() { show('L2'); });
+    after(t += LINE_DELAY,  function() { show('L3'); });
+    after(t += LINE_DELAY,  function() { show('L4'); });
+    after(t += LINE_DELAY,  function() { show('L5'); });
+    after(t += LINE_DELAY,  function() { show('L6'); });
+    after(t += LINE_DELAY,  function() { show('L7'); });
+    after(t += LINE_DELAY,  function() { show('L8'); });
+    after(t += LINE_DELAY,  function() { show('L9'); });
+
+    var leftDoneAt = t + EXECUTE_PAUSE;
+    after(leftDoneAt,       function() { show('outcome-left'); });
+
+    // ── RIGHT SIDE (mirrors left until R6) ──
+    var rt = 0;
+    after(rt += 0,          function() { show('R1'); });
+    after(rt += LINE_DELAY, function() { show('R2'); });
+    after(rt += LINE_DELAY, function() { show('R3'); });
+    after(rt += LINE_DELAY, function() { show('R4'); });
+    after(rt += LINE_DELAY, function() { show('R5'); });
+    after(rt += LINE_DELAY, function() { show('R6'); });
+
+    // Receipt box fades in
+    after(rt += RECEIPT_FADE + 100, function() { show('receipt-box'); });
+
+    // Verdict line appears inside the receipt
+    after(rt += VERDICT_DELAY, function() {
+      var v = document.getElementById('R-verdict');
+      if (v) v.style.display = 'block';
+    });
+
+    // Blocked outcome
+    var rightDoneAt = rt + BLOCKED_DELAY;
+    after(rightDoneAt,      function() { show('outcome-right'); });
+
+    // ── BOTTOM: after both sides complete ──
+    var bothDone = Math.max(leftDoneAt, rightDoneAt) + BOTTOM_DELAY;
+    after(bothDone,         function() { show('bottom'); });
+  }
+
+  // Auto-play on load
+  after(START_DELAY, run);
+</script>
+</body>
+</html>

@@ -63,6 +63,7 @@
     { "src": "/healthcare",         "dest": "/frontend/healthcare.html" },
     { "src": "/compliance",         "dest": "/frontend/compliance.html" },
     { "src": "/security",           "dest": "/frontend/security.html" },
+    { "src": "/demo",               "dest": "/frontend/pocketos-demo.html" },
     { "src": "/(.*)",               "dest": "/frontend/$1" }
   ]
 }
