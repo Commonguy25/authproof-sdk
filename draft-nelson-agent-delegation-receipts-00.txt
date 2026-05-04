@@ -4,8 +4,8 @@
 
 Network Working Group                                          R. Nelson
 Internet-Draft                                                 Authproof
-Intended status: Informational                             26 April 2026
-Expires: 28 October 2026
+Intended status: Informational                             03 May 2026
+Expires: 03 November 2026
 
 
          Delegation Receipt Protocol for AI Agent Authorization
@@ -38,7 +38,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 28 October 2026.
+   This Internet-Draft will expire on 03 November 2026.
 
 Copyright Notice
 
@@ -53,9 +53,9 @@ Copyright Notice
 
 
 
-Nelson                   Expires 28 October 2026                [Page 1]
+Nelson                   Expires 03 November 2026                [Page 1]
 
-Internet-Draft          Agent Delegation Receipts             April 2026
+Internet-Draft          Agent Delegation Receipts             May 2026
 
 
 Table of Contents
@@ -113,9 +113,9 @@ Table of Contents
 
 
 
-Nelson                   Expires 28 October 2026                [Page 2]
+Nelson                   Expires 03 November 2026                [Page 2]
 
-Internet-Draft          Agent Delegation Receipts             April 2026
+Internet-Draft          Agent Delegation Receipts             May 2026
 
 
    This document specifies the Delegation Receipt Protocol (DRP), a
@@ -206,9 +206,9 @@ Internet-Draft          Agent Delegation Receipts             April 2026
 
 
 
-Nelson                   Expires 28 October 2026                [Page 3]
+Nelson                   Expires 03 November 2026                [Page 3]
 
-Internet-Draft          Agent Delegation Receipts             April 2026
+Internet-Draft          Agent Delegation Receipts             May 2026
 
 
    Operator:
@@ -262,9 +262,9 @@ Internet-Draft          Agent Delegation Receipts             April 2026
 
 
 
-Nelson                   Expires 28 October 2026                [Page 4]
+Nelson                   Expires 03 November 2026                [Page 4]
 
-Internet-Draft          Agent Delegation Receipts             April 2026
+Internet-Draft          Agent Delegation Receipts             May 2026
 
 
    Scope Discovery:
@@ -318,9 +318,9 @@ Internet-Draft          Agent Delegation Receipts             April 2026
 
 
 
-Nelson                   Expires 28 October 2026                [Page 5]
+Nelson                   Expires 03 November 2026                [Page 5]
 
-Internet-Draft          Agent Delegation Receipts             April 2026
+Internet-Draft          Agent Delegation Receipts             May 2026
 
 
    The drift problem:  Operators may update system prompts, change agent
@@ -374,9 +374,9 @@ Internet-Draft          Agent Delegation Receipts             April 2026
 
 
 
-Nelson                   Expires 28 October 2026                [Page 6]
+Nelson                   Expires 03 November 2026                [Page 6]
 
-Internet-Draft          Agent Delegation Receipts             April 2026
+Internet-Draft          Agent Delegation Receipts             May 2026
 
 
 4.  The Delegation Receipt
@@ -430,9 +430,9 @@ Internet-Draft          Agent Delegation Receipts             April 2026
 
 
 
-Nelson                   Expires 28 October 2026                [Page 7]
+Nelson                   Expires 03 November 2026                [Page 7]
 
-Internet-Draft          Agent Delegation Receipts             April 2026
+Internet-Draft          Agent Delegation Receipts             May 2026
 
 
    signature:
@@ -486,9 +486,9 @@ Internet-Draft          Agent Delegation Receipts             April 2026
 
 
 
-Nelson                   Expires 28 October 2026                [Page 8]
+Nelson                   Expires 03 November 2026                [Page 8]
 
-Internet-Draft          Agent Delegation Receipts             April 2026
+Internet-Draft          Agent Delegation Receipts             May 2026
 
 
    The delegationId is computed as:
@@ -542,9 +542,9 @@ Internet-Draft          Agent Delegation Receipts             April 2026
 
 
 
-Nelson                   Expires 28 October 2026                [Page 9]
+Nelson                   Expires 03 November 2026                [Page 9]
 
-Internet-Draft          Agent Delegation Receipts             April 2026
+Internet-Draft          Agent Delegation Receipts             May 2026
 
 
    *  The submitter's public key hash.
@@ -598,9 +598,9 @@ Internet-Draft          Agent Delegation Receipts             April 2026
 
 
 
-Nelson                   Expires 28 October 2026               [Page 10]
+Nelson                   Expires 03 November 2026               [Page 10]
 
-Internet-Draft          Agent Delegation Receipts             April 2026
+Internet-Draft          Agent Delegation Receipts             May 2026
 
 
    2.  Is used in lieu of the client clock for all time window
@@ -654,9 +654,9 @@ Internet-Draft          Agent Delegation Receipts             April 2026
 
 
 
-Nelson                   Expires 28 October 2026               [Page 11]
+Nelson                   Expires 03 November 2026               [Page 11]
 
-Internet-Draft          Agent Delegation Receipts             April 2026
+Internet-Draft          Agent Delegation Receipts             May 2026
 
 
 6.2.  Check Ordering
@@ -710,9 +710,9 @@ Internet-Draft          Agent Delegation Receipts             April 2026
 
 
 
-Nelson                   Expires 28 October 2026               [Page 12]
+Nelson                   Expires 03 November 2026               [Page 12]
 
-Internet-Draft          Agent Delegation Receipts             April 2026
+Internet-Draft          Agent Delegation Receipts             May 2026
 
 
    3.  Not fall back to Operator instruction.  A failed verification
@@ -861,9 +861,9 @@ Internet-Draft          Agent Delegation Receipts             April 2026
 
 
 
-Nelson                   Expires 28 October 2026               [Page 13]
+Nelson                   Expires 03 November 2026               [Page 13]
 
-Internet-Draft          Agent Delegation Receipts             April 2026
+Internet-Draft          Agent Delegation Receipts             May 2026
 
 
    Including receiptHash as the fifth component binds the model
@@ -917,9 +917,9 @@ Internet-Draft          Agent Delegation Receipts             April 2026
 
 
 
-Nelson                   Expires 28 October 2026               [Page 14]
+Nelson                   Expires 03 November 2026               [Page 14]
 
-Internet-Draft          Agent Delegation Receipts             April 2026
+Internet-Draft          Agent Delegation Receipts             May 2026
 
 
 7.2.  Provider Update Handling
@@ -973,9 +973,9 @@ Internet-Draft          Agent Delegation Receipts             April 2026
 
 
 
-Nelson                   Expires 28 October 2026               [Page 15]
+Nelson                   Expires 03 November 2026               [Page 15]
 
-Internet-Draft          Agent Delegation Receipts             April 2026
+Internet-Draft          Agent Delegation Receipts             May 2026
 
 
    The "reauthorize" policy preserves a recovery path.  The provider
@@ -1029,9 +1029,9 @@ Internet-Draft          Agent Delegation Receipts             April 2026
 
 
 
-Nelson                   Expires 28 October 2026               [Page 16]
+Nelson                   Expires 03 November 2026               [Page 16]
 
-Internet-Draft          Agent Delegation Receipts             April 2026
+Internet-Draft          Agent Delegation Receipts             May 2026
 
 
 8.  Scope Discovery Protocol
@@ -1085,9 +1085,9 @@ Internet-Draft          Agent Delegation Receipts             April 2026
 
 
 
-Nelson                   Expires 28 October 2026               [Page 17]
+Nelson                   Expires 03 November 2026               [Page 17]
 
-Internet-Draft          Agent Delegation Receipts             April 2026
+Internet-Draft          Agent Delegation Receipts             May 2026
 
 
       c.  riskFlags for: delete operations, execute operations, payment
@@ -1141,9 +1141,9 @@ Internet-Draft          Agent Delegation Receipts             April 2026
 
 
 
-Nelson                   Expires 28 October 2026               [Page 18]
+Nelson                   Expires 03 November 2026               [Page 18]
 
-Internet-Draft          Agent Delegation Receipts             April 2026
+Internet-Draft          Agent Delegation Receipts             May 2026
 
 
       observation session produces a new draft.  If the agent begins
@@ -1197,9 +1197,9 @@ Internet-Draft          Agent Delegation Receipts             April 2026
 
 
 
-Nelson                   Expires 28 October 2026               [Page 19]
+Nelson                   Expires 03 November 2026               [Page 19]
 
-Internet-Draft          Agent Delegation Receipts             April 2026
+Internet-Draft          Agent Delegation Receipts             May 2026
 
 
    Prompt injection detected        : severity 5
@@ -1253,9 +1253,9 @@ Internet-Draft          Agent Delegation Receipts             April 2026
 
 
 
-Nelson                   Expires 28 October 2026               [Page 20]
+Nelson                   Expires 03 November 2026               [Page 20]
 
-Internet-Draft          Agent Delegation Receipts             April 2026
+Internet-Draft          Agent Delegation Receipts             May 2026
 
 
    Check 1 -- Sensitive data scan:
@@ -1309,9 +1309,9 @@ Internet-Draft          Agent Delegation Receipts             April 2026
 
 
 
-Nelson                   Expires 28 October 2026               [Page 21]
+Nelson                   Expires 03 November 2026               [Page 21]
 
-Internet-Draft          Agent Delegation Receipts             April 2026
+Internet-Draft          Agent Delegation Receipts             May 2026
 
 
 10.  Multi-Agent Delegation Chains
@@ -1365,9 +1365,9 @@ Internet-Draft          Agent Delegation Receipts             April 2026
 
 
 
-Nelson                   Expires 28 October 2026               [Page 22]
+Nelson                   Expires 03 November 2026               [Page 22]
 
-Internet-Draft          Agent Delegation Receipts             April 2026
+Internet-Draft          Agent Delegation Receipts             May 2026
 
 
    When cascadeToChildren is true:
@@ -1421,9 +1421,9 @@ Internet-Draft          Agent Delegation Receipts             April 2026
 
 
 
-Nelson                   Expires 28 October 2026               [Page 23]
+Nelson                   Expires 03 November 2026               [Page 23]
 
-Internet-Draft          Agent Delegation Receipts             April 2026
+Internet-Draft          Agent Delegation Receipts             May 2026
 
 
    Key Compromise:
@@ -1477,9 +1477,9 @@ Internet-Draft          Agent Delegation Receipts             April 2026
 
 
 
-Nelson                   Expires 28 October 2026               [Page 24]
+Nelson                   Expires 03 November 2026               [Page 24]
 
-Internet-Draft          Agent Delegation Receipts             April 2026
+Internet-Draft          Agent Delegation Receipts             May 2026
 
 
    Non-Repudiation:
@@ -1533,9 +1533,9 @@ Internet-Draft          Agent Delegation Receipts             April 2026
 
 
 
-Nelson                   Expires 28 October 2026               [Page 25]
+Nelson                   Expires 03 November 2026               [Page 25]
 
-Internet-Draft          Agent Delegation Receipts             April 2026
+Internet-Draft          Agent Delegation Receipts             May 2026
 
 
    Cryptographic primitive upgrade path: DRP uses SHA-256 throughout for
@@ -1589,9 +1589,9 @@ Internet-Draft          Agent Delegation Receipts             April 2026
 
 
 
-Nelson                   Expires 28 October 2026               [Page 26]
+Nelson                   Expires 03 November 2026               [Page 26]
 
-Internet-Draft          Agent Delegation Receipts             April 2026
+Internet-Draft          Agent Delegation Receipts             May 2026
 
 
    Layer 3 -- eBPF:
@@ -1645,9 +1645,9 @@ Internet-Draft          Agent Delegation Receipts             April 2026
 
 
 
-Nelson                   Expires 28 October 2026               [Page 27]
+Nelson                   Expires 03 November 2026               [Page 27]
 
-Internet-Draft          Agent Delegation Receipts             April 2026
+Internet-Draft          Agent Delegation Receipts             May 2026
 
 
 11.4.  Degraded Operation
@@ -1726,9 +1726,9 @@ Internet-Draft          Agent Delegation Receipts             April 2026
 
 
 
-Nelson                   Expires 28 October 2026               [Page 28]
+Nelson                   Expires 03 November 2026               [Page 28]
 
-Internet-Draft          Agent Delegation Receipts             April 2026
+Internet-Draft          Agent Delegation Receipts             May 2026
 
 
    [RFC6962]  Laurie, B., Langley, A., and E. Kasper, "Certificate
@@ -1782,4 +1782,4 @@ Author's Address
 
 
 
-Nelson                   Expires 28 October 2026               [Page 29]
+Nelson                   Expires 03 November 2026               [Page 29]
