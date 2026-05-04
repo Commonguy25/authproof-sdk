@@ -807,7 +807,19 @@ The session risk result is also attached to the verifier response for logging an
 
 ---
 
-## 12. Comparison to Existing Approaches
+## 12. Production Hardening
+
+### Tool Schema Integrity
+
+In production deployments where tool schemas evolve over time, binding the receipt to a hash of the tool schema at issuance time prevents silent capability expansion. When the tool specification changes after the receipt is issued the hash mismatch is immediately detectable before any action executes. The `toolSchemaHash` field records a SHA-256 commitment to the full tool schema at signing time. PreExecutionVerifier Check 8 recomputes the hash of the current schema at verification time and denies execution with `TOOL_SCHEMA_DRIFT` if the two hashes diverge. This closes the gap between what the user authorized and what the tool can now do — without requiring a new receipt for every deployment.
+
+### Denied Call Analytics
+
+Logging denied calls with full context is the primary forensic signal for detecting prompt injection and model drift. The distribution of denied calls over time reveals attack patterns invisible to teams that only log the allow path. A spike in denied calls targeting novel action classes or scope boundaries is a leading indicator that a session has been compromised. PreExecutionVerifier records every DENY decision with the specific denial reason code, the session risk score at time of denial, and the full call context. `getDeniedCallLog(sessionId)` provides direct access to the per-session denied call history. The cloud compliance report includes a Denied Calls Analysis section with denial reason breakdown, top codes by frequency, and per-session denial rate — the metrics needed to distinguish normal boundary enforcement from active adversarial probing.
+
+---
+
+## 13. Comparison to Existing Approaches
 
 | Property | OAuth 2.0 / RAR | WIMSE | AIP | AuthProof |
 |---|---|---|---|---|
@@ -825,7 +837,7 @@ AuthProof is not a replacement for WIMSE, AIP, or OAuth 2.0. It operates at a di
 
 ---
 
-## 13. Approval Outcome Logging and Threshold Recalibration
+## 14. Approval Outcome Logging and Threshold Recalibration
 
 ### Why Static Thresholds Are Educated Guesses
 
@@ -912,7 +924,7 @@ The correct posture toward these metrics is: use them to ask better questions, n
 
 ---
 
-## 14. Multi-Agent Delegation Chains
+## 15. Multi-Agent Delegation Chains
 
 When a delegated agent needs to hand off a subtask to another agent, the chain of authority must remain auditable and bounded. AuthProof's `DelegationChain` primitive enforces three invariants at every hop.
 
@@ -941,7 +953,7 @@ The root receipt is the only trust anchor in the delegation chain. If the root c
 ---
 
 
-## 15. Conclusion
+## 16. Conclusion
 
 The agentic AI deployment model creates a trust problem that existing identity and authorization frameworks were not designed to address. The operator sits between the user and the agent with unchecked authority over what the agent is instructed to do. AuthProof makes that authority cryptographically bounded, the user's original intent immutably recorded, and operator deviation provable from a public log. The three-layer trust stack — signed capability manifest, Delegation Receipt, and Safescript execution binding — systematically eliminates trusted intermediaries from the agentic delegation chain.
 

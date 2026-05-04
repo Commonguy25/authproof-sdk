@@ -72,7 +72,7 @@ function validateLogoBase64(dataUri) {
   return { valid: true };
 }
 
-function buildComplianceReportHtml({ account, wlConfig, receipts, toolCalls, from, to, orgName, exportedAt, signature }) {
+function buildComplianceReportHtml({ account, wlConfig, receipts, toolCalls, deniedCalls, from, to, orgName, exportedAt, signature }) {
   const brandName    = wlConfig?.company_name    || 'Authproof Cloud';
   const brandColor   = wlConfig?.primary_color   || '#1a56db';
   const footerText   = wlConfig?.footer_text     || '';
@@ -81,8 +81,9 @@ function buildComplianceReportHtml({ account, wlConfig, receipts, toolCalls, fro
   const logoBase64   = wlConfig?.logo_base64     || null;
   const isWL         = !!wlConfig;
 
-  const r = receipts  || [];
-  const t = toolCalls || [];
+  const r  = receipts    || [];
+  const t  = toolCalls   || [];
+  const dc = deniedCalls || [];
   const blocked = t.filter(c => c.decision === 'blocked').length;
   const flagged  = t.filter(c => c.decision === 'flagged').length;
   const allowed  = t.length - blocked - flagged;
@@ -121,15 +122,55 @@ function buildComplianceReportHtml({ account, wlConfig, receipts, toolCalls, fro
     </tr>`).join('') || '<tr><td colspan="4" style="text-align:center;color:#999;padding:16px">No receipts in this period</td></tr>';
 
   const toolCallRows = t.map(tc => {
-    const dc = tc.decision === 'allowed' ? '#060' : tc.decision === 'blocked' ? '#c00' : '#a60';
+    const tcColor = tc.decision === 'allowed' ? '#060' : tc.decision === 'blocked' ? '#c00' : '#a60';
     return `<tr>
       <td>${new Date(tc.created_at).toLocaleString()}</td>
       <td style="font-family:monospace">${tc.tool_name}</td>
-      <td style="color:${dc};font-weight:600">${tc.decision}</td>
+      <td style="color:${tcColor};font-weight:600">${tc.decision}</td>
       <td>${tc.risk_score != null ? tc.risk_score.toFixed(3) : '\u2014'}</td>
       <td style="font-family:monospace;font-size:11px">${tc.session_id || '\u2014'}</td>
     </tr>`;
   }).join('') || '<tr><td colspan="5" style="text-align:center;color:#999;padding:16px">No tool calls in this period</td></tr>';
+
+  // Denied Calls Analysis section
+  const denialReasonCounts = dc.reduce((acc, d) => {
+    const code = d.denial_reason || 'UNKNOWN';
+    acc[code] = (acc[code] || 0) + 1;
+    return acc;
+  }, {});
+  const topDenialReasons = Object.entries(denialReasonCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10);
+  const deniedCallRows = dc.map(d => `<tr>
+    <td>${new Date(d.created_at || d.timestamp).toLocaleString()}</td>
+    <td style="font-family:monospace;font-size:11px;color:#c00;font-weight:600">${d.denial_reason || '\u2014'}</td>
+    <td>${d.risk_score != null ? Number(d.risk_score).toFixed(3) : '\u2014'}</td>
+    <td style="font-family:monospace;font-size:11px">${d.session_id || '\u2014'}</td>
+    <td style="font-family:monospace;font-size:11px">${(d.receipt_hash || '').slice(0, 12)}\u2026</td>
+  </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;color:#999;padding:16px">No denied calls in this period</td></tr>';
+
+  const denialBreakdownRows = topDenialReasons.map(([code, count]) => `<tr>
+    <td style="font-family:monospace;color:#c00">${code}</td>
+    <td style="font-weight:700">${count}</td>
+    <td>${dc.length > 0 ? (count / dc.length * 100).toFixed(1) + '%' : '0%'}</td>
+  </tr>`).join('') || '<tr><td colspan="3" style="text-align:center;color:#999;padding:16px">No denial data</td></tr>';
+
+  const deniedCallsSection = dc.length > 0 || true ? `
+<h2>Denied Calls Analysis</h2>
+<div class="stats" style="margin-bottom:16px">
+  <div class="stat"><div class="stat-n" style="color:#c00">${dc.length}</div><div class="stat-l">Total Denied</div></div>
+  <div class="stat"><div class="stat-n">${topDenialReasons.length}</div><div class="stat-l">Unique Reason Codes</div></div>
+  <div class="stat"><div class="stat-n">${topDenialReasons[0]?.[0] || '\u2014'}</div><div class="stat-l">Top Denial Reason</div></div>
+</div>
+<p style="font-size:12px;color:#666;margin-bottom:12px;line-height:1.6"><strong>Note:</strong> A spike in denied calls or novel denial reasons is a leading indicator that a model is being prompt-injected or has drifted from expected behavior. Sessions with a high denied call rate warrant immediate investigation.</p>
+<table style="margin-bottom:16px">
+  <thead><tr><th>Denial Reason</th><th>Count</th><th>% of Denied</th></tr></thead>
+  <tbody>${denialBreakdownRows}</tbody>
+</table>
+<table>
+  <thead><tr><th>Time</th><th>Denial Reason</th><th>Risk Score</th><th>Session</th><th>Receipt</th></tr></thead>
+  <tbody>${deniedCallRows}</tbody>
+</table>` : '';
 
   const footerHtml = isWL
     ? `${footerText ? `<p>${footerText}</p>` : ''}<p style="margin-top:8px;font-size:10px;color:#bbb">Powered by Authproof cryptographic authorization infrastructure \u2014 authproof.dev</p>`
@@ -198,6 +239,7 @@ ${coverPage}
   <thead><tr><th>Time</th><th>Tool</th><th>Decision</th><th>Risk Score</th><th>Session</th></tr></thead>
   <tbody>${toolCallRows}</tbody>
 </table>
+${deniedCallsSection}
 ${disclaimer ? `<div class="disclaimer">${disclaimer}</div>` : ''}
 <footer>${footerHtml}</footer>
 </body>
@@ -1247,20 +1289,48 @@ app.get('/audit/report', requireApiKey, async (req, res) => {
   res.send(html);
 });
 
+app.get('/audit/denied-calls', requireApiKey, checkPermission('audit.export'), async (req, res) => {
+  const { sessionId, from, to, denialReason } = req.query;
+  const { account } = req;
+
+  let query = supabaseAdmin
+    .from('tool_calls')
+    .select('*')
+    .eq('account_id', account.id)
+    .eq('decision', 'blocked')
+    .order('created_at', { ascending: false });
+
+  if (sessionId)    query = query.eq('session_id', sessionId);
+  if (from)         query = query.gte('created_at', from);
+  if (to)           query = query.lte('created_at', to);
+  if (denialReason) query = query.eq('denial_reason', denialReason);
+
+  const { data, error } = await query;
+  if (error) return res.status(500).json({ error: error.message });
+
+  res.json({
+    deniedCalls: data || [],
+    count:       (data || []).length,
+    filters:     { sessionId: sessionId || null, from: from || null, to: to || null, denialReason: denialReason || null },
+  });
+});
+
 app.get('/audit/compliance-report', requireApiKey, checkPermission('compliance_reports.generate'), async (req, res) => {
   const { from, to, session_id } = req.query;
   const { account } = req;
 
-  let receiptsQuery = supabaseAdmin.from('receipts').select('*').eq('account_id', account.id).order('created_at', { ascending: false });
-  let toolCallsQuery = supabaseAdmin.from('tool_calls').select('*').eq('account_id', account.id).order('created_at', { ascending: false });
+  let receiptsQuery    = supabaseAdmin.from('receipts').select('*').eq('account_id', account.id).order('created_at', { ascending: false });
+  let toolCallsQuery   = supabaseAdmin.from('tool_calls').select('*').eq('account_id', account.id).order('created_at', { ascending: false });
+  let deniedCallsQuery = supabaseAdmin.from('tool_calls').select('*').eq('account_id', account.id).eq('decision', 'blocked').order('created_at', { ascending: false });
 
-  if (from) { receiptsQuery = receiptsQuery.gte('created_at', from); toolCallsQuery = toolCallsQuery.gte('created_at', from); }
-  if (to)   { receiptsQuery = receiptsQuery.lte('created_at', to);   toolCallsQuery = toolCallsQuery.lte('created_at', to);   }
+  if (from) { receiptsQuery = receiptsQuery.gte('created_at', from); toolCallsQuery = toolCallsQuery.gte('created_at', from); deniedCallsQuery = deniedCallsQuery.gte('created_at', from); }
+  if (to)   { receiptsQuery = receiptsQuery.lte('created_at', to);   toolCallsQuery = toolCallsQuery.lte('created_at', to);   deniedCallsQuery = deniedCallsQuery.lte('created_at', to); }
   if (session_id) toolCallsQuery = toolCallsQuery.eq('session_id', session_id);
 
-  const [{ data: receipts }, { data: toolCalls }] = await Promise.all([receiptsQuery, toolCallsQuery]);
-  const r = receipts || [];
-  const t = toolCalls || [];
+  const [{ data: receipts }, { data: toolCalls }, { data: deniedCalls }] = await Promise.all([receiptsQuery, toolCallsQuery, deniedCallsQuery]);
+  const r  = receipts    || [];
+  const t  = toolCalls   || [];
+  const dc = deniedCalls || [];
 
   const exportedAt = new Date().toISOString();
   const payload = { exported_at: exportedAt, account_id: account.id, receipts: r, tool_calls: t };
@@ -1269,7 +1339,7 @@ app.get('/audit/compliance-report', requireApiKey, checkPermission('compliance_r
   let wlConfig = null;
   if (account.plan === 'enterprise') wlConfig = await getWhiteLabelConfig(account.id);
 
-  const html = buildComplianceReportHtml({ account, wlConfig, receipts: r, toolCalls: t, from, to, orgName: null, exportedAt, signature });
+  const html = buildComplianceReportHtml({ account, wlConfig, receipts: r, toolCalls: t, deniedCalls: dc, from, to, orgName: null, exportedAt, signature });
 
   res.setHeader('Content-Type', 'text/html');
   res.setHeader('X-Audit-Signature', signature);

@@ -29,6 +29,14 @@ async function _sha256(str) {
   return _hex(buf);
 }
 
+/** Deterministic JSON serialization with sorted keys at every level. */
+function _canonicalizeJson(obj) {
+  if (obj === null || typeof obj !== 'object') return JSON.stringify(obj);
+  if (Array.isArray(obj)) return '[' + obj.map(_canonicalizeJson).join(',') + ']';
+  const sorted = Object.keys(obj).sort().map(k => JSON.stringify(k) + ':' + _canonicalizeJson(obj[k]));
+  return '{' + sorted.join(',') + '}';
+}
+
 async function _generateKeyPair() {
   return crypto.subtle.generateKey(
     { name: 'ECDSA', namedCurve: 'P-256' },
@@ -757,6 +765,7 @@ async function create(options) {
     publicJwk,
     agentId,
     metadata,
+    toolSchemaHash,
   } = options;
 
   if (!scope)        throw new Error('AuthProof: scope is required');
@@ -781,8 +790,9 @@ async function create(options) {
     operatorInstructions: instructions,
     instructionsHash,
     signerPublicKey:      { kty, crv, x, y },
-    ...(agentId   ? { agentId }   : {}),
-    ...(metadata  ? { metadata }  : {}),
+    ...(agentId        ? { agentId }        : {}),
+    ...(metadata       ? { metadata }       : {}),
+    ...(toolSchemaHash ? { toolSchemaHash } : {}),
   };
 
   const signature = await _sign(privateKey, JSON.stringify(body));
@@ -2881,6 +2891,31 @@ class AuthProofClient {
   constructor({ guided = false, sessionAware = false } = {}) {
     this._guided       = guided;
     this._sessionAware = sessionAware;
+    /** @private {Map<string, object[]>} sessionId → denied call entries */
+    this._deniedCalls  = new Map();
+  }
+
+  /**
+   * Return all denied call log entries for a session, ordered by timestamp.
+   * Populated by PreExecutionVerifier when it is initialized with this client's
+   * denied call store via the sharedDeniedCallStore option.
+   *
+   * @param {string} sessionId
+   * @returns {object[]}
+   */
+  getDeniedCallLog(sessionId) {
+    return (this._deniedCalls.get(sessionId) ?? []).slice().sort((a, b) => a.timestamp - b.timestamp);
+  }
+
+  /**
+   * Record a denied call entry (called by PreExecutionVerifier when wired up).
+   * @param {object} entry
+   * @package
+   */
+  _recordDeniedCall(entry) {
+    const key = entry.sessionId ?? 'global';
+    if (!this._deniedCalls.has(key)) this._deniedCalls.set(key, []);
+    this._deniedCalls.get(key).push(entry);
   }
 
   async generateKeyPair() {
@@ -2920,6 +2955,7 @@ class AuthProofClient {
     privateKey,
     publicJwk,
     teeConfig,
+    toolSchema,
   } = {}) {
     if (!scope)      throw new Error('AuthProofClient.delegate: scope is required');
     if (!privateKey) throw new Error('AuthProofClient.delegate: privateKey is required');
@@ -2945,6 +2981,11 @@ class AuthProofClient {
       ttlHours = 1;
     }
 
+    let toolSchemaHash;
+    if (toolSchema !== undefined && toolSchema !== null) {
+      toolSchemaHash = 'sha256:' + await _sha256(_canonicalizeJson(toolSchema));
+    }
+
     const { receipt, receiptId, systemPrompt } = await create({
       scope,
       boundaries,
@@ -2953,6 +2994,7 @@ class AuthProofClient {
       metadata,
       privateKey,
       publicJwk,
+      toolSchemaHash,
     });
 
     if (teeConfig) {

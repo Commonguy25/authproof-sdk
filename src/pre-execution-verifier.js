@@ -5,7 +5,7 @@
  * this verifier passes. A compromised or malicious agent cannot skip it
  * because it runs before the runtime.
  *
- * Eight sequential checks (stops at first failure):
+ * Nine sequential checks (stops at first failure):
  *   1. Receipt signature valid (ECDSA P-256)
  *   2. Receipt not revoked (RevocationRegistry)
  *   3. Within time window (log timestamp as oracle, not client clock)
@@ -13,7 +13,8 @@
  *   5. Operator instructions match receipt (Canonicalizer.hash)
  *   6. Program hash match (optional — prevents code substitution attacks)
  *   7. Session risk evaluation (optional — SessionState.evaluate())
- *   8. Model state verification (optional — ModelStateAttestation check)
+ *   8. Tool schema integrity (optional — toolSchemaHash in receipt)
+ *   9. Model state verification (optional — ModelStateAttestation check)
  *
  * @module pre-execution-verifier
  */
@@ -69,6 +70,18 @@ async function _signData(privateKey, message) {
     _enc(message)
   );
   return _hex(sig);
+}
+
+/** Deterministic JSON serialization with sorted keys at every level. */
+function _canonicalizeJson(obj) {
+  if (obj === null || typeof obj !== 'object') return JSON.stringify(obj);
+  if (Array.isArray(obj)) return '[' + obj.map(_canonicalizeJson).join(',') + ']';
+  const sorted = Object.keys(obj).sort().map(k => JSON.stringify(k) + ':' + _canonicalizeJson(obj[k]));
+  return '{' + sorted.join(',') + '}';
+}
+
+async function _sha256Schema(schema) {
+  return _sha256(_canonicalizeJson(schema));
 }
 
 // ─────────────────────────────────────────────
@@ -210,6 +223,10 @@ class PreExecutionVerifier {
     this._initialized  = false;
     /** @private {Set<string>} receipt hashes with an active check() call — replay detection */
     this._inFlightChecks = new Set();
+    /** @private {Map<string, object[]>} sessionId → denied call log entries */
+    this._deniedCalls  = new Map();
+    /** @private {Map<string, string>} sessionId → hash of last denied call entry */
+    this._lastDeniedHash = new Map();
   }
 
   /**
@@ -262,6 +279,7 @@ class PreExecutionVerifier {
     currentModelVersion,
     currentSystemPromptHash,
     currentRuntimeConfigHash,
+    currentToolSchema,
   } = {}) {
     if (!this._initialized) {
       throw new Error('PreExecutionVerifier: call init() before check()');
@@ -278,7 +296,7 @@ class PreExecutionVerifier {
     if (programHash !== undefined)                               checks.programHashMatch    = false;
     if (this._requireTEE)                                        checks.teeAttestationValid = false;
     if (this._sessionState)                                      checks.sessionRiskValid    = false;
-    if (this._modelStateAttestation && commitmentId !== undefined) checks.modelStateValid    = false;
+    if (this._modelStateAttestation && commitmentId !== undefined) checks.modelStateValid   = false;
 
     // ── Replay attack detection ───────────────────────────────────────
     // Block a second concurrent check() using the same receipt hash.
@@ -486,7 +504,25 @@ class PreExecutionVerifier {
       if (!this._sessionRiskResult) this._sessionRiskResult = sessionResult;
     }
 
-    // ── Check 8: Model state verification (optional) ─────────────────
+    // ── Check 8: Tool Schema Integrity (optional) ────────────────────
+    if (receipt.toolSchemaHash && currentToolSchema !== undefined) {
+      const currentHash = 'sha256:' + await _sha256Schema(currentToolSchema);
+      const toolSchemaValid = currentHash === receipt.toolSchemaHash;
+      checks.toolSchemaIntegrity = toolSchemaValid;
+
+      if (!toolSchemaValid) {
+        return this._finalize({
+          allowed:       false,
+          checks,
+          blockedReason: 'TOOL_SCHEMA_DRIFT',
+          denialCode:    'TOOL_SCHEMA_DRIFT',
+          receiptHash,
+          action,
+        });
+      }
+    }
+
+    // ── Check 9: Model state verification (optional) ─────────────────
     if (this._modelStateAttestation && commitmentId !== undefined) {
       const msaResult = await this._modelStateAttestation.verify({
         commitmentId,
@@ -522,9 +558,10 @@ class PreExecutionVerifier {
 
   /**
    * Build the result object, sign it, and record it in the audit log.
+   * All decisions (PERMIT and DENY) are logged.
    * @private
    */
-  async _finalize({ allowed, checks, blockedReason, receiptHash, action, sessionRiskResult }) {
+  async _finalize({ allowed, checks, blockedReason, denialCode, receiptHash, action, sessionRiskResult }) {
     const verifiedAt = new Date().toISOString();
 
     const checkResult = {
@@ -562,12 +599,72 @@ class PreExecutionVerifier {
       // Audit log failure never blocks the gate decision
     }
 
-    // Publish to the authorization ActionLog only when ALL checks pass.
-    // A blocked receipt must never appear here — the log must only contain
-    // receipts where execution was fully authorized.
-    if (allowed && this._actionLog) {
+    // Log ALL decisions — including DENY — to the authorization ActionLog.
+    // Denied calls are logged with operation 'receipt_denied' so the allow path
+    // stays clean while the full decision history is preserved for forensics.
+    if (this._actionLog) {
+      if (allowed) {
+        // Publish authorized receipts exactly as before
+        try {
+          await this._actionLog.publishReceipt(receiptHash);
+        } catch {
+          // Best-effort — never block the gate decision
+        }
+      } else {
+        // Record denied call with full context
+        try {
+          const sessionId   = this._sessionState?._sessionId ?? null;
+          const riskScore   = sessionRiskResult?.riskScore ?? null;
+          const resolvedCode = denialCode ?? (blockedReason?.split(' ')[0] ?? 'DENIED');
+          await this._actionLog.record(receiptHash, {
+            operation:  'receipt_denied',
+            resource:   'delegation/receipt',
+            parameters: {
+              decision:     'BLOCK',
+              denialReason: resolvedCode,
+              blockedReason: blockedReason ?? null,
+              sessionId,
+              riskScore,
+              action: typeof action === 'string' ? action : action,
+            },
+          });
+        } catch {
+          // Best-effort — never block the gate decision
+        }
+      }
+    }
+
+    // Record denied calls to internal per-session store for getDeniedCallLog()
+    if (!allowed) {
       try {
-        await this._actionLog.publishReceipt(receiptHash);
+        const sessionId   = this._sessionState?._sessionId ?? null;
+        const riskScore   = sessionRiskResult?.riskScore ?? null;
+        const resolvedCode = denialCode ?? (blockedReason?.split(' ')[0] ?? 'DENIED');
+        const storeKey    = sessionId ?? 'global';
+        const prevHash    = this._lastDeniedHash.get(storeKey) ?? '0'.repeat(64);
+        const entryId     = `denied-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+        const actionObj   = typeof action === 'string'
+          ? { operation: action, resource: action, args: {} }
+          : { operation: action?.operation ?? '', resource: action?.resource ?? '', args: action?.parameters ?? {} };
+
+        const entry = {
+          entryId,
+          decision:          'BLOCK',
+          action:            actionObj,
+          receiptHash,
+          denialReason:      resolvedCode,
+          timestamp:         Date.now(),
+          previousEntryHash: prevHash,
+          riskScore,
+          sessionId,
+        };
+
+        const entryHash = await _sha256(JSON.stringify(entry));
+        entry.entryHash = entryHash;
+
+        if (!this._deniedCalls.has(storeKey)) this._deniedCalls.set(storeKey, []);
+        this._deniedCalls.get(storeKey).push(entry);
+        this._lastDeniedHash.set(storeKey, entryHash);
       } catch {
         // Best-effort — never block the gate decision
       }
@@ -599,6 +696,19 @@ class PreExecutionVerifier {
    */
   getAuditLog(receiptHash) {
     return this._auditLog.getEntries(receiptHash);
+  }
+
+  /**
+   * Return all denied call log entries for a session, ordered by timestamp.
+   * Includes full call context, denial reason, and risk score at time of denial.
+   *
+   * @param {string} [sessionId] — session ID to filter by. Pass null or omit to get
+   *                               all entries not associated with a session.
+   * @returns {object[]}
+   */
+  getDeniedCallLog(sessionId) {
+    const key = sessionId ?? 'global';
+    return (this._deniedCalls.get(key) ?? []).slice().sort((a, b) => a.timestamp - b.timestamp);
   }
 }
 

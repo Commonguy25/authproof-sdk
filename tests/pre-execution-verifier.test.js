@@ -665,10 +665,13 @@ async function run() {
   assert(alpFailResult.checks.operatorInstructionsMatch === false,
     'ActionLog test: check 5 fails — operatorInstructionsMatch is false');
 
-  // The ActionLog must NOT contain any entry for this receipt hash.
+  // DENY decisions are now logged to the ActionLog with operation 'receipt_denied'.
+  // This is the Change 2 behavior: all decisions (PERMIT and DENY) are recorded.
   const alpFailEntries = authLog.getEntries(ridAlp);
-  assert(alpFailEntries.length === 0,
-    'ActionLog has no entry for the receipt hash when check fails — blocked receipt never published');
+  assert(alpFailEntries.length === 1,
+    'ActionLog has one entry for denied call — receipt_denied entry recorded');
+  assert(alpFailEntries[0].action.operation === 'receipt_denied',
+    'ActionLog denied entry has operation receipt_denied');
 
   // Passing check: a second receipt with correct instructions DOES get published.
   const { receipt: rAlpPass, receiptId: ridAlpPass } = await makeReceipt({ privateKey, publicJwk });

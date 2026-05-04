@@ -9,7 +9,7 @@ Expires: 28 October 2026
 
 
          Delegation Receipt Protocol for AI Agent Authorization
-               draft-nelson-agent-delegation-receipts-04
+               draft-nelson-agent-delegation-receipts-05
 
 Abstract
 
