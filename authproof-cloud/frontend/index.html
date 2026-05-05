@@ -297,6 +297,30 @@
       .audit-export-card { padding: 20px 16px; font-size: 11px; }
       .contrast-grid { grid-template-columns: 1fr; }
     }
+
+    /* Founder */
+    .founder-inner { display: flex; gap: 64px; align-items: flex-start; }
+    .founder-avatar-cloud {
+      width: 120px; height: 120px; border-radius: 50%;
+      background: var(--blue-lt); border: 2px solid var(--blue);
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--sans); font-size: 34px; font-weight: 700;
+      color: var(--blue); flex-shrink: 0; letter-spacing: -0.02em;
+    }
+    .founder-headline-cloud {
+      font-size: clamp(22px, 3vw, 34px); font-weight: 700;
+      color: var(--gray-900); letter-spacing: -0.02em; margin-bottom: 20px; line-height: 1.2;
+    }
+    .founder-body-cloud {
+      font-size: 15px; color: var(--gray-600); line-height: 1.8;
+      max-width: 600px; margin-bottom: 14px;
+    }
+    .founder-links-cloud { display: flex; gap: 24px; flex-wrap: wrap; margin-top: 8px; }
+    .founder-links-cloud a { color: var(--blue); font-size: 14px; font-weight: 600; }
+    .founder-links-cloud a:hover { text-decoration: underline; }
+    @media (max-width: 640px) {
+      .founder-inner { flex-direction: column; gap: 32px; }
+    }
   </style>
 </head>
 <body>
@@ -966,6 +990,26 @@
                       </div>
           </li>
         </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Founder -->
+<section style="background:var(--white);">
+  <div class="container">
+    <div class="founder-inner">
+      <div class="founder-avatar-cloud">RN</div>
+      <div>
+        <h2 class="founder-headline-cloud">Built by one person</h2>
+        <p class="founder-body-cloud">I am Ryan Nelson. HVAC technician at Arctic Air. Accounting student at Oklahoma State University. Father of a daughter turning three in June.</p>
+        <p class="founder-body-cloud">I spent the last month building Authproof because the PocketOS incident showed what happens when AI agents act without cryptographic proof of what they were authorized to do. Nobody else was solving this at the protocol layer.</p>
+        <p class="founder-body-cloud">IETF Internet-Draft filed April 2026. 1,229 tests. MIT licensed.</p>
+        <p class="founder-body-cloud">Full time job. Full time school. Built it anyway.</p>
+        <div class="founder-links-cloud">
+          <a href="https://linkedin.com/in/ryan-nelson-582353342" target="_blank" rel="noopener">Connect on LinkedIn →</a>
+          <a href="mailto:ryan@authproof.dev">ryan@authproof.dev</a>
+        </div>
       </div>
     </div>
   </div>

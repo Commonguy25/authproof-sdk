@@ -505,6 +505,62 @@
       #hero { padding: 120px 20px 64px; }
       .section-full .inner { padding: 0 20px; }
     }
+
+    /* ── Founder ── */
+    .founder-inner {
+      display: flex;
+      gap: 64px;
+      align-items: flex-start;
+    }
+    .founder-avatar {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: var(--green3);
+      border: 2px solid var(--green);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--mono);
+      font-size: 30px;
+      font-weight: 700;
+      color: var(--green);
+      flex-shrink: 0;
+      letter-spacing: 0.02em;
+    }
+    #founder h2 {
+      font-size: clamp(22px, 2.8vw, 36px);
+      font-weight: 800;
+      color: var(--white);
+      letter-spacing: -0.02em;
+      margin-bottom: 20px;
+    }
+    .founder-body {
+      font-size: 15px;
+      color: var(--gray2);
+      line-height: 1.8;
+      max-width: 600px;
+      margin-bottom: 14px;
+    }
+    .founder-links {
+      display: flex;
+      gap: 24px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+    .founder-links a {
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--green);
+      letter-spacing: 0.02em;
+      padding-bottom: 2px;
+      border-bottom: 1px solid transparent;
+      transition: border-color 0.15s;
+    }
+    .founder-links a:hover { border-color: var(--green); text-decoration: none; }
+    @media (max-width: 640px) {
+      .founder-inner { flex-direction: column; gap: 32px; }
+    }
   </style>
 </head>
 <body>
@@ -726,6 +782,26 @@ pip install authproof-py</pre>
 <span class="cm">// Agent cannot act outside this receipt</span>
 <span class="cm">// Operator cannot claim broader authorization</span>
 <span class="cm">// Model substitution is detected automatically</span></pre>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- ── Founder ── -->
+<section id="founder" class="section" style="background:var(--black2);">
+  <div class="founder-inner">
+    <div class="founder-avatar">RN</div>
+    <div>
+      <h2>Built by one person</h2>
+      <p class="founder-body">I am Ryan Nelson. HVAC technician at Arctic Air. Accounting student at Oklahoma State University. Father of a daughter turning three in June.</p>
+      <p class="founder-body">I spent the last month building Authproof because the PocketOS incident showed what happens when AI agents act without cryptographic proof of what they were authorized to do. Nobody else was solving this at the protocol layer.</p>
+      <p class="founder-body">IETF Internet-Draft filed April 2026. 1,229 tests. MIT licensed.</p>
+      <p class="founder-body">Full time job. Full time school. Built it anyway.</p>
+      <div class="founder-links">
+        <a href="https://linkedin.com/in/ryan-nelson-582353342" target="_blank" rel="noopener">Connect on LinkedIn →</a>
+        <a href="mailto:ryan@authproof.dev">ryan@authproof.dev</a>
+      </div>
+    </div>
   </div>
 </section>
 
