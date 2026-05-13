@@ -43,6 +43,8 @@ const DEFAULT_POLICY = {
   blockThreshold:           85,
   trustDecayRate:           0.05,
   trustRecoveryRate:        0.01,
+  sessionCapacity:          100,  // tau_session maximum budget
+  tauMin:                   10,   // tau_session gate threshold
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -82,6 +84,9 @@ class SessionState {
     // Trust state — starts at 100, bounded [0, 100]
     this.trustScore    = 100;
     this._riskScore    = 0;
+
+    // tau_session: monotone capacity budget — increments on every anomaly, never decremented
+    this._cumulativeAnomalyMass = 0;
 
     // Activity counters
     this._actionCount   = 0;
@@ -140,6 +145,16 @@ class SessionState {
     return 'ACTIVE';
   }
 
+  /**
+   * Remaining session capacity.  tauSession = sessionCapacity - cumulativeAnomalyMass.
+   * Strictly decreasing — never recovers.  When tauSession <= tauMin all execution
+   * is blocked with TAU_SESSION_EXHAUSTED regardless of trustScore.
+   * @returns {number}
+   */
+  get tauSession() {
+    return this._policy.sessionCapacity - this._cumulativeAnomalyMass;
+  }
+
   // ─── Core API ──────────────────────────────────────────────────────────────
 
   /**
@@ -164,6 +179,19 @@ class SessionState {
    * }>}
    */
   async evaluate({ action, operatorInstructions, payload } = {}) {
+    // tau_session gate — checked before trustScore-derived checks per dynamic_admissible
+    if (this.tauSession <= this._policy.tauMin) {
+      return {
+        decision:    'BLOCK',
+        trustScore:  this.trustScore,
+        riskScore:   100,
+        reasons:     ['TAU_SESSION_EXHAUSTED'],
+        sessionId:   this._sessionId,
+        actionCount: this._actionCount,
+        anomalies:   [...this._anomalies],
+      };
+    }
+
     // SUSPENDED — block all actions immediately
     if (this._status === 'SUSPENDED') {
       return {
@@ -279,6 +307,8 @@ class SessionState {
         // Trust decay: each anomaly erodes trust by severity × decayRate
         const decay = anomaly.severity * this._policy.trustDecayRate;
         this.trustScore = Math.max(0, this.trustScore - decay);
+        // tau_session: monotone accumulation — never decremented
+        this._cumulativeAnomalyMass += anomaly.severity;
       }
     } else {
       // Clean action — slowly recover trust
@@ -304,16 +334,18 @@ class SessionState {
    */
   getState() {
     return {
-      sessionId:        this._sessionId,
-      receiptHash:      this._receiptHash,
-      trustScore:       this.trustScore,
-      riskScore:        this._riskScore,
-      actionCount:      this._actionCount,
-      anomalyCount:     this._anomalyCount,
-      sensitivityLevel: this._sensitivityLevel,
-      startedAt:        this._startedAt,
-      lastActionAt:     this._lastActionAt,
-      status:           this._status,
+      sessionId:             this._sessionId,
+      receiptHash:           this._receiptHash,
+      trustScore:            this.trustScore,
+      riskScore:             this._riskScore,
+      cumulativeAnomalyMass: this._cumulativeAnomalyMass,
+      tauSession:            this.tauSession,
+      actionCount:           this._actionCount,
+      anomalyCount:          this._anomalyCount,
+      sensitivityLevel:      this._sensitivityLevel,
+      startedAt:             this._startedAt,
+      lastActionAt:          this._lastActionAt,
+      status:                this._status,
     };
   }
 
