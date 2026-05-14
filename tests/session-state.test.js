@@ -627,6 +627,81 @@ async function run() {
     }
   }
 
+  // ── Passive structural pressure ─────────────────────────────────────────────
+  console.log('\nSessionState — passive structural pressure');
+
+  {
+    // DEFAULT_POLICY includes passivePressureRate=0.001
+    const s = makeSession();
+    assert(s._policy.passivePressureRate === 0.001, 'Default passivePressureRate is 0.001');
+    assert(s._policy.sessionCapacity     === 100,   'Default sessionCapacity is 100');
+  }
+
+  {
+    // Passive pressure accumulates over elapsed time at the configured rate
+    const s = makeSession({ passivePressureRate: 1.0 }); // 1 unit per second
+    // Simulate 10 seconds having passed since the last evaluate() was applied
+    s._lastPassiveAppliedAt = Date.now() - 10_000;
+    await s.evaluate({ action: 'read', payload: 'safe text' });
+    assert(
+      s._cumulativeAnomalyMass >= 9.9 && s._cumulativeAnomalyMass <= 10.1,
+      `Passive pressure accumulates at rate×elapsed (expected ≈10, got ${s._cumulativeAnomalyMass.toFixed(3)})`
+    );
+  }
+
+  {
+    // Zero anomalies — passive pressure alone drives cumulativeAnomalyMass
+    const s = makeSession({ passivePressureRate: 2.0 });
+    s._lastPassiveAppliedAt = Date.now() - 5_000; // 5 seconds ago
+    await s.evaluate({ action: 'read', payload: 'benign content' });
+    assert(s._cumulativeAnomalyMass > 0, 'cumulativeAnomalyMass > 0 with zero anomalies after elapsed time');
+    assert(s._anomalyCount === 0, 'anomalyCount stays 0 (no anomaly events)');
+  }
+
+  {
+    // Active anomaly burden adds to cumulativeAnomalyMass
+    const s = makeSession({ passivePressureRate: 0 });
+    await s.record('write:db', {
+      anomalies: [{ type: 'prompt-injection', severity: 5 }],
+    });
+    assert(
+      Math.abs(s._cumulativeAnomalyMass - 5) < 0.001,
+      `Active anomaly burden: severity 5 anomaly adds 5 (got ${s._cumulativeAnomalyMass.toFixed(3)})`
+    );
+  }
+
+  {
+    // tauSession decreases from passive pressure alone (no anomalies)
+    const s = makeSession({ passivePressureRate: 1.0, sessionCapacity: 100 });
+    s._lastPassiveAppliedAt = Date.now() - 20_000; // 20 seconds ago
+    await s.evaluate({ action: 'read', payload: 'safe text' });
+    const state = s.getState();
+    assert(state.tauSession < 100,
+      'tauSession is below sessionCapacity after passive pressure applied');
+    assert(
+      Math.abs(state.tauSession - (100 - state.cumulativeAnomalyMass)) < 0.001,
+      'tauSession = sessionCapacity - cumulativeAnomalyMass'
+    );
+    assert(state.anomalyCount === 0,
+      'tauSession decreases from passive pressure alone — anomalyCount stays 0');
+  }
+
+  {
+    // getState includes cumulativeAnomalyMass and tauSession
+    const s = makeSession({ passivePressureRate: 0 });
+    const state = s.getState();
+    assert(typeof state.cumulativeAnomalyMass === 'number', 'getState returns cumulativeAnomalyMass');
+    assert(typeof state.tauSession            === 'number', 'getState returns tauSession');
+    assert(state.cumulativeAnomalyMass === 0,               'fresh session: cumulativeAnomalyMass starts at 0');
+    assert(state.tauSession            === 100,             'fresh session: tauSession starts at sessionCapacity');
+  }
+
+  {
+    // passivePressureRate is configurable
+    const s = makeSession({ passivePressureRate: 0.005 });
+    assert(s._policy.passivePressureRate === 0.005, 'passivePressureRate is configurable via policy');
+  }
+
   // ─────────────────────────────────────────────────────────────────────────────
   // RESULTS
   // ─────────────────────────────────────────────────────────────────────────────

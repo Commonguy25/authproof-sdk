@@ -85,6 +85,16 @@ async function _sha256Schema(schema) {
 }
 
 // ─────────────────────────────────────────────
+// SAFE FALLBACK ACTION
+// ─────────────────────────────────────────────
+
+// NO_OP_WITH_LOG is the guaranteed safe fallback action for any DENY decision.
+// It performs no operation and writes a full audit log entry with the denial
+// reason, session state snapshot, and timestamp.  Always available regardless
+// of verification state or session trust level.
+const NO_OP_WITH_LOG = 'NO_OP_WITH_LOG';
+
+// ─────────────────────────────────────────────
 // DELEGATION LOG
 // ─────────────────────────────────────────────
 
@@ -678,6 +688,11 @@ class PreExecutionVerifier {
       verifierSignature,
       verifierPublicKey: this._publicJwk,
     };
+
+    // Every DENY decision carries a guaranteed safe fallback action.
+    if (!allowed) {
+      result.safeAlternative = NO_OP_WITH_LOG;
+    }
 
     // Attach session risk result when available
     const sessionResult = sessionRiskResult ?? this._sessionRiskResult ?? null;

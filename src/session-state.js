@@ -43,6 +43,8 @@ const DEFAULT_POLICY = {
   blockThreshold:           85,
   trustDecayRate:           0.05,
   trustRecoveryRate:        0.01,
+  passivePressureRate:      0.001,  // units of anomaly mass added per second of session age
+  sessionCapacity:          100,    // total anomaly capacity before tauSession is exhausted
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -59,6 +61,8 @@ class SessionState {
    * @param {number}  [opts.policy.blockThreshold=85]
    * @param {number}  [opts.policy.trustDecayRate=0.05]
    * @param {number}  [opts.policy.trustRecoveryRate=0.01]
+   * @param {number}  [opts.policy.passivePressureRate=0.001]
+   * @param {number}  [opts.policy.sessionCapacity=100]
    */
   constructor({
     receiptHash,
@@ -87,6 +91,10 @@ class SessionState {
     this._actionCount   = 0;
     this._anomalyCount  = 0;
     this._anomalies     = [];
+
+    // Structural burden — active (anomaly-driven) + passive (time-driven)
+    this._cumulativeAnomalyMass = 0;
+    this._lastPassiveAppliedAt  = Date.now();
 
     // Sensitivity level of the most recent payload
     this._sensitivityLevel = 'PUBLIC';
@@ -140,6 +148,16 @@ class SessionState {
     return 'ACTIVE';
   }
 
+  /**
+   * Remaining session anomaly capacity.
+   * Decreases as cumulativeAnomalyMass accumulates (active + passive).
+   * When tauSession <= tauMin (10), the session anomaly capacity is exhausted.
+   * @returns {number}
+   */
+  get tauSession() {
+    return this._policy.sessionCapacity - this._cumulativeAnomalyMass;
+  }
+
   // ─── Core API ──────────────────────────────────────────────────────────────
 
   /**
@@ -164,6 +182,15 @@ class SessionState {
    * }>}
    */
   async evaluate({ action, operatorInstructions, payload } = {}) {
+    // Apply passive structural pressure before any decision.
+    // Passive burden accumulates continuously based on elapsed session age
+    // regardless of anomaly activity — a long-lived session carries inherent
+    // structural risk even with no detected anomalies.
+    const _passiveNow   = Date.now();
+    const _deltaSeconds = (_passiveNow - this._lastPassiveAppliedAt) / 1000;
+    this._cumulativeAnomalyMass += this._policy.passivePressureRate * _deltaSeconds;
+    this._lastPassiveAppliedAt   = _passiveNow;
+
     // SUSPENDED — block all actions immediately
     if (this._status === 'SUSPENDED') {
       return {
@@ -279,6 +306,8 @@ class SessionState {
         // Trust decay: each anomaly erodes trust by severity × decayRate
         const decay = anomaly.severity * this._policy.trustDecayRate;
         this.trustScore = Math.max(0, this.trustScore - decay);
+        // Active anomaly burden: monotone, never decremented
+        this._cumulativeAnomalyMass += anomaly.severity;
       }
     } else {
       // Clean action — slowly recover trust
@@ -290,30 +319,34 @@ class SessionState {
    * Return a snapshot of the current session state.
    *
    * @returns {{
-   *   sessionId:        string,
-   *   receiptHash:      string,
-   *   trustScore:       number,
-   *   riskScore:        number,
-   *   actionCount:      number,
-   *   anomalyCount:     number,
-   *   sensitivityLevel: string,
-   *   startedAt:        string,
-   *   lastActionAt:     string|null,
-   *   status:           'ACTIVE'|'DEGRADED'|'SUSPENDED',
+   *   sessionId:             string,
+   *   receiptHash:           string,
+   *   trustScore:            number,
+   *   riskScore:             number,
+   *   actionCount:           number,
+   *   anomalyCount:          number,
+   *   cumulativeAnomalyMass: number,
+   *   tauSession:            number,
+   *   sensitivityLevel:      string,
+   *   startedAt:             string,
+   *   lastActionAt:          string|null,
+   *   status:                'ACTIVE'|'DEGRADED'|'SUSPENDED',
    * }}
    */
   getState() {
     return {
-      sessionId:        this._sessionId,
-      receiptHash:      this._receiptHash,
-      trustScore:       this.trustScore,
-      riskScore:        this._riskScore,
-      actionCount:      this._actionCount,
-      anomalyCount:     this._anomalyCount,
-      sensitivityLevel: this._sensitivityLevel,
-      startedAt:        this._startedAt,
-      lastActionAt:     this._lastActionAt,
-      status:           this._status,
+      sessionId:             this._sessionId,
+      receiptHash:           this._receiptHash,
+      trustScore:            this.trustScore,
+      riskScore:             this._riskScore,
+      actionCount:           this._actionCount,
+      anomalyCount:          this._anomalyCount,
+      cumulativeAnomalyMass: this._cumulativeAnomalyMass,
+      tauSession:            this.tauSession,
+      sensitivityLevel:      this._sensitivityLevel,
+      startedAt:             this._startedAt,
+      lastActionAt:          this._lastActionAt,
+      status:                this._status,
     };
   }
 

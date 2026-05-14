@@ -691,6 +691,45 @@ async function run() {
   assert(alpPassEntries[0].action.operation === 'receipt_authorized',
     'ActionLog entry operation is receipt_authorized');
 
+  // ── safeAlternative present in every DENY response ──────────────────
+  console.log('\nsafeAlternative: NO_OP_WITH_LOG in every DENY response');
+
+  // Blocked at check 1 (corrupted signature)
+  assert(sig1Result.safeAlternative === 'NO_OP_WITH_LOG',
+    'Check 1 DENY carries safeAlternative=NO_OP_WITH_LOG');
+
+  // Blocked at check 2 (revoked)
+  assert(rev2Result.safeAlternative === 'NO_OP_WITH_LOG',
+    'Check 2 DENY carries safeAlternative=NO_OP_WITH_LOG');
+
+  // Blocked at check 3 (expired)
+  assert(exp3Result.safeAlternative === 'NO_OP_WITH_LOG',
+    'Check 3 DENY carries safeAlternative=NO_OP_WITH_LOG');
+
+  // Blocked at check 4 (out-of-scope)
+  assert(scope4Result.safeAlternative === 'NO_OP_WITH_LOG',
+    'Check 4 DENY carries safeAlternative=NO_OP_WITH_LOG');
+
+  // Blocked at check 5 (operator drift)
+  assert(drift5Result.safeAlternative === 'NO_OP_WITH_LOG',
+    'Check 5 DENY carries safeAlternative=NO_OP_WITH_LOG');
+
+  // Blocked at check 6 (wrong program hash)
+  assert(prog6Result.safeAlternative === 'NO_OP_WITH_LOG',
+    'Check 6 DENY carries safeAlternative=NO_OP_WITH_LOG');
+
+  // Blocked by TEE attestation required but absent
+  assert(teeResult.safeAlternative === 'NO_OP_WITH_LOG',
+    'TEE DENY carries safeAlternative=NO_OP_WITH_LOG');
+
+  // Blocked by replay attack
+  assert(replayBlocked[0].safeAlternative === 'NO_OP_WITH_LOG',
+    'Replay DENY carries safeAlternative=NO_OP_WITH_LOG');
+
+  // Allowed result does NOT carry safeAlternative
+  assert(validResult.safeAlternative === undefined,
+    'ALLOW response does not carry safeAlternative');
+
   // ── Summary ────────────────────────────────────────────────────────
   console.log(`\n${'─'.repeat(40)}`);
   console.log(`Results: ${passed} passed, ${failed} failed`);
