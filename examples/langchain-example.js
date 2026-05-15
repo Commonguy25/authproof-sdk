@@ -9,7 +9,7 @@
 
 import AuthProof from '../src/authproof.js';
 import { PreExecutionVerifier, DelegationLog } from '../src/pre-execution-verifier.js';
-import { RevocationRegistry } from '../src/revocation.js';
+import { RevocationRegistry } from '../src/authproof.js';
 import { authproofMiddleware } from '../src/middleware/langchain.js';
 
 async function main() {
@@ -66,17 +66,60 @@ async function main() {
   });
   console.log('   ✓ Agent is now gated by PreExecutionVerifier\n');
 
-  // ── 6. Invoke the guarded agent — allowed action ─────────────────────
-  console.log('5. Invoking guarded agent with an in-scope action...');
+  // ── 6. Call 1: PERMIT — read calendar events (in-scope action) ──────
+  console.log('5. Call 1: action read calendar (should PERMIT)...');
   try {
-    const response = await guardedAgent.invoke('Find me a good time for a 1-hour meeting next week.');
-    console.log('   ✓ Allowed. Response:', response.result, '\n');
+    const response = await guardedAgent.invoke(
+      'Read my calendar events for the next 7 days and identify scheduling conflicts.'
+    );
+    console.log('   ✓ PERMIT. Response:', response.result, '\n');
   } catch (err) {
     console.log('   ✗ Blocked:', err.message, '\n');
   }
 
-  // ── 7. System prompt (for use with real LangChain agents) ────────────
-  console.log('6. System prompt to inject into your real LangChain agent:');
+  // ── 7. Call 2: DENY — send on email/outbox ──────────────────────────
+  // Denied: email operations are completely outside the authorized calendar read scope.
+  console.log('6. Call 2: action send on email/outbox (should DENY)...');
+  {
+    const result = await verifier.check({
+      receiptHash:          receiptId,
+      action:               { operation: 'send', resource: 'email/outbox' },
+      operatorInstructions: receipt.operatorInstructions,
+    });
+    if (result.allowed) {
+      console.log('   ✓ PERMIT (unexpected)\n');
+    } else {
+      const failedCheck = Object.entries(result.checks).find(([, v]) => !v);
+      console.log('   ✗ DENY');
+      console.log('   Blocked at check:', failedCheck?.[0] ?? 'unknown');
+      console.log('   Reason:', result.blockedReason);
+      console.log('   Why: send on email/outbox is outside the authorized calendar read scope\n');
+    }
+  }
+
+  // ── 8. Call 3: DENY — delete on calendar/events ─────────────────────
+  // Denied: 'delete' is explicitly prohibited by the receipt boundaries
+  // ("Do not create, edit, or delete calendar events.").
+  console.log('7. Call 3: action delete on calendar/events (should DENY)...');
+  {
+    const result = await verifier.check({
+      receiptHash:          receiptId,
+      action:               { operation: 'delete', resource: 'calendar/events' },
+      operatorInstructions: receipt.operatorInstructions,
+    });
+    if (result.allowed) {
+      console.log('   ✓ PERMIT (unexpected)\n');
+    } else {
+      const failedCheck = Object.entries(result.checks).find(([, v]) => !v);
+      console.log('   ✗ DENY');
+      console.log('   Blocked at check:', failedCheck?.[0] ?? 'unknown');
+      console.log('   Reason:', result.blockedReason);
+      console.log('   Why: delete is explicitly denied in the receipt boundaries\n');
+    }
+  }
+
+  // ── 9. System prompt (for use with real LangChain agents) ────────────
+  console.log('8. System prompt to inject into your real LangChain agent:');
   console.log('─'.repeat(60));
   console.log(systemPrompt.slice(0, 300) + (systemPrompt.length > 300 ? '\n   [...]' : ''));
   console.log('─'.repeat(60) + '\n');
@@ -98,7 +141,7 @@ async function main() {
 
   // System prompt goes into your agent's initial messages
   const result = await guardedExecutor.invoke({
-    input: 'Find me a good time for a 1-hour meeting next week.',
+    input: 'Read my calendar events for the next 7 days and identify scheduling conflicts.',
     chat_history: [{ role: 'system', content: systemPrompt }],
   })
   `);
