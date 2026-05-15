@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AuthProof — WebAuthn Browser Flow</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #f8fafc;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #94a3b8;
+      font-size: 0.875rem;
+      margin-bottom: 40px;
+    }
+
+    .flow {
+      display: flex;
+      gap: 20px;
+      max-width: 1100px;
+      margin: 0 auto;
+      align-items: flex-start;
+    }
+
+    .card {
+      flex: 1;
+      background: #1e2533;
+      border: 1px solid #2d3748;
+      border-radius: 12px;
+      padding: 24px;
+      position: relative;
+    }
+
+    .card.active { border-color: #4f46e5; }
+    .card.done   { border-color: #10b981; }
+
+    .card-step {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: #2d3748;
+      color: #94a3b8;
+      font-size: 0.8rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .card.active .card-step { background: #4f46e5; color: #fff; }
+    .card.done   .card-step { background: #10b981; color: #fff; }
+
+    .card h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: #f1f5f9;
+    }
+
+    .card p {
+      font-size: 0.8rem;
+      color: #94a3b8;
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+
+    label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 4px;
+    }
+
+    textarea, input[type="text"] {
+      width: 100%;
+      background: #111827;
+      border: 1px solid #374151;
+      border-radius: 6px;
+      color: #e2e8f0;
+      font-size: 0.8rem;
+      padding: 8px 10px;
+      margin-bottom: 12px;
+      resize: vertical;
+      font-family: inherit;
+    }
+
+    textarea:focus, input[type="text"]:focus {
+      outline: none;
+      border-color: #4f46e5;
+    }
+
+    button {
+      width: 100%;
+      padding: 10px 16px;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .btn-primary { background: #4f46e5; color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: #4338ca; }
+
+    .btn-verify { background: #0ea5e9; color: #fff; }
+    .btn-verify:hover:not(:disabled) { background: #0284c7; }
+
+    .receipt-box {
+      background: #111827;
+      border: 1px solid #374151;
+      border-radius: 6px;
+      padding: 12px;
+      font-size: 0.75rem;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      color: #a5f3fc;
+      word-break: break-all;
+      margin-bottom: 12px;
+      max-height: 160px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+
+    .status {
+      font-size: 0.75rem;
+      padding: 8px 12px;
+      border-radius: 6px;
+      margin-top: 8px;
+    }
+
+    .status.ok      { background: #064e3b; color: #6ee7b7; border: 1px solid #10b981; }
+    .status.blocked { background: #450a0a; color: #fca5a5; border: 1px solid #ef4444; }
+    .status.info    { background: #1e3a5f; color: #93c5fd; border: 1px solid #3b82f6; }
+
+    .arrow {
+      font-size: 1.5rem;
+      color: #4b5563;
+      align-self: center;
+      flex-shrink: 0;
+      margin-top: -20px;
+    }
+
+    .hash-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .hash-row span {
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 0.7rem;
+      color: #6ee7b7;
+      background: #064e3b;
+      padding: 3px 8px;
+      border-radius: 4px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 220px;
+    }
+
+    .check-list { list-style: none; margin-top: 8px; }
+    .check-list li {
+      font-size: 0.75rem;
+      padding: 4px 0;
+      color: #94a3b8;
+      display: flex;
+      gap: 6px;
+    }
+
+    .check-list li.pass { color: #6ee7b7; }
+    .check-list li.fail { color: #fca5a5; }
+
+    .dimmed { opacity: 0.4; pointer-events: none; }
+
+    @media (max-width: 768px) {
+      .flow { flex-direction: column; }
+      .arrow { align-self: flex-start; transform: rotate(90deg); margin: 0 auto; }
+    }
+  </style>
+</head>
+<body>
+
+<h1>AuthProof — Browser Delegation Flow</h1>
+<p class="subtitle">Sign a delegation receipt with your device key, then verify actions against it.</p>
+
+<div class="flow">
+
+  <!-- ── Card 1: Sign ─────────────────────────────────────────────── -->
+  <div class="card active" id="card1">
+    <div class="card-step">1</div>
+    <h2>Sign Delegation Receipt</h2>
+    <p>Define what the AI agent is authorized to do, then sign the receipt with your device key.</p>
+
+    <label for="scope">Scope (what the agent may do)</label>
+    <textarea id="scope" rows="3">Read the user's calendar for the next 7 days. Identify scheduling conflicts.</textarea>
+
+    <label for="boundaries">Boundaries (hard limits)</label>
+    <textarea id="boundaries" rows="2">Do not create, edit, or delete events. Do not read emails or contacts.</textarea>
+
+    <label for="instructions">Operator Instructions</label>
+    <textarea id="instructions" rows="2">Present the 3 best available time slots. Explain why each works.</textarea>
+
+    <label for="ttl">TTL (hours)</label>
+    <input type="text" id="ttl" value="1" style="width:80px;margin-bottom:16px">
+
+    <button class="btn-primary" id="btn-sign" onclick="signReceipt()">
+      Sign with Device Key
+    </button>
+
+    <div id="sign-status"></div>
+  </div>
+
+  <div class="arrow">→</div>
+
+  <!-- ── Card 2: Receipt ──────────────────────────────────────────── -->
+  <div class="card dimmed" id="card2">
+    <div class="card-step">2</div>
+    <h2>Receipt Issued</h2>
+    <p>The signed receipt is anchored before any agent action. Share the receipt ID with your agent runtime.</p>
+
+    <label>Receipt ID</label>
+    <div class="hash-row">
+      <span id="receipt-id-display">—</span>
+    </div>
+
+    <label>Expires</label>
+    <div style="font-size:0.8rem;color:#94a3b8;margin-bottom:12px" id="expires-display">—</div>
+
+    <label>System Prompt (inject into your AI)</label>
+    <div class="receipt-box" id="system-prompt-display">—</div>
+
+    <label>Raw Receipt (JSON)</label>
+    <div class="receipt-box" id="receipt-json-display">—</div>
+  </div>
+
+  <div class="arrow">→</div>
+
+  <!-- ── Card 3: Verify ───────────────────────────────────────────── -->
+  <div class="card dimmed" id="card3">
+    <div class="card-step">3</div>
+    <h2>Verify an Action</h2>
+    <p>Before an agent acts, verify the proposed action against the active receipt.</p>
+
+    <label for="action-input">Proposed Action</label>
+    <textarea id="action-input" rows="2">Find me a good time for a 1-hour meeting next week.</textarea>
+
+    <button class="btn-verify" id="btn-verify" onclick="verifyAction()" disabled>
+      Verify Action
+    </button>
+
+    <div id="verify-status"></div>
+
+    <ul class="check-list" id="check-list"></ul>
+  </div>
+
+</div>
+
+<script type="module">
+  // Import AuthProof from the SDK (adjust path if serving from a different location)
+  // For a CDN-hosted demo, replace with: https://cdn.jsdelivr.net/npm/authproof-sdk/src/authproof.js
+  import AuthProof from '../src/authproof.js';
+
+  let activeReceipt   = null;
+  let activeReceiptId = null;
+
+  window.signReceipt = async function() {
+    const btn = document.getElementById('btn-sign');
+    btn.disabled = true;
+    btn.textContent = 'Signing…';
+
+    const statusEl = document.getElementById('sign-status');
+    statusEl.innerHTML = '';
+
+    try {
+      // Generate a software key for the demo.
+      // In production: use WebAuthn navigator.credentials.create() with a
+      // FIDO2 authenticator; the private key never leaves the secure enclave.
+      const { privateKey, publicJwk } = await AuthProof.generateKey();
+
+      const scope        = document.getElementById('scope').value.trim();
+      const boundaries   = document.getElementById('boundaries').value.trim();
+      const instructions = document.getElementById('instructions').value.trim();
+      const ttlHours     = parseFloat(document.getElementById('ttl').value) || 1;
+
+      const { receipt, receiptId, systemPrompt } = await AuthProof.create({
+        scope,
+        boundaries,
+        instructions,
+        ttlHours,
+        privateKey,
+        publicJwk,
+      });
+
+      activeReceipt   = receipt;
+      activeReceiptId = receiptId;
+
+      // ── Populate Card 2 ─────────────────────────────────────────
+      document.getElementById('receipt-id-display').textContent   = receiptId;
+      document.getElementById('expires-display').textContent      = new Date(receipt.timeWindow.end).toLocaleString();
+      document.getElementById('system-prompt-display').textContent = systemPrompt;
+      document.getElementById('receipt-json-display').textContent  = JSON.stringify(receipt, null, 2);
+
+      // ── Unlock Cards 2 & 3 ──────────────────────────────────────
+      document.getElementById('card1').classList.replace('active', 'done');
+      document.getElementById('card2').classList.remove('dimmed');
+      document.getElementById('card2').classList.add('done');
+      document.getElementById('card3').classList.remove('dimmed');
+      document.getElementById('card3').classList.add('active');
+      document.getElementById('btn-verify').disabled = false;
+
+      statusEl.innerHTML = '<div class="status ok">✓ Receipt signed and ready</div>';
+
+    } catch (err) {
+      statusEl.innerHTML = `<div class="status blocked">✗ ${err.message}</div>`;
+      btn.disabled = false;
+      btn.textContent = 'Sign with Device Key';
+    }
+  };
+
+  window.verifyAction = async function() {
+    if (!activeReceipt) return;
+
+    const btn = document.getElementById('btn-verify');
+    btn.disabled = true;
+    btn.textContent = 'Verifying…';
+
+    const action     = document.getElementById('action-input').value.trim();
+    const statusEl   = document.getElementById('verify-status');
+    const checksList = document.getElementById('check-list');
+
+    statusEl.innerHTML  = '';
+    checksList.innerHTML = '';
+
+    try {
+      const result = await AuthProof.verify(activeReceipt, activeReceiptId, { action });
+
+      if (result.authorized) {
+        statusEl.innerHTML = '<div class="status ok">✓ Action authorized</div>';
+      } else {
+        statusEl.innerHTML = '<div class="status blocked">✗ Action blocked</div>';
+      }
+
+      if (result.checks?.length) {
+        result.checks.forEach(c => {
+          const li = document.createElement('li');
+          li.className = c.passed ? 'pass' : 'fail';
+          li.textContent = `${c.passed ? '✓' : '✗'} ${c.name}: ${c.detail}`;
+          checksList.appendChild(li);
+        });
+      }
+
+    } catch (err) {
+      statusEl.innerHTML = `<div class="status blocked">✗ Error: ${err.message}</div>`;
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Verify Action';
+  };
+</script>
+
+</body>
+</html>
