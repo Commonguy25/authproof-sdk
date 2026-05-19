@@ -958,6 +958,125 @@
       footer { padding: 16px 20px; }
       .footer-tagline { display: none; }
     }
+
+    /* ── Tab navigation ── */
+    .tab-bar-wrap {
+      background: var(--white);
+      border-bottom: 1px solid var(--gray-200);
+      position: sticky;
+      top: 64px;
+      z-index: 90;
+    }
+    .tab-bar {
+      display: flex;
+      gap: 0;
+      list-style: none;
+      padding: 0 40px;
+      overflow-x: auto;
+    }
+    .tab-bar li a {
+      display: block;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--gray-500);
+      padding: 12px 18px;
+      border-bottom: 2px solid transparent;
+      transition: color 0.15s, border-color 0.15s;
+      white-space: nowrap;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .tab-bar li a:hover { color: var(--gray-900); }
+    .tab-bar li a.tab-active { color: var(--blue); border-bottom-color: var(--blue); }
+
+    /* ── Sandbox ── */
+    .sandbox-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+    .sandbox-card {
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: 6px;
+      padding: 24px 28px;
+    }
+    .sandbox-card-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--gray-500);
+      margin-bottom: 16px;
+    }
+    .sandbox-form-group { margin-bottom: 14px; }
+    .sandbox-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--gray-700);
+      margin-bottom: 6px;
+    }
+    .sandbox-hint { font-size: 11px; color: var(--gray-400); margin-top: 3px; }
+    .sandbox-json-block {
+      background: var(--gray-100);
+      border: 1px solid var(--gray-200);
+      border-radius: 4px;
+      padding: 14px 16px;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--gray-700);
+      white-space: pre-wrap;
+      word-break: break-all;
+      min-height: 200px;
+      max-height: 340px;
+      overflow-y: auto;
+      line-height: 1.5;
+    }
+    .sandbox-test-card {
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: 6px;
+      padding: 24px 28px;
+    }
+    .sandbox-action-row {
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+      margin-bottom: 16px;
+    }
+    .sandbox-action-row .form-input { flex: 1; }
+    .btn-sandbox-run {
+      font-family: var(--sans);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--white);
+      background: var(--blue);
+      border: 2px solid var(--blue);
+      border-radius: 4px;
+      padding: 8px 20px;
+      cursor: pointer;
+      transition: background 0.15s;
+      white-space: nowrap;
+    }
+    .btn-sandbox-run:hover { background: var(--blue-dk); border-color: var(--blue-dk); }
+    .sandbox-result {
+      display: none;
+      border-radius: 6px;
+      padding: 16px 20px;
+    }
+    .sandbox-result.permit { background: var(--green-lt); border: 1px solid var(--green-bd); }
+    .sandbox-result.deny   { background: var(--red-lt);   border: 1px solid var(--red-bd);   }
+    .sandbox-result-label  { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+    .sandbox-result.permit .sandbox-result-label { color: var(--green); }
+    .sandbox-result.deny   .sandbox-result-label { color: var(--red); }
+    .sandbox-result-reason { font-size: 13px; color: var(--gray-700); }
+    .sandbox-note { font-size: 12px; color: var(--gray-400); margin-top: 14px; line-height: 1.5; }
+    @media (max-width: 700px) {
+      .sandbox-grid { grid-template-columns: 1fr; }
+      .tab-bar { padding: 0 20px; }
+    }
   </style>
 </head>
 <body>
@@ -1089,6 +1208,17 @@
       </div>
     </div>
   </div>
+
+  <!-- Tab navigation -->
+  <div class="tab-bar-wrap">
+    <ul class="tab-bar" id="mainTabBar">
+      <li><a class="tab-active" onclick="switchTab('overview', this); return false;" href="#">Overview</a></li>
+      <li><a onclick="switchTab('sandbox', this); return false;" href="#">Sandbox</a></li>
+    </ul>
+  </div>
+
+  <!-- Overview tab panel -->
+  <div id="tabOverview">
 
   <!-- Recent Receipts -->
   <div class="section">
@@ -1501,6 +1631,76 @@
       </div>
     </div>
   </div>
+
+  </div><!-- /tabOverview -->
+
+  <!-- Sandbox tab panel -->
+  <div id="tabSandbox" style="display:none;">
+    <div class="section section-last">
+      <div class="container">
+        <div class="section-header" style="margin-bottom:8px;">
+          <div>
+            <span class="section-title">Sandbox</span>
+          </div>
+        </div>
+        <p class="sandbox-note" style="margin-bottom:24px;">Test receipts and scope checks entirely in the browser — no account or API key needed.</p>
+
+        <!-- Step 1 + Step 2 side by side -->
+        <div class="sandbox-grid">
+          <div class="sandbox-card">
+            <div class="sandbox-card-title">Step 1 — Create a Receipt</div>
+            <div class="sandbox-form-group">
+              <label class="sandbox-label" for="sbAllowed">Allowed actions</label>
+              <input class="form-input" id="sbAllowed" type="text" placeholder="read calendar, schedule meeting" style="width:100%;" oninput="liveUpdateReceipt()" />
+              <div class="sandbox-hint">Comma-separated — actions this agent may take</div>
+            </div>
+            <div class="sandbox-form-group">
+              <label class="sandbox-label" for="sbDenied">Denied actions</label>
+              <input class="form-input" id="sbDenied" type="text" placeholder="send email, delete events" style="width:100%;" oninput="liveUpdateReceipt()" />
+              <div class="sandbox-hint">Comma-separated — actions that are always blocked</div>
+            </div>
+            <div class="sandbox-form-group">
+              <label class="sandbox-label" for="sbExpiry">Expiry</label>
+              <select class="form-select" id="sbExpiry" style="width:100%;" onchange="liveUpdateReceipt()">
+                <option value="1">1 hour</option>
+                <option value="2">2 hours</option>
+                <option value="8">8 hours</option>
+                <option value="24">24 hours</option>
+              </select>
+            </div>
+            <button class="btn-export" style="width:100%;" onclick="createSandboxReceipt()">Create Receipt</button>
+          </div>
+
+          <div class="sandbox-card">
+            <div class="sandbox-card-title">Step 2 — Receipt JSON</div>
+            <pre class="sandbox-json-block" id="sbReceiptJson">Fill in the form and click "Create Receipt" to generate a receipt.</pre>
+          </div>
+        </div>
+
+        <!-- Step 3 — Test action -->
+        <div class="sandbox-test-card">
+          <div class="sandbox-card-title">Step 3 — Test an Action</div>
+          <div class="sandbox-action-row">
+            <input class="form-input" id="sbAction" type="text"
+              placeholder='e.g. "Read calendar to find free slots on Tuesday"'
+              onkeydown="if(event.key==='Enter') runSandboxCheck()" />
+            <button class="btn-sandbox-run" onclick="runSandboxCheck()">Run</button>
+          </div>
+          <div class="sandbox-result" id="sbResult">
+            <div class="sandbox-result-label" id="sbResultLabel"></div>
+            <div class="sandbox-result-reason" id="sbResultReason"></div>
+          </div>
+          <div class="sandbox-note">
+            Sandbox uses keyword matching against your allowed/denied lists. Denied takes precedence.<br>
+            Real SDK receipts are ECDSA P-256 signed — see
+            <a href="https://github.com/Commonguy25/authproof-sdk" target="_blank" style="color:var(--blue);">the SDK docs</a>
+            for full cryptographic verification.
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div><!-- /tabSandbox -->
 
 </div>
 
@@ -2534,6 +2734,82 @@
     win.document.open();
     win.document.write(html);
     win.document.close();
+  }
+
+  // ── Tab switching ────────────────────────────────────────────────────────────
+  function switchTab(tab, el) {
+    document.querySelectorAll('#mainTabBar a').forEach(a => a.classList.remove('tab-active'));
+    el.classList.add('tab-active');
+    document.getElementById('tabOverview').style.display = tab === 'overview' ? '' : 'none';
+    document.getElementById('tabSandbox').style.display  = tab === 'sandbox'  ? '' : 'none';
+  }
+
+  // ── Sandbox ──────────────────────────────────────────────────────────────────
+  let _sbReceipt = null;
+
+  function _buildSandboxReceipt() {
+    const allowed = (document.getElementById('sbAllowed').value || '')
+      .split(',').map(s => s.trim()).filter(Boolean);
+    const denied  = (document.getElementById('sbDenied').value || '')
+      .split(',').map(s => s.trim()).filter(Boolean);
+    const hours   = parseInt(document.getElementById('sbExpiry').value, 10) || 1;
+    const now     = new Date();
+    const end     = new Date(now.getTime() + hours * 3_600_000);
+    const id      = `auth-${now.getTime()}-${Math.random().toString(36).slice(2, 7)}`;
+    return {
+      delegationId:   id,
+      issuedAt:       now.toISOString(),
+      allowedActions: allowed,
+      deniedActions:  denied,
+      timeWindow:     { start: now.toISOString(), end: end.toISOString() },
+      signerPublicKey: '(sandbox — use AuthProof.create() for real signed receipts)',
+      signature:       '(sandbox simulation only)',
+    };
+  }
+
+  function liveUpdateReceipt() {
+    if (!_sbReceipt) return;
+    _sbReceipt = _buildSandboxReceipt();
+    document.getElementById('sbReceiptJson').textContent = JSON.stringify(_sbReceipt, null, 2);
+  }
+
+  function createSandboxReceipt() {
+    _sbReceipt = _buildSandboxReceipt();
+    document.getElementById('sbReceiptJson').textContent = JSON.stringify(_sbReceipt, null, 2);
+    document.getElementById('sbResult').style.display = 'none';
+  }
+
+  function _sandboxCheck(action, receipt) {
+    const a = action.toLowerCase();
+    // Require ALL words in a pattern to appear in the action (avoids single-word false positives)
+    for (const denied of receipt.deniedActions) {
+      const words = denied.toLowerCase().split(/\s+/).filter(Boolean);
+      if (words.length && words.every(w => a.includes(w))) {
+        return { result: 'DENY', reason: `action matches denied pattern: "${denied}"` };
+      }
+    }
+    for (const allowed of receipt.allowedActions) {
+      const words = allowed.toLowerCase().split(/\s+/).filter(Boolean);
+      if (words.length && words.every(w => a.includes(w))) {
+        return { result: 'PERMIT', reason: `action within allowed scope: "${allowed}"` };
+      }
+    }
+    return { result: 'DENY', reason: 'action not found in allowed scope' };
+  }
+
+  function runSandboxCheck() {
+    if (!_sbReceipt) {
+      alert('Create a receipt first — fill in Step 1 and click "Create Receipt".');
+      return;
+    }
+    const action = (document.getElementById('sbAction').value || '').trim();
+    if (!action) { alert('Enter an action to test in Step 3.'); return; }
+    const { result, reason } = _sandboxCheck(action, _sbReceipt);
+    const el     = document.getElementById('sbResult');
+    el.className = 'sandbox-result ' + (result === 'PERMIT' ? 'permit' : 'deny');
+    document.getElementById('sbResultLabel').textContent  = result;
+    document.getElementById('sbResultReason').textContent = reason;
+    el.style.display = 'block';
   }
 
   // ── Init ────────────────────────────────────────────────────────────────────
