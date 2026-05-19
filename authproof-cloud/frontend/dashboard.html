@@ -971,6 +971,7 @@
     <li><a href="/support">Support</a></li>
     <li><a href="/baa">BAA</a></li>
     <li id="teamNavItem" style="display:none;"><a href="#teamSection">Team</a></li>
+    <li><a href="#sandboxSection">Sandbox</a></li>
   </ul>
   <div class="nav-right">
     <span class="nav-email" id="navEmail">—</span>
@@ -1470,6 +1471,112 @@
       </div>
     </div>
   </div>
+
+  <!-- Sandbox -->
+  <style>
+  @keyframes dashSimSlideDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes dashSimPulse{0%,100%{opacity:1}50%{opacity:0.25}}
+  @keyframes dashSimFadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+  </style>
+  <div class="section" id="sandboxSection">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-title">Sandbox — Simulate your agent live</span>
+      </div>
+      <div style="background:var(--white);border:1px solid var(--gray-200);border-radius:6px;padding:28px;max-width:680px;">
+        <p style="font-size:14px;color:var(--gray-500);line-height:1.6;margin-bottom:24px;">Enter your allowed and denied actions to see how your receipt enforces itself against a simulated agent in real time.</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+          <div>
+            <label class="export-label" style="display:block;margin-bottom:6px;">Allowed actions</label>
+            <textarea id="dashSimAllowed" class="form-input" placeholder="read:records, write:scheduling" rows="3" style="width:100%;font-family:var(--mono);font-size:12px;resize:vertical;line-height:1.6;"></textarea>
+          </div>
+          <div>
+            <label class="export-label" style="display:block;margin-bottom:6px;">Denied actions</label>
+            <textarea id="dashSimDenied" class="form-input" placeholder="delete:*, send:external" rows="3" style="width:100%;font-family:var(--mono);font-size:12px;resize:vertical;line-height:1.6;"></textarea>
+          </div>
+        </div>
+        <button class="btn-export" onclick="dashSimLaunch()" style="width:100%;padding:10px 20px;font-size:14px;">Launch simulated agent →</button>
+      </div>
+      <div id="dashSimPanel" style="display:none;max-width:680px;margin:14px 0 0;border-radius:6px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.15);">
+        <div style="background:#161b22;padding:12px 20px;display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:13px;color:#e6edf3;letter-spacing:0.02em;">
+          <div style="width:8px;height:8px;background:#16a34a;border-radius:50%;animation:dashSimPulse 1.5s ease-in-out infinite;flex-shrink:0;"></div>
+          <span>Agent session — watching live</span>
+          <button id="dashSimRunAgain" onclick="dashSimLaunch()" style="display:none;margin-left:auto;font-family:var(--mono);font-size:11px;color:#9ca3af;background:transparent;border:1px solid #374151;border-radius:3px;padding:3px 10px;cursor:pointer;white-space:nowrap;">Run again →</button>
+        </div>
+        <div id="dashSimTerminal" style="background:#0d1117;padding:20px;min-height:140px;max-height:380px;overflow-y:auto;font-family:var(--mono);font-size:13px;line-height:1.9;"></div>
+      </div>
+    </div>
+  </div>
+  <script>
+  (function(){
+    var DS_DA=['read:records','write:scheduling','send:summary'];
+    var DS_DD=['delete:*','send:external','modify:system'];
+    var DS_INV=[
+      {name:'access:admin_panel',reason:'not in signed scope'},
+      {name:'exfiltrate:user_data',reason:'not in signed scope'},
+      {name:'delete:all_records',reason:'not in signed scope'},
+      {name:'call:external_webhook',reason:'not in signed scope'}
+    ];
+    function dsParse(t,fb){var r=t.split(',').map(function(s){return s.trim();}).filter(Boolean);return r.length?r:fb;}
+    function dsBuild(a,d){
+      var seq=[],ai=a.slice().sort(function(){return Math.random()-.5;}),di=d.slice().sort(function(){return Math.random()-.5;}),ii=DS_INV.slice().sort(function(){return Math.random()-.5;});
+      var nA=Math.min(ai.length,2+Math.floor(Math.random()*2)),nD=Math.min(di.length,2+Math.floor(Math.random()*2)),nI=1+Math.floor(Math.random()*2);
+      for(var i=0;i<nA;i++)seq.push({name:ai[i],result:'PERMIT'});
+      for(var j=0;j<nD;j++)seq.push({name:di[j],result:'DENY',reason:'explicitly denied in receipt'});
+      for(var k=0;k<nI;k++)seq.push({name:ii[k].name,result:'DENY',reason:ii[k].reason});
+      return seq.sort(function(){return Math.random()-.5;});
+    }
+    function dsLine(text,color){
+      var el=document.createElement('div');
+      el.textContent=text;
+      el.style.cssText='opacity:0;animation:dashSimFadeIn 0.3s ease forwards;color:'+(color==='green'?'#16a34a':color==='red'?'#dc2626':'#6b7280')+';';
+      return el;
+    }
+    function dsSleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
+    async function dsRun(seq){
+      var term=document.getElementById('dashSimTerminal');
+      document.getElementById('dashSimRunAgain').style.display='none';
+      term.innerHTML='';
+      var permits=0,denies=0;
+      for(var idx=0;idx<seq.length;idx++){
+        var action=seq[idx];
+        var think=dsLine('Agent: thinking','gray');
+        term.appendChild(think);term.scrollTop=term.scrollHeight;
+        var dotTick=setInterval((function(el){var c=0;return function(){c=(c+1)%4;el.textContent='Agent: thinking'+'.'.repeat(c);};})(think),220);
+        await dsSleep(800);
+        clearInterval(dotTick);
+        think.textContent='Agent: thinking...';
+        var att=dsLine('→ Attempting: '+action.name,'gray');
+        term.appendChild(att);term.scrollTop=term.scrollHeight;
+        await dsSleep(400);
+        var resText=action.result==='PERMIT'?'✓ PERMIT — within signed scope':'✗ DENY — '+(action.reason||'out of scope');
+        var resEl=dsLine(resText,action.result==='PERMIT'?'green':'red');
+        term.appendChild(resEl);term.scrollTop=term.scrollHeight;
+        if(action.result==='PERMIT')permits++;else denies++;
+        await dsSleep(350);
+        var sp=document.createElement('div');sp.style.height='4px';term.appendChild(sp);
+      }
+      await dsSleep(500);
+      var sum=document.createElement('div');
+      sum.style.cssText='margin-top:12px;padding:14px 16px;background:#111827;border:1px solid #1f2937;border-radius:6px;animation:dashSimFadeIn 0.4s ease forwards;opacity:0;';
+      sum.innerHTML='<div style="color:#e5e7eb;font-size:13px;font-weight:600;margin-bottom:6px;">Session complete</div>'+
+        '<div style="font-size:12px;"><span style="color:#16a34a;">'+permits+' PERMIT</span> · <span style="color:#dc2626;">'+denies+' DENY</span></div>'+
+        '<div style="color:#6b7280;font-size:12px;margin-top:6px;">Your receipt worked exactly as designed.</div>';
+      term.appendChild(sum);term.scrollTop=term.scrollHeight;
+      document.getElementById('dashSimRunAgain').style.display='block';
+    }
+    window.dashSimLaunch=function(){
+      var a=dsParse(document.getElementById('dashSimAllowed').value,DS_DA);
+      var d=dsParse(document.getElementById('dashSimDenied').value,DS_DD);
+      var panel=document.getElementById('dashSimPanel');
+      panel.style.display='block';
+      panel.style.animation='none';
+      void panel.offsetWidth;
+      panel.style.animation='dashSimSlideDown 0.4s ease forwards';
+      dsRun(dsBuild(a,d));
+    };
+  })();
+  </script>
 
   <!-- API Key Management (hidden for team member sessions) -->
   <div class="section section-last" id="apiKeySection">

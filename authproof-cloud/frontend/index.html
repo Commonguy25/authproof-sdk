@@ -995,6 +995,113 @@
   </div>
 </section>
 
+<!-- Sandbox -->
+<style>
+@keyframes lpSimSlideDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes lpSimPulse{0%,100%{opacity:1}50%{opacity:0.25}}
+@keyframes lpSimFadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+</style>
+<section id="sandbox" style="background:var(--gray-50);">
+  <div class="container">
+    <div class="section-label">Try it now</div>
+    <h2 class="section-headline">See your receipt enforce itself — live</h2>
+    <p class="section-sub">Enter what you'd allow and deny. Watch a simulated agent try each action and get stopped in real time.</p>
+    <div style="background:var(--white);border:1px solid var(--gray-200);border-radius:8px;padding:32px;max-width:680px;margin:0 auto;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px;">
+        <div>
+          <label style="display:block;font-size:13px;font-weight:600;color:var(--gray-700);margin-bottom:8px;">Allowed actions</label>
+          <textarea id="lpSimAllowed" placeholder="read:records, write:scheduling, send:email" rows="3" style="width:100%;font-family:var(--mono);font-size:12px;border:1px solid var(--gray-200);border-radius:4px;padding:10px 12px;resize:vertical;outline:none;color:var(--gray-800);line-height:1.6;transition:border-color 0.15s;" onfocus="this.style.borderColor='#1a56db'" onblur="this.style.borderColor='var(--gray-200)'"></textarea>
+        </div>
+        <div>
+          <label style="display:block;font-size:13px;font-weight:600;color:var(--gray-700);margin-bottom:8px;">Denied actions</label>
+          <textarea id="lpSimDenied" placeholder="delete:*, send:external, modify:system" rows="3" style="width:100%;font-family:var(--mono);font-size:12px;border:1px solid var(--gray-200);border-radius:4px;padding:10px 12px;resize:vertical;outline:none;color:var(--gray-800);line-height:1.6;transition:border-color 0.15s;" onfocus="this.style.borderColor='#1a56db'" onblur="this.style.borderColor='var(--gray-200)'"></textarea>
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="lpSimLaunch()" style="width:100%;font-size:15px;padding:13px 24px;">Launch simulated agent →</button>
+    </div>
+    <div id="lpSimPanel" style="display:none;max-width:680px;margin:16px auto 0;border-radius:8px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.18);">
+      <div style="background:#161b22;padding:14px 20px;display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:13px;color:#e6edf3;letter-spacing:0.02em;">
+        <div style="width:8px;height:8px;background:#16a34a;border-radius:50%;animation:lpSimPulse 1.5s ease-in-out infinite;flex-shrink:0;"></div>
+        <span>Agent session — watching live</span>
+        <button id="lpSimRunAgain" onclick="lpSimLaunch()" style="display:none;margin-left:auto;font-family:var(--mono);font-size:11px;color:#9ca3af;background:transparent;border:1px solid #374151;border-radius:3px;padding:3px 10px;cursor:pointer;white-space:nowrap;">Run again →</button>
+      </div>
+      <div id="lpSimTerminal" style="background:#0d1117;padding:20px;min-height:140px;max-height:380px;overflow-y:auto;font-family:var(--mono);font-size:13px;line-height:1.9;"></div>
+    </div>
+  </div>
+</section>
+<script>
+(function(){
+  var LP_DA=['read:records','write:scheduling','send:summary'];
+  var LP_DD=['delete:*','send:external','modify:system'];
+  var LP_INV=[
+    {name:'access:admin_panel',reason:'not in signed scope'},
+    {name:'exfiltrate:user_data',reason:'not in signed scope'},
+    {name:'delete:all_records',reason:'not in signed scope'},
+    {name:'call:external_webhook',reason:'not in signed scope'}
+  ];
+  function lpParse(t,fb){var r=t.split(',').map(function(s){return s.trim();}).filter(Boolean);return r.length?r:fb;}
+  function lpBuild(a,d){
+    var seq=[],ai=a.slice().sort(function(){return Math.random()-.5;}),di=d.slice().sort(function(){return Math.random()-.5;}),ii=LP_INV.slice().sort(function(){return Math.random()-.5;});
+    var nA=Math.min(ai.length,2+Math.floor(Math.random()*2)),nD=Math.min(di.length,2+Math.floor(Math.random()*2)),nI=1+Math.floor(Math.random()*2);
+    for(var i=0;i<nA;i++)seq.push({name:ai[i],result:'PERMIT'});
+    for(var j=0;j<nD;j++)seq.push({name:di[j],result:'DENY',reason:'explicitly denied in receipt'});
+    for(var k=0;k<nI;k++)seq.push({name:ii[k].name,result:'DENY',reason:ii[k].reason});
+    return seq.sort(function(){return Math.random()-.5;});
+  }
+  function lpLine(text,color){
+    var el=document.createElement('div');
+    el.textContent=text;
+    el.style.cssText='opacity:0;animation:lpSimFadeIn 0.3s ease forwards;color:'+(color==='green'?'#16a34a':color==='red'?'#dc2626':'#6b7280')+';';
+    return el;
+  }
+  function lpSleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
+  async function lpRun(seq){
+    var term=document.getElementById('lpSimTerminal');
+    document.getElementById('lpSimRunAgain').style.display='none';
+    term.innerHTML='';
+    var permits=0,denies=0;
+    for(var idx=0;idx<seq.length;idx++){
+      var action=seq[idx];
+      var think=lpLine('Agent: thinking','gray');
+      term.appendChild(think);term.scrollTop=term.scrollHeight;
+      var dc=0,dotEl=think;
+      var dotTick=setInterval((function(el){var c=0;return function(){c=(c+1)%4;el.textContent='Agent: thinking'+'.'.repeat(c);};})(think),220);
+      await lpSleep(800);
+      clearInterval(dotTick);
+      think.textContent='Agent: thinking...';
+      var att=lpLine('→ Attempting: '+action.name,'gray');
+      term.appendChild(att);term.scrollTop=term.scrollHeight;
+      await lpSleep(400);
+      var resText=action.result==='PERMIT'?'✓ PERMIT — within signed scope':'✗ DENY — '+(action.reason||'out of scope');
+      var resEl=lpLine(resText,action.result==='PERMIT'?'green':'red');
+      term.appendChild(resEl);term.scrollTop=term.scrollHeight;
+      if(action.result==='PERMIT')permits++;else denies++;
+      await lpSleep(350);
+      var sp=document.createElement('div');sp.style.height='4px';term.appendChild(sp);
+    }
+    await lpSleep(500);
+    var sum=document.createElement('div');
+    sum.style.cssText='margin-top:12px;padding:14px 16px;background:#111827;border:1px solid #1f2937;border-radius:6px;animation:lpSimFadeIn 0.4s ease forwards;opacity:0;';
+    sum.innerHTML='<div style="color:#e5e7eb;font-size:13px;font-weight:600;margin-bottom:6px;">Session complete</div>'+
+      '<div style="font-size:12px;"><span style="color:#16a34a;">'+permits+' PERMIT</span> · <span style="color:#dc2626;">'+denies+' DENY</span></div>'+
+      '<div style="color:#6b7280;font-size:12px;margin-top:6px;">Your receipt worked exactly as designed.</div>'+
+      '<a href="/signup" style="display:inline-block;margin-top:12px;background:#1a56db;color:#fff;font-size:12px;font-weight:600;padding:7px 16px;border-radius:4px;text-decoration:none;">Get your real receipt →</a>';
+    term.appendChild(sum);term.scrollTop=term.scrollHeight;
+    document.getElementById('lpSimRunAgain').style.display='block';
+  }
+  window.lpSimLaunch=function(){
+    var a=lpParse(document.getElementById('lpSimAllowed').value,LP_DA);
+    var d=lpParse(document.getElementById('lpSimDenied').value,LP_DD);
+    var panel=document.getElementById('lpSimPanel');
+    panel.style.display='block';
+    panel.style.animation='none';
+    void panel.offsetWidth;
+    panel.style.animation='lpSimSlideDown 0.4s ease forwards';
+    lpRun(lpBuild(a,d));
+  };
+})();
+</script>
+
 <!-- Founder -->
 <section style="background:var(--white);">
   <div class="container">

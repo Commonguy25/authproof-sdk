@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sandbox — Authproof Cloud</title>
+  <meta name="description" content="Simulate your Authproof receipt live. See exactly which actions get permitted and which get denied before you ship." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --blue:     #1a56db;
+      --blue-lt:  #e8f0fe;
+      --blue-dk:  #1340a8;
+      --gray-50:  #f8f9fa;
+      --gray-100: #f1f3f4;
+      --gray-200: #e5e7eb;
+      --gray-400: #9ca3af;
+      --gray-500: #6b7280;
+      --gray-600: #4b5563;
+      --gray-700: #374151;
+      --gray-800: #1f2937;
+      --gray-900: #111111;
+      --green:    #16a34a;
+      --red:      #dc2626;
+      --white:    #ffffff;
+      --mono:     'JetBrains Mono', 'Courier New', monospace;
+      --sans:     'Inter', sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--gray-50);
+      color: var(--gray-800);
+      font-family: var(--sans);
+      font-size: 16px;
+      line-height: 1.6;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    /* Nav */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(255,255,255,0.97);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--gray-200);
+      box-shadow: 0 1px 8px rgba(0,0,0,0.04);
+    }
+    .nav-inner {
+      max-width: 1100px; margin: 0 auto; padding: 0 24px;
+      display: flex; align-items: center; justify-content: space-between; height: 64px;
+    }
+    .nav-logo { font-size: 17px; font-weight: 700; color: var(--gray-900); }
+    .nav-logo span { color: var(--blue); }
+    .nav-actions { display: flex; align-items: center; gap: 12px; }
+    .btn {
+      display: inline-block; font-family: var(--sans); font-size: 14px; font-weight: 600;
+      padding: 8px 18px; border: 2px solid transparent; cursor: pointer;
+      transition: all 0.15s; border-radius: 980px; text-align: center; text-decoration: none;
+    }
+    .btn-primary { background: var(--blue); color: var(--white); border-color: var(--blue); }
+    .btn-primary:hover { background: var(--blue-dk); border-color: var(--blue-dk); }
+    .btn-outline { background: transparent; color: var(--blue); border-color: var(--blue); }
+    .btn-outline:hover { background: var(--blue-lt); }
+
+    /* Page layout */
+    .page { max-width: 800px; margin: 0 auto; padding: 60px 24px 80px; }
+
+    .page-eyebrow {
+      font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--blue); margin-bottom: 12px;
+    }
+    .page-headline {
+      font-size: clamp(26px, 4vw, 40px); font-weight: 700; color: var(--gray-900);
+      letter-spacing: -0.025em; line-height: 1.15; margin-bottom: 14px;
+    }
+    .page-sub {
+      font-size: 16px; color: var(--gray-500); line-height: 1.65; margin-bottom: 40px;
+      max-width: 560px;
+    }
+
+    /* Form card */
+    .form-card {
+      background: var(--white); border: 1px solid var(--gray-200); border-radius: 10px;
+      padding: 32px; margin-bottom: 16px;
+    }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px; }
+    .form-field label {
+      display: block; font-size: 13px; font-weight: 600; color: var(--gray-700); margin-bottom: 8px;
+    }
+    .form-field .hint {
+      font-size: 12px; color: var(--gray-400); margin-top: 5px; font-family: var(--mono);
+    }
+    .form-field textarea {
+      width: 100%; font-family: var(--mono); font-size: 12px;
+      border: 1px solid var(--gray-200); border-radius: 5px; padding: 10px 12px;
+      resize: vertical; outline: none; color: var(--gray-800); line-height: 1.7;
+      transition: border-color 0.15s, box-shadow 0.15s; background: var(--white);
+    }
+    .form-field textarea:focus {
+      border-color: var(--blue); box-shadow: 0 0 0 3px rgba(26,86,219,0.1);
+    }
+    .launch-btn {
+      width: 100%; font-family: var(--sans); font-size: 15px; font-weight: 600;
+      color: var(--white); background: var(--blue); border: 2px solid var(--blue);
+      border-radius: 6px; padding: 14px 24px; cursor: pointer; transition: background 0.15s;
+    }
+    .launch-btn:hover { background: var(--blue-dk); border-color: var(--blue-dk); }
+
+    /* Terminal panel */
+    .sim-panel {
+      display: none; border-radius: 8px; overflow: hidden;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.2); margin-bottom: 48px;
+    }
+    .sim-header {
+      background: #161b22; padding: 14px 20px;
+      display: flex; align-items: center; gap: 10px;
+      font-family: var(--mono); font-size: 13px; color: #e6edf3; letter-spacing: 0.02em;
+    }
+    .sim-dot {
+      width: 8px; height: 8px; background: var(--green); border-radius: 50%; flex-shrink: 0;
+      animation: sbSimPulse 1.5s ease-in-out infinite;
+    }
+    .sim-run-again {
+      display: none; margin-left: auto; font-family: var(--mono); font-size: 11px;
+      color: #9ca3af; background: transparent; border: 1px solid #374151;
+      border-radius: 3px; padding: 3px 10px; cursor: pointer; white-space: nowrap;
+    }
+    .sim-terminal {
+      background: #0d1117; padding: 24px; min-height: 160px; max-height: 440px;
+      overflow-y: auto; font-family: var(--mono); font-size: 13px; line-height: 1.9;
+    }
+
+    /* How it works strip */
+    .how-strip {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 48px;
+    }
+    .how-item {
+      background: var(--white); border: 1px solid var(--gray-200); border-radius: 8px;
+      padding: 22px; text-align: center;
+    }
+    .how-icon { font-size: 22px; margin-bottom: 10px; }
+    .how-title { font-size: 14px; font-weight: 700; color: var(--gray-900); margin-bottom: 6px; }
+    .how-desc { font-size: 13px; color: var(--gray-500); line-height: 1.55; }
+
+    /* CTA strip */
+    .cta-strip {
+      margin-top: 48px; background: var(--blue); border-radius: 10px;
+      padding: 36px 40px; display: flex; align-items: center; justify-content: space-between;
+      gap: 24px; flex-wrap: wrap;
+    }
+    .cta-text { font-size: 18px; font-weight: 700; color: var(--white); line-height: 1.4; }
+    .cta-sub { font-size: 14px; color: rgba(255,255,255,0.7); margin-top: 4px; }
+    .btn-white {
+      background: var(--white); color: var(--blue); border: 2px solid var(--white);
+      font-weight: 700; padding: 11px 24px; border-radius: 980px; font-size: 14px;
+      white-space: nowrap; flex-shrink: 0; font-family: var(--sans);
+    }
+    .btn-white:hover { background: rgba(255,255,255,0.92); }
+
+    @keyframes sbSimSlideDown { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes sbSimPulse { 0%,100% { opacity:1; } 50% { opacity:0.25; } }
+    @keyframes sbSimFadeIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:translateY(0); } }
+
+    @media (max-width: 640px) {
+      .form-grid { grid-template-columns: 1fr; }
+      .how-strip { grid-template-columns: 1fr; }
+      .cta-strip { flex-direction: column; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <a class="nav-logo" href="/">Authproof <span>Cloud</span></a>
+    <div class="nav-actions">
+      <a href="/login" class="btn btn-outline">Log in</a>
+      <a href="/signup" class="btn btn-primary">Start free</a>
+    </div>
+  </div>
+</nav>
+
+<div class="page">
+  <div class="page-eyebrow">Interactive sandbox</div>
+  <h1 class="page-headline">Watch your receipt enforce itself — live</h1>
+  <p class="page-sub">Type what you'd allow and deny. A simulated agent will attempt each action and show you exactly what gets permitted or blocked by your signed receipt.</p>
+
+  <div class="form-card">
+    <div class="form-grid">
+      <div class="form-field">
+        <label>Allowed actions</label>
+        <textarea id="sbSimAllowed" placeholder="read:records, write:scheduling, send:email" rows="4"></textarea>
+        <div class="hint">comma-separated</div>
+      </div>
+      <div class="form-field">
+        <label>Denied actions</label>
+        <textarea id="sbSimDenied" placeholder="delete:*, send:external, modify:system" rows="4"></textarea>
+        <div class="hint">comma-separated</div>
+      </div>
+    </div>
+    <button class="launch-btn" onclick="sbSimLaunch()">Launch simulated agent →</button>
+  </div>
+
+  <div id="sbSimPanel" class="sim-panel">
+    <div class="sim-header">
+      <div class="sim-dot"></div>
+      <span>Agent session — watching live</span>
+      <button id="sbSimRunAgain" class="sim-run-again" onclick="sbSimLaunch()">Run again →</button>
+    </div>
+    <div id="sbSimTerminal" class="sim-terminal"></div>
+  </div>
+
+  <div class="how-strip">
+    <div class="how-item">
+      <div class="how-icon">🔏</div>
+      <div class="how-title">Receipt signed before execution</div>
+      <div class="how-desc">The authorization proof exists before the agent acts — not reconstructed from logs after the fact.</div>
+    </div>
+    <div class="how-item">
+      <div class="how-icon">⛔</div>
+      <div class="how-title">Out-of-scope actions blocked</div>
+      <div class="how-desc">Anything not in the signed scope is denied before execution. No exceptions, no bypasses.</div>
+    </div>
+    <div class="how-item">
+      <div class="how-icon">📋</div>
+      <div class="how-title">Every decision is auditable</div>
+      <div class="how-desc">Each permit and deny is logged with a cryptographic chain your auditor can verify independently.</div>
+    </div>
+  </div>
+
+  <div class="cta-strip">
+    <div>
+      <div class="cta-text">Ready to use this for real?</div>
+      <div class="cta-sub">Free tier — 1,000 receipts per month, no card required.</div>
+    </div>
+    <a href="/signup" class="btn-white">Start free →</a>
+  </div>
+</div>
+
+<script>
+(function(){
+  var SB_DA=['read:records','write:scheduling','send:summary'];
+  var SB_DD=['delete:*','send:external','modify:system'];
+  var SB_INV=[
+    {name:'access:admin_panel',reason:'not in signed scope'},
+    {name:'exfiltrate:user_data',reason:'not in signed scope'},
+    {name:'delete:all_records',reason:'not in signed scope'},
+    {name:'call:external_webhook',reason:'not in signed scope'}
+  ];
+  function sbParse(t,fb){var r=t.split(',').map(function(s){return s.trim();}).filter(Boolean);return r.length?r:fb;}
+  function sbBuild(a,d){
+    var seq=[],ai=a.slice().sort(function(){return Math.random()-.5;}),di=d.slice().sort(function(){return Math.random()-.5;}),ii=SB_INV.slice().sort(function(){return Math.random()-.5;});
+    var nA=Math.min(ai.length,2+Math.floor(Math.random()*2)),nD=Math.min(di.length,2+Math.floor(Math.random()*2)),nI=1+Math.floor(Math.random()*2);
+    for(var i=0;i<nA;i++)seq.push({name:ai[i],result:'PERMIT'});
+    for(var j=0;j<nD;j++)seq.push({name:di[j],result:'DENY',reason:'explicitly denied in receipt'});
+    for(var k=0;k<nI;k++)seq.push({name:ii[k].name,result:'DENY',reason:ii[k].reason});
+    return seq.sort(function(){return Math.random()-.5;});
+  }
+  function sbLine(text,color){
+    var el=document.createElement('div');
+    el.textContent=text;
+    el.style.cssText='opacity:0;animation:sbSimFadeIn 0.3s ease forwards;color:'+(color==='green'?'#16a34a':color==='red'?'#dc2626':'#6b7280')+';';
+    return el;
+  }
+  function sbSleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
+  async function sbRun(seq){
+    var term=document.getElementById('sbSimTerminal');
+    document.getElementById('sbSimRunAgain').style.display='none';
+    term.innerHTML='';
+    var permits=0,denies=0;
+    for(var idx=0;idx<seq.length;idx++){
+      var action=seq[idx];
+      var think=sbLine('Agent: thinking','gray');
+      term.appendChild(think);term.scrollTop=term.scrollHeight;
+      var dotTick=setInterval((function(el){var c=0;return function(){c=(c+1)%4;el.textContent='Agent: thinking'+'.'.repeat(c);};})(think),220);
+      await sbSleep(800);
+      clearInterval(dotTick);
+      think.textContent='Agent: thinking...';
+      var att=sbLine('→ Attempting: '+action.name,'gray');
+      term.appendChild(att);term.scrollTop=term.scrollHeight;
+      await sbSleep(400);
+      var resText=action.result==='PERMIT'?'✓ PERMIT — within signed scope':'✗ DENY — '+(action.reason||'out of scope');
+      var resEl=sbLine(resText,action.result==='PERMIT'?'green':'red');
+      term.appendChild(resEl);term.scrollTop=term.scrollHeight;
+      if(action.result==='PERMIT')permits++;else denies++;
+      await sbSleep(350);
+      var sp=document.createElement('div');sp.style.height='4px';term.appendChild(sp);
+    }
+    await sbSleep(500);
+    var sum=document.createElement('div');
+    sum.style.cssText='margin-top:12px;padding:16px 18px;background:#111827;border:1px solid #1f2937;border-radius:6px;animation:sbSimFadeIn 0.4s ease forwards;opacity:0;';
+    sum.innerHTML='<div style="color:#e5e7eb;font-size:14px;font-weight:600;margin-bottom:8px;">Session complete — '+permits+' PERMIT, '+denies+' DENY.</div>'+
+      '<div style="color:#6b7280;font-size:13px;margin-bottom:14px;">Your receipt worked exactly as designed.</div>'+
+      '<a href="/signup" style="display:inline-block;background:#1a56db;color:#fff;font-size:13px;font-weight:600;padding:9px 20px;border-radius:5px;text-decoration:none;font-family:\'Inter\',sans-serif;">Get your real receipt →</a>';
+    term.appendChild(sum);term.scrollTop=term.scrollHeight;
+    document.getElementById('sbSimRunAgain').style.display='block';
+  }
+  window.sbSimLaunch=function(){
+    var a=sbParse(document.getElementById('sbSimAllowed').value,SB_DA);
+    var d=sbParse(document.getElementById('sbSimDenied').value,SB_DD);
+    var panel=document.getElementById('sbSimPanel');
+    panel.style.display='block';
+    panel.style.animation='none';
+    void panel.offsetWidth;
+    panel.style.animation='sbSimSlideDown 0.4s ease forwards';
+    sbRun(sbBuild(a,d));
+  };
+})();
+</script>
+
+</body>
+</html>
