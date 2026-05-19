@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sandbox — Authproof Cloud</title>
+  <meta name="description" content="Try Authproof's receipt sandbox — create a cryptographic authorization receipt and test an action, no account required." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --blue:     #1a56db;
+      --blue-lt:  #e8f0fe;
+      --blue-dk:  #1340a8;
+      --gray-50:  #f8f9fa;
+      --gray-100: #f1f3f4;
+      --gray-200: #e5e7eb;
+      --gray-400: #9ca3af;
+      --gray-500: #6b7280;
+      --gray-600: #4b5563;
+      --gray-700: #374151;
+      --gray-800: #1f2937;
+      --gray-900: #111111;
+      --green:    #16a34a;
+      --green-lt: #f0fdf4;
+      --green-bd: #bbf7d0;
+      --red:      #dc2626;
+      --red-lt:   #fef2f2;
+      --red-bd:   #fecaca;
+      --white:    #ffffff;
+      --dark:     #0a0a0a;
+      --mono:     'JetBrains Mono', 'Courier New', monospace;
+      --sans:     'Inter', sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--white);
+      color: var(--gray-800);
+      font-family: var(--sans);
+      font-size: 16px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: inherit; text-decoration: none; }
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-block;
+      font-family: var(--sans);
+      font-size: 15px;
+      font-weight: 600;
+      padding: 12px 24px;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: all 0.15s;
+      border-radius: 980px;
+      text-align: center;
+    }
+    .btn-primary { background: var(--blue); color: var(--white); border-color: var(--blue); }
+    .btn-primary:hover { background: var(--blue-dk); border-color: var(--blue-dk); }
+    .btn-outline { background: transparent; color: var(--blue); border-color: var(--blue); }
+    .btn-outline:hover { background: var(--blue-lt); }
+
+    /* ── Nav ── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(255,255,255,0.95);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid transparent;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    nav.scrolled { border-bottom-color: var(--gray-200); box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+    .nav-inner {
+      display: flex;
+      align-items: center;
+      height: 64px;
+      gap: 32px;
+    }
+    .nav-logo { font-size: 17px; font-weight: 700; color: var(--gray-900); flex-shrink: 0; }
+    .nav-logo span { color: var(--blue); }
+    .nav-links { display: flex; list-style: none; gap: 28px; flex: 1; }
+    .nav-links a { font-size: 14px; font-weight: 500; color: var(--gray-600); transition: color 0.15s; }
+    .nav-links a:hover, .nav-links a.active { color: var(--blue); }
+    .nav-actions { display: flex; gap: 10px; flex-shrink: 0; }
+    .hamburger { display: none; flex-direction: column; gap: 5px; background: none; border: none; cursor: pointer; padding: 4px; }
+    .hamburger span { display: block; width: 22px; height: 2px; background: var(--gray-700); border-radius: 2px; transition: all 0.2s; }
+
+    /* ── Mobile menu ── */
+    .mobile-menu {
+      display: none;
+      flex-direction: column;
+      gap: 0;
+      background: var(--white);
+      border-bottom: 1px solid var(--gray-200);
+      padding: 12px 24px 20px;
+    }
+    .mobile-menu.open { display: flex; }
+    .mobile-menu a { padding: 10px 0; font-size: 15px; font-weight: 500; color: var(--gray-700); border-bottom: 1px solid var(--gray-100); }
+    .mobile-menu a:last-child { border-bottom: none; }
+    .mobile-menu .btn { margin-top: 8px; text-align: center; }
+
+    /* ── Page hero ── */
+    .sandbox-hero {
+      background: var(--gray-50);
+      border-bottom: 1px solid var(--gray-200);
+      padding: 64px 0 48px;
+    }
+    .sandbox-hero-label {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--blue);
+      margin-bottom: 12px;
+    }
+    .sandbox-hero-title {
+      font-size: clamp(28px, 4vw, 44px);
+      font-weight: 800;
+      color: var(--gray-900);
+      letter-spacing: -0.02em;
+      margin-bottom: 14px;
+      line-height: 1.15;
+    }
+    .sandbox-hero-sub {
+      font-size: 18px;
+      color: var(--gray-600);
+      max-width: 580px;
+    }
+
+    /* ── Main sandbox area ── */
+    .sandbox-main { padding: 56px 0 96px; }
+
+    /* ── Form + sandbox UI ── */
+    .form-input, .form-select {
+      font-family: var(--sans);
+      font-size: 14px;
+      color: var(--gray-800);
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: 4px;
+      padding: 9px 12px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .form-input:focus, .form-select:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px var(--blue-lt);
+    }
+    .form-select { cursor: pointer; }
+
+    .sandbox-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+    .sandbox-card {
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: 6px;
+      padding: 24px 28px;
+    }
+    .sandbox-card-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--gray-500);
+      margin-bottom: 16px;
+    }
+    .sandbox-form-group { margin-bottom: 14px; }
+    .sandbox-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--gray-700);
+      margin-bottom: 6px;
+    }
+    .sandbox-hint { font-size: 11px; color: var(--gray-400); margin-top: 3px; }
+    .sandbox-json-block {
+      background: var(--gray-100);
+      border: 1px solid var(--gray-200);
+      border-radius: 4px;
+      padding: 14px 16px;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--gray-700);
+      white-space: pre-wrap;
+      word-break: break-all;
+      min-height: 200px;
+      max-height: 340px;
+      overflow-y: auto;
+      line-height: 1.5;
+    }
+    .sandbox-test-card {
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: 6px;
+      padding: 24px 28px;
+    }
+    .sandbox-action-row {
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+      margin-bottom: 16px;
+    }
+    .sandbox-action-row .form-input { flex: 1; }
+    .btn-sandbox-create {
+      font-family: var(--sans);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--white);
+      background: var(--blue);
+      border: 2px solid var(--blue);
+      border-radius: 4px;
+      padding: 8px 20px;
+      cursor: pointer;
+      transition: background 0.15s;
+      width: 100%;
+    }
+    .btn-sandbox-create:hover { background: var(--blue-dk); border-color: var(--blue-dk); }
+    .btn-sandbox-run {
+      font-family: var(--sans);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--white);
+      background: var(--blue);
+      border: 2px solid var(--blue);
+      border-radius: 4px;
+      padding: 8px 20px;
+      cursor: pointer;
+      transition: background 0.15s;
+      white-space: nowrap;
+    }
+    .btn-sandbox-run:hover { background: var(--blue-dk); border-color: var(--blue-dk); }
+    .sandbox-result {
+      display: none;
+      border-radius: 6px;
+      padding: 16px 20px;
+    }
+    .sandbox-result.permit { background: var(--green-lt); border: 1px solid var(--green-bd); }
+    .sandbox-result.deny   { background: var(--red-lt);   border: 1px solid var(--red-bd); }
+    .sandbox-result-label  { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+    .sandbox-result.permit .sandbox-result-label { color: var(--green); }
+    .sandbox-result.deny   .sandbox-result-label { color: var(--red); }
+    .sandbox-result-reason { font-size: 13px; color: var(--gray-700); }
+    .sandbox-note { font-size: 12px; color: var(--gray-400); margin-top: 14px; line-height: 1.5; }
+
+    /* ── CTA strip ── */
+    .sandbox-cta {
+      background: var(--gray-900);
+      color: var(--white);
+      padding: 56px 0;
+      text-align: center;
+    }
+    .sandbox-cta h2 { font-size: clamp(20px, 2.5vw, 30px); font-weight: 700; margin-bottom: 10px; }
+    .sandbox-cta p { font-size: 16px; color: rgba(255,255,255,0.7); margin-bottom: 28px; }
+    .btn-dark-primary {
+      display: inline-block;
+      font-family: var(--sans);
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--dark);
+      background: var(--white);
+      border: 2px solid var(--white);
+      padding: 12px 28px;
+      border-radius: 980px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-dark-primary:hover { background: rgba(255,255,255,0.88); }
+
+    /* ── Footer ── */
+    footer { background: var(--gray-900); color: rgba(255,255,255,0.8); padding: 64px 0 32px; }
+    .footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 40px; margin-bottom: 40px; }
+    .f-brand { font-size: 16px; font-weight: 700; color: var(--white); margin-bottom: 10px; }
+    .f-tagline { font-size: 13px; color: rgba(255,255,255,0.5); line-height: 1.6; max-width: 240px; }
+    .f-col h4 { font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.4); margin-bottom: 14px; }
+    .f-col ul { list-style: none; }
+    .f-col li { margin-bottom: 8px; }
+    .f-col a { font-size: 13px; color: rgba(255,255,255,0.65); transition: color 0.15s; }
+    .f-col a:hover { color: var(--white); }
+    .footer-bottom { border-top: 1px solid rgba(255,255,255,0.08); padding-top: 24px; }
+    .footer-bottom-text { font-size: 12px; color: rgba(255,255,255,0.3); }
+
+    @media (max-width: 900px) {
+      .footer-grid { grid-template-columns: 1fr 1fr; gap: 36px; }
+    }
+    @media (max-width: 700px) {
+      .sandbox-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 640px) {
+      .nav-links, .nav-actions { display: none; }
+      .hamburger { display: flex; }
+      .footer-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav id="nav">
+  <div class="container">
+    <div class="nav-inner">
+      <a class="nav-logo" href="/">Authproof <span>Cloud</span></a>
+      <ul class="nav-links">
+        <li><a href="/features">Features</a></li>
+        <li><a href="/sandbox" class="active">Sandbox</a></li>
+        <li><a href="/#pricing">Pricing</a></li>
+        <li><a href="https://github.com/Commonguy25/authproof-sdk">Docs</a></li>
+        <li><a href="/security">Security</a></li>
+        <li><a href="/managed-ai">For Managed AI</a></li>
+        <li><a href="/healthcare">Healthcare</a></li>
+      </ul>
+      <div class="nav-actions">
+        <a href="/login" class="btn btn-outline">Log in</a>
+        <a href="/signup" class="btn btn-primary">Start free</a>
+      </div>
+      <button class="hamburger" id="hamburgerBtn" onclick="toggleMenu()" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<div class="mobile-menu" id="mobileMenu">
+  <a href="/features" onclick="closeMenu()">Features</a>
+  <a href="/sandbox" onclick="closeMenu()">Sandbox</a>
+  <a href="/#pricing" onclick="closeMenu()">Pricing</a>
+  <a href="https://github.com/Commonguy25/authproof-sdk" onclick="closeMenu()">Docs</a>
+  <a href="/security" onclick="closeMenu()">Security</a>
+  <a href="/managed-ai" onclick="closeMenu()">For Managed AI</a>
+  <a href="/healthcare" onclick="closeMenu()">Healthcare</a>
+  <a href="/login" class="btn btn-outline">Log in</a>
+  <a href="/signup" class="btn btn-primary">Start free</a>
+</div>
+
+<!-- Hero -->
+<div class="sandbox-hero">
+  <div class="container">
+    <div class="sandbox-hero-label">Interactive demo</div>
+    <h1 class="sandbox-hero-title">Try it yourself</h1>
+    <p class="sandbox-hero-sub">Create a receipt and test an action — no account required. All processing happens in your browser.</p>
+  </div>
+</div>
+
+<!-- Sandbox UI -->
+<div class="sandbox-main">
+  <div class="container">
+
+    <div class="sandbox-grid">
+      <div class="sandbox-card">
+        <div class="sandbox-card-title">Step 1 — Create a Receipt</div>
+        <div class="sandbox-form-group">
+          <label class="sandbox-label" for="sbAllowed">Allowed actions</label>
+          <input class="form-input" id="sbAllowed" type="text" placeholder="read calendar, schedule meeting" style="width:100%;" oninput="liveUpdateReceipt()" />
+          <div class="sandbox-hint">Comma-separated — actions this agent may take</div>
+        </div>
+        <div class="sandbox-form-group">
+          <label class="sandbox-label" for="sbDenied">Denied actions</label>
+          <input class="form-input" id="sbDenied" type="text" placeholder="send email, delete events" style="width:100%;" oninput="liveUpdateReceipt()" />
+          <div class="sandbox-hint">Comma-separated — actions that are always blocked</div>
+        </div>
+        <div class="sandbox-form-group">
+          <label class="sandbox-label" for="sbExpiry">Expiry</label>
+          <select class="form-select" id="sbExpiry" style="width:100%;" onchange="liveUpdateReceipt()">
+            <option value="1">1 hour</option>
+            <option value="2">2 hours</option>
+            <option value="8">8 hours</option>
+            <option value="24">24 hours</option>
+          </select>
+        </div>
+        <button class="btn-sandbox-create" onclick="createSandboxReceipt()">Create Receipt</button>
+      </div>
+
+      <div class="sandbox-card">
+        <div class="sandbox-card-title">Step 2 — Receipt JSON</div>
+        <pre class="sandbox-json-block" id="sbReceiptJson">Fill in the form and click "Create Receipt" to generate a receipt.</pre>
+      </div>
+    </div>
+
+    <div class="sandbox-test-card">
+      <div class="sandbox-card-title">Step 3 — Test an Action</div>
+      <div class="sandbox-action-row">
+        <input class="form-input" id="sbAction" type="text"
+          placeholder='e.g. "Read calendar to find free slots on Tuesday"'
+          onkeydown="if(event.key==='Enter') runSandboxCheck()" />
+        <button class="btn-sandbox-run" onclick="runSandboxCheck()">Run</button>
+      </div>
+      <div class="sandbox-result" id="sbResult">
+        <div class="sandbox-result-label" id="sbResultLabel"></div>
+        <div class="sandbox-result-reason" id="sbResultReason"></div>
+      </div>
+      <div class="sandbox-note">
+        Sandbox uses keyword matching against your allowed/denied lists. Denied takes precedence.<br>
+        Real SDK receipts are ECDSA P-256 signed — see
+        <a href="https://github.com/Commonguy25/authproof-sdk" target="_blank" style="color:var(--blue);">the SDK docs</a>
+        for full cryptographic verification.
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- CTA -->
+<div class="sandbox-cta">
+  <div class="container">
+    <h2>Ready to add this to your agent?</h2>
+    <p>Sign up free and get a real API key in minutes. ECDSA P-256 signed receipts, tamper-evident audit trail, compliance exports.</p>
+    <a href="/signup" class="btn-dark-primary">Start free →</a>
+  </div>
+</div>
+
+<!-- Footer -->
+<footer>
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <div class="f-brand">Authproof Cloud</div>
+        <p class="f-tagline">Cryptographic authorization for AI agents. Signed before execution. Independently verifiable.</p>
+      </div>
+      <div class="f-col">
+        <h4>Product</h4>
+        <ul>
+          <li><a href="/features">Features</a></li>
+          <li><a href="/#pricing">Pricing</a></li>
+          <li><a href="/signup">Sign up free</a></li>
+          <li><a href="/login">Log in</a></li>
+        </ul>
+      </div>
+      <div class="f-col">
+        <h4>Compliance</h4>
+        <ul>
+          <li><a href="/security">Security</a></li>
+          <li><a href="/baa">BAA</a></li>
+          <li><a href="/healthcare">Healthcare</a></li>
+          <li><a href="https://github.com/Commonguy25/authproof-sdk/blob/main/LICENSE" target="_blank">MIT License</a></li>
+        </ul>
+      </div>
+      <div class="f-col">
+        <h4>Open Source</h4>
+        <ul>
+          <li><a href="https://github.com/Commonguy25/authproof-sdk" target="_blank">GitHub</a></li>
+          <li><a href="https://datatracker.ietf.org/doc/draft-nelson-agent-delegation-receipts/" target="_blank">IETF Draft</a></li>
+          <li><a href="https://authproof.dev">authproof.dev</a></li>
+          <li><a href="https://github.com/Commonguy25/authproof-sdk/blob/main/WHITEPAPER.md" target="_blank">White Paper</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p class="footer-bottom-text">© 2026 Authproof. MIT Licensed. Built by Ryan Nelson.</p>
+    </div>
+  </div>
+</footer>
+
+<script>
+  window.addEventListener('scroll', function() {
+    document.getElementById('nav').classList.toggle('scrolled', window.scrollY > 10);
+  });
+
+  function toggleMenu() {
+    var menu = document.getElementById('mobileMenu');
+    var btn  = document.getElementById('hamburgerBtn');
+    var isOpen = menu.classList.toggle('open');
+    btn.setAttribute('aria-expanded', isOpen);
+  }
+  function closeMenu() {
+    document.getElementById('mobileMenu').classList.remove('open');
+    document.getElementById('hamburgerBtn').setAttribute('aria-expanded', 'false');
+  }
+  document.addEventListener('click', function(e) {
+    var menu = document.getElementById('mobileMenu');
+    var btn  = document.getElementById('hamburgerBtn');
+    if (menu.classList.contains('open') && !menu.contains(e.target) && !btn.contains(e.target)) {
+      closeMenu();
+    }
+  });
+
+  // ── Sandbox logic ────────────────────────────────────────────────────────────
+  var _sbReceipt = null;
+
+  function _buildSandboxReceipt() {
+    var allowed = (document.getElementById('sbAllowed').value || '')
+      .split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+    var denied  = (document.getElementById('sbDenied').value || '')
+      .split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+    var hours   = parseInt(document.getElementById('sbExpiry').value, 10) || 1;
+    var now     = new Date();
+    var end     = new Date(now.getTime() + hours * 3600000);
+    var id      = 'auth-' + now.getTime() + '-' + Math.random().toString(36).slice(2, 7);
+    return {
+      delegationId:    id,
+      issuedAt:        now.toISOString(),
+      allowedActions:  allowed,
+      deniedActions:   denied,
+      timeWindow:      { start: now.toISOString(), end: end.toISOString() },
+      signerPublicKey: '(sandbox — use AuthProof.create() for real signed receipts)',
+      signature:       '(sandbox simulation only)',
+    };
+  }
+
+  function liveUpdateReceipt() {
+    if (!_sbReceipt) return;
+    _sbReceipt = _buildSandboxReceipt();
+    document.getElementById('sbReceiptJson').textContent = JSON.stringify(_sbReceipt, null, 2);
+  }
+
+  function createSandboxReceipt() {
+    _sbReceipt = _buildSandboxReceipt();
+    document.getElementById('sbReceiptJson').textContent = JSON.stringify(_sbReceipt, null, 2);
+    document.getElementById('sbResult').style.display = 'none';
+  }
+
+  function runSandboxCheck() {
+    if (!_sbReceipt) {
+      alert('Create a receipt first — fill in Step 1 and click "Create Receipt".');
+      return;
+    }
+    var action = (document.getElementById('sbAction').value || '').trim();
+    if (!action) { alert('Enter an action to test in Step 3.'); return; }
+    var a = action.toLowerCase();
+    var result, reason;
+    var denied = _sbReceipt.deniedActions;
+    for (var i = 0; i < denied.length; i++) {
+      var words = denied[i].toLowerCase().split(/\s+/).filter(Boolean);
+      if (words.length && words.every(function(w) { return a.includes(w); })) {
+        result = 'DENY'; reason = 'action matches denied pattern: "' + denied[i] + '"'; break;
+      }
+    }
+    if (!result) {
+      var allowed = _sbReceipt.allowedActions;
+      for (var j = 0; j < allowed.length; j++) {
+        var ws = allowed[j].toLowerCase().split(/\s+/).filter(Boolean);
+        if (ws.length && ws.every(function(w) { return a.includes(w); })) {
+          result = 'PERMIT'; reason = 'action within allowed scope: "' + allowed[j] + '"'; break;
+        }
+      }
+    }
+    if (!result) { result = 'DENY'; reason = 'action not found in allowed scope'; }
+    var el = document.getElementById('sbResult');
+    el.className = 'sandbox-result ' + (result === 'PERMIT' ? 'permit' : 'deny');
+    document.getElementById('sbResultLabel').textContent  = result;
+    document.getElementById('sbResultReason').textContent = reason;
+    el.style.display = 'block';
+  }
+</script>
+</body>
+</html>
