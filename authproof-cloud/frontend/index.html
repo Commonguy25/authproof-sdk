@@ -25,6 +25,11 @@
       --gray-800: #1f2937;
       --gray-900: #111111;
       --green:    #16a34a;
+      --green-lt: #f0fdf4;
+      --green-bd: #bbf7d0;
+      --red:      #dc2626;
+      --red-lt:   #fef2f2;
+      --red-bd:   #fecaca;
       --white:    #ffffff;
       --dark:     #0a0a0a;
       --mono:     'JetBrains Mono', 'Courier New', monospace;
@@ -359,6 +364,126 @@
       .question-section { padding: 64px 24px; }
       .pricing-section { padding: 64px 0; }
     }
+
+    /* ── Public Sandbox Section ── */
+    .sandbox-section { background: var(--gray-50); padding: 96px 0; }
+    .sandbox-section-sub { font-size: 17px; color: var(--gray-600); margin-bottom: 40px; max-width: 560px; }
+    .form-input, .form-select {
+      font-family: var(--sans);
+      font-size: 14px;
+      color: var(--gray-800);
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: 4px;
+      padding: 9px 12px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .form-input:focus, .form-select:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px var(--blue-lt);
+    }
+    .form-select { cursor: pointer; }
+    .sandbox-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+    .sandbox-card {
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: 6px;
+      padding: 24px 28px;
+    }
+    .sandbox-card-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--gray-500);
+      margin-bottom: 16px;
+    }
+    .sandbox-form-group { margin-bottom: 14px; }
+    .sandbox-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--gray-700);
+      margin-bottom: 6px;
+    }
+    .sandbox-hint { font-size: 11px; color: var(--gray-400); margin-top: 3px; }
+    .sandbox-json-block {
+      background: var(--gray-100);
+      border: 1px solid var(--gray-200);
+      border-radius: 4px;
+      padding: 14px 16px;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--gray-700);
+      white-space: pre-wrap;
+      word-break: break-all;
+      min-height: 200px;
+      max-height: 340px;
+      overflow-y: auto;
+      line-height: 1.5;
+    }
+    .sandbox-test-card {
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: 6px;
+      padding: 24px 28px;
+    }
+    .sandbox-action-row {
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+      margin-bottom: 16px;
+    }
+    .sandbox-action-row .form-input { flex: 1; }
+    .btn-sandbox-create {
+      font-family: var(--sans);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--white);
+      background: var(--blue);
+      border: 2px solid var(--blue);
+      border-radius: 4px;
+      padding: 8px 20px;
+      cursor: pointer;
+      transition: background 0.15s;
+      width: 100%;
+    }
+    .btn-sandbox-create:hover { background: var(--blue-dk); border-color: var(--blue-dk); }
+    .btn-sandbox-run {
+      font-family: var(--sans);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--white);
+      background: var(--blue);
+      border: 2px solid var(--blue);
+      border-radius: 4px;
+      padding: 8px 20px;
+      cursor: pointer;
+      transition: background 0.15s;
+      white-space: nowrap;
+    }
+    .btn-sandbox-run:hover { background: var(--blue-dk); border-color: var(--blue-dk); }
+    .sandbox-result {
+      display: none;
+      border-radius: 6px;
+      padding: 16px 20px;
+    }
+    .sandbox-result.permit { background: var(--green-lt); border: 1px solid var(--green-bd); }
+    .sandbox-result.deny   { background: var(--red-lt);   border: 1px solid var(--red-bd); }
+    .sandbox-result-label  { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+    .sandbox-result.permit .sandbox-result-label { color: var(--green); }
+    .sandbox-result.deny   .sandbox-result-label { color: var(--red); }
+    .sandbox-result-reason { font-size: 13px; color: var(--gray-700); }
+    .sandbox-note { font-size: 12px; color: var(--gray-400); margin-top: 14px; line-height: 1.5; }
+    @media (max-width: 700px) {
+      .sandbox-grid { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
@@ -371,6 +496,7 @@
       <a class="nav-logo" href="/">Authproof <span>Cloud</span></a>
       <ul class="nav-links">
         <li><a href="/features">Features</a></li>
+        <li><a href="/sandbox">Sandbox</a></li>
         <li><a href="#pricing">Pricing</a></li>
         <li><a href="https://github.com/Commonguy25/authproof-sdk">Docs</a></li>
         <li><a href="/security">Security</a></li>
@@ -390,6 +516,7 @@
 
 <div class="mobile-menu" id="mobileMenu">
   <a href="/features" onclick="closeMenu()">Features</a>
+  <a href="/sandbox" onclick="closeMenu()">Sandbox</a>
   <a href="#pricing" onclick="closeMenu()">Pricing</a>
   <a href="https://github.com/Commonguy25/authproof-sdk" onclick="closeMenu()">Docs</a>
   <a href="/security" onclick="closeMenu()">Security</a>
@@ -481,6 +608,68 @@
         <div class="step-num">03</div>
         <h3>Every action is logged with cryptographic proof</h3>
         <p>Every action is logged with a tamper-evident chain. Export a signed audit package for any compliance review in seconds. Your auditor gets proof that predates execution — not a log reconstructed after the fact.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════ -->
+<!-- Section 5b — Public Sandbox                     -->
+<!-- ════════════════════════════════════════════════ -->
+<section class="sandbox-section" id="sandbox">
+  <div class="container">
+    <div class="section-label">Interactive demo</div>
+    <h2 class="section-headline">Try it yourself</h2>
+    <p class="sandbox-section-sub">Create a receipt and test an action — no account required.</p>
+
+    <div class="sandbox-grid">
+      <div class="sandbox-card">
+        <div class="sandbox-card-title">Step 1 — Create a Receipt</div>
+        <div class="sandbox-form-group">
+          <label class="sandbox-label" for="lpSbAllowed">Allowed actions</label>
+          <input class="form-input" id="lpSbAllowed" type="text" placeholder="read calendar, schedule meeting" style="width:100%;" oninput="lpLiveUpdateReceipt()" />
+          <div class="sandbox-hint">Comma-separated — actions this agent may take</div>
+        </div>
+        <div class="sandbox-form-group">
+          <label class="sandbox-label" for="lpSbDenied">Denied actions</label>
+          <input class="form-input" id="lpSbDenied" type="text" placeholder="send email, delete events" style="width:100%;" oninput="lpLiveUpdateReceipt()" />
+          <div class="sandbox-hint">Comma-separated — actions that are always blocked</div>
+        </div>
+        <div class="sandbox-form-group">
+          <label class="sandbox-label" for="lpSbExpiry">Expiry</label>
+          <select class="form-select" id="lpSbExpiry" style="width:100%;" onchange="lpLiveUpdateReceipt()">
+            <option value="1">1 hour</option>
+            <option value="2">2 hours</option>
+            <option value="8">8 hours</option>
+            <option value="24">24 hours</option>
+          </select>
+        </div>
+        <button class="btn-sandbox-create" onclick="lpCreateSandboxReceipt()">Create Receipt</button>
+      </div>
+
+      <div class="sandbox-card">
+        <div class="sandbox-card-title">Step 2 — Receipt JSON</div>
+        <pre class="sandbox-json-block" id="lpSbReceiptJson">Fill in the form and click "Create Receipt" to generate a receipt.</pre>
+      </div>
+    </div>
+
+    <div class="sandbox-test-card">
+      <div class="sandbox-card-title">Step 3 — Test an Action</div>
+      <div class="sandbox-action-row">
+        <input class="form-input" id="lpSbAction" type="text"
+          placeholder='e.g. "Read calendar to find free slots on Tuesday"'
+          onkeydown="if(event.key==='Enter') lpRunSandboxCheck()" />
+        <button class="btn-sandbox-run" onclick="lpRunSandboxCheck()">Run</button>
+      </div>
+      <div class="sandbox-result" id="lpSbResult">
+        <div class="sandbox-result-label" id="lpSbResultLabel"></div>
+        <div class="sandbox-result-reason" id="lpSbResultReason"></div>
+      </div>
+      <div class="sandbox-note">
+        Sandbox uses keyword matching against your allowed/denied lists. Denied takes precedence.<br>
+        Real SDK receipts are ECDSA P-256 signed — see
+        <a href="https://github.com/Commonguy25/authproof-sdk" target="_blank" style="color:var(--blue);">the SDK docs</a>
+        for full cryptographic verification. Want the full experience? <a href="/sandbox" style="color:var(--blue);">Open the standalone sandbox →</a>
       </div>
     </div>
   </div>
@@ -828,6 +1017,74 @@
       closeMenu();
     }
   });
+
+  // ── Landing-page sandbox ─────────────────────────────────────────────────────
+  var _lpSbReceipt = null;
+
+  function _lpBuildReceipt() {
+    var allowed = (document.getElementById('lpSbAllowed').value || '')
+      .split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+    var denied  = (document.getElementById('lpSbDenied').value || '')
+      .split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+    var hours   = parseInt(document.getElementById('lpSbExpiry').value, 10) || 1;
+    var now     = new Date();
+    var end     = new Date(now.getTime() + hours * 3600000);
+    var id      = 'auth-' + now.getTime() + '-' + Math.random().toString(36).slice(2, 7);
+    return {
+      delegationId:    id,
+      issuedAt:        now.toISOString(),
+      allowedActions:  allowed,
+      deniedActions:   denied,
+      timeWindow:      { start: now.toISOString(), end: end.toISOString() },
+      signerPublicKey: '(sandbox — use AuthProof.create() for real signed receipts)',
+      signature:       '(sandbox simulation only)',
+    };
+  }
+
+  function lpLiveUpdateReceipt() {
+    if (!_lpSbReceipt) return;
+    _lpSbReceipt = _lpBuildReceipt();
+    document.getElementById('lpSbReceiptJson').textContent = JSON.stringify(_lpSbReceipt, null, 2);
+  }
+
+  function lpCreateSandboxReceipt() {
+    _lpSbReceipt = _lpBuildReceipt();
+    document.getElementById('lpSbReceiptJson').textContent = JSON.stringify(_lpSbReceipt, null, 2);
+    document.getElementById('lpSbResult').style.display = 'none';
+  }
+
+  function lpRunSandboxCheck() {
+    if (!_lpSbReceipt) {
+      alert('Create a receipt first — fill in Step 1 and click "Create Receipt".');
+      return;
+    }
+    var action = (document.getElementById('lpSbAction').value || '').trim();
+    if (!action) { alert('Enter an action to test in Step 3.'); return; }
+    var a = action.toLowerCase();
+    var result, reason;
+    var denied = _lpSbReceipt.deniedActions;
+    for (var i = 0; i < denied.length; i++) {
+      var words = denied[i].toLowerCase().split(/\s+/).filter(Boolean);
+      if (words.length && words.every(function(w) { return a.includes(w); })) {
+        result = 'DENY'; reason = 'action matches denied pattern: "' + denied[i] + '"'; break;
+      }
+    }
+    if (!result) {
+      var allowed = _lpSbReceipt.allowedActions;
+      for (var j = 0; j < allowed.length; j++) {
+        var ws = allowed[j].toLowerCase().split(/\s+/).filter(Boolean);
+        if (ws.length && ws.every(function(w) { return a.includes(w); })) {
+          result = 'PERMIT'; reason = 'action within allowed scope: "' + allowed[j] + '"'; break;
+        }
+      }
+    }
+    if (!result) { result = 'DENY'; reason = 'action not found in allowed scope'; }
+    var el = document.getElementById('lpSbResult');
+    el.className = 'sandbox-result ' + (result === 'PERMIT' ? 'permit' : 'deny');
+    document.getElementById('lpSbResultLabel').textContent  = result;
+    document.getElementById('lpSbResultReason').textContent = reason;
+    el.style.display = 'block';
+  }
 </script>
 </body>
 </html>

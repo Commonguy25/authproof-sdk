@@ -64,6 +64,7 @@
     { "src": "/compliance",         "dest": "/frontend/compliance.html" },
     { "src": "/security",           "dest": "/frontend/security.html" },
     { "src": "/features",            "dest": "/frontend/features.html" },
+    { "src": "/sandbox",             "dest": "/frontend/sandbox.html" },
     { "src": "/demo",               "dest": "/frontend/pocketos-demo.html" },
     { "src": "/(.*)",               "dest": "/frontend/$1" }
   ]
