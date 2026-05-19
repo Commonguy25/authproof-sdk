@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <rfc xmlns:xi="http://www.w3.org/2001/XInclude"
      version="3"
-     docName="draft-nelson-agent-delegation-receipts-05"
+     docName="draft-nelson-agent-delegation-receipts-08"
      ipr="trust200902"
      submissionType="independent"
      category="info"
@@ -13,7 +13,7 @@
     </title>
 
     <seriesInfo name="Internet-Draft"
-                value="draft-nelson-agent-delegation-receipts-05"/>
+                value="draft-nelson-agent-delegation-receipts-08"/>
 
     <author fullname="Ryan Nelson" initials="R." surname="Nelson">
       <organization>Authproof</organization>
