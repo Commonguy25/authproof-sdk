@@ -672,6 +672,9 @@ class PreExecutionVerifier {
 
     const result = {
       allowed,
+      // decision is the agent-facing admission signal: PERMIT or DENY, no reason detail.
+      // Full reason codes are available via getAuditLog() only.
+      decision:      allowed ? 'PERMIT' : 'DENY',
       checks,
       blockedReason: blockedReason ?? null,
       verifiedAt,

@@ -4,10 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Sandbox — Authproof Cloud</title>
-  <meta name="description" content="Simulate your Authproof receipt live. See exactly which actions get permitted and which get denied before you ship." />
+  <meta name="description" content="Try Authproof's receipt sandbox — create a cryptographic authorization receipt and test an action, no account required." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -25,8 +25,13 @@
       --gray-800: #1f2937;
       --gray-900: #111111;
       --green:    #16a34a;
+      --green-lt: #f0fdf4;
+      --green-bd: #bbf7d0;
       --red:      #dc2626;
+      --red-lt:   #fef2f2;
+      --red-bd:   #fecaca;
       --white:    #ffffff;
+      --dark:     #0a0a0a;
       --mono:     'JetBrains Mono', 'Courier New', monospace;
       --sans:     'Inter', sans-serif;
     }
@@ -34,229 +39,409 @@
     html { scroll-behavior: smooth; }
 
     body {
-      background: var(--gray-50);
+      background: var(--white);
       color: var(--gray-800);
       font-family: var(--sans);
       font-size: 16px;
       line-height: 1.6;
-      min-height: 100vh;
       -webkit-font-smoothing: antialiased;
     }
 
     a { color: inherit; text-decoration: none; }
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
 
-    /* Nav */
-    nav {
-      position: sticky; top: 0; z-index: 100;
-      background: rgba(255,255,255,0.97);
-      backdrop-filter: blur(8px);
-      border-bottom: 1px solid var(--gray-200);
-      box-shadow: 0 1px 8px rgba(0,0,0,0.04);
-    }
-    .nav-inner {
-      max-width: 1100px; margin: 0 auto; padding: 0 24px;
-      display: flex; align-items: center; justify-content: space-between; height: 64px;
-    }
-    .nav-logo { font-size: 17px; font-weight: 700; color: var(--gray-900); }
-    .nav-logo span { color: var(--blue); }
-    .nav-actions { display: flex; align-items: center; gap: 12px; }
+    /* ── Buttons ── */
     .btn {
-      display: inline-block; font-family: var(--sans); font-size: 14px; font-weight: 600;
-      padding: 8px 18px; border: 2px solid transparent; cursor: pointer;
-      transition: all 0.15s; border-radius: 980px; text-align: center; text-decoration: none;
+      display: inline-block;
+      font-family: var(--sans);
+      font-size: 15px;
+      font-weight: 600;
+      padding: 12px 24px;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: all 0.15s;
+      border-radius: 980px;
+      text-align: center;
     }
     .btn-primary { background: var(--blue); color: var(--white); border-color: var(--blue); }
     .btn-primary:hover { background: var(--blue-dk); border-color: var(--blue-dk); }
     .btn-outline { background: transparent; color: var(--blue); border-color: var(--blue); }
     .btn-outline:hover { background: var(--blue-lt); }
 
-    /* Page layout */
-    .page { max-width: 800px; margin: 0 auto; padding: 60px 24px 80px; }
+    /* ── Nav ── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(255,255,255,0.95);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid transparent;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    nav.scrolled { border-bottom-color: var(--gray-200); box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+    .nav-inner {
+      display: flex;
+      align-items: center;
+      height: 64px;
+      gap: 32px;
+    }
+    .nav-logo { font-size: 17px; font-weight: 700; color: var(--gray-900); flex-shrink: 0; }
+    .nav-logo span { color: var(--blue); }
+    .nav-links { display: flex; list-style: none; gap: 28px; flex: 1; }
+    .nav-links a { font-size: 14px; font-weight: 500; color: var(--gray-600); transition: color 0.15s; }
+    .nav-links a:hover, .nav-links a.active { color: var(--blue); }
+    .nav-actions { display: flex; gap: 10px; flex-shrink: 0; }
+    .hamburger { display: none; flex-direction: column; gap: 5px; background: none; border: none; cursor: pointer; padding: 4px; }
+    .hamburger span { display: block; width: 22px; height: 2px; background: var(--gray-700); border-radius: 2px; transition: all 0.2s; }
 
-    .page-eyebrow {
-      font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
-      color: var(--blue); margin-bottom: 12px;
+    /* ── Mobile menu ── */
+    .mobile-menu {
+      display: none;
+      flex-direction: column;
+      gap: 0;
+      background: var(--white);
+      border-bottom: 1px solid var(--gray-200);
+      padding: 12px 24px 20px;
     }
-    .page-headline {
-      font-size: clamp(26px, 4vw, 40px); font-weight: 700; color: var(--gray-900);
-      letter-spacing: -0.025em; line-height: 1.15; margin-bottom: 14px;
+    .mobile-menu.open { display: flex; }
+    .mobile-menu a { padding: 10px 0; font-size: 15px; font-weight: 500; color: var(--gray-700); border-bottom: 1px solid var(--gray-100); }
+    .mobile-menu a:last-child { border-bottom: none; }
+    .mobile-menu .btn { margin-top: 8px; text-align: center; }
+
+    /* ── Page hero ── */
+    .sandbox-hero {
+      background: var(--gray-50);
+      border-bottom: 1px solid var(--gray-200);
+      padding: 64px 0 48px;
     }
-    .page-sub {
-      font-size: 16px; color: var(--gray-500); line-height: 1.65; margin-bottom: 40px;
-      max-width: 560px;
+    .sandbox-hero-label {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--blue);
+      margin-bottom: 12px;
+    }
+    .sandbox-hero-title {
+      font-size: clamp(28px, 4vw, 44px);
+      font-weight: 800;
+      color: var(--gray-900);
+      letter-spacing: -0.02em;
+      margin-bottom: 14px;
+      line-height: 1.15;
+    }
+    .sandbox-hero-sub {
+      font-size: 18px;
+      color: var(--gray-600);
+      max-width: 580px;
     }
 
-    /* Form card */
-    .form-card {
-      background: var(--white); border: 1px solid var(--gray-200); border-radius: 10px;
-      padding: 32px; margin-bottom: 16px;
-    }
-    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px; }
-    .form-field label {
-      display: block; font-size: 13px; font-weight: 600; color: var(--gray-700); margin-bottom: 8px;
-    }
-    .form-field .hint {
-      font-size: 12px; color: var(--gray-400); margin-top: 5px; font-family: var(--mono);
-    }
-    .form-field textarea {
-      width: 100%; font-family: var(--mono); font-size: 12px;
-      border: 1px solid var(--gray-200); border-radius: 5px; padding: 10px 12px;
-      resize: vertical; outline: none; color: var(--gray-800); line-height: 1.7;
-      transition: border-color 0.15s, box-shadow 0.15s; background: var(--white);
-    }
-    .form-field textarea:focus {
-      border-color: var(--blue); box-shadow: 0 0 0 3px rgba(26,86,219,0.1);
-    }
-    .launch-btn {
-      width: 100%; font-family: var(--sans); font-size: 15px; font-weight: 600;
-      color: var(--white); background: var(--blue); border: 2px solid var(--blue);
-      border-radius: 6px; padding: 14px 24px; cursor: pointer; transition: background 0.15s;
-    }
-    .launch-btn:hover { background: var(--blue-dk); border-color: var(--blue-dk); }
+    /* ── Main sandbox area ── */
+    .sandbox-main { padding: 56px 0 96px; }
 
-    /* Terminal panel */
-    .sim-panel {
-      display: none; border-radius: 8px; overflow: hidden;
-      box-shadow: 0 8px 40px rgba(0,0,0,0.2); margin-bottom: 48px;
+    /* ── Form + sandbox UI ── */
+    .form-input, .form-select {
+      font-family: var(--sans);
+      font-size: 14px;
+      color: var(--gray-800);
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: 4px;
+      padding: 9px 12px;
+      outline: none;
+      transition: border-color 0.15s;
     }
-    .sim-header {
-      background: #161b22; padding: 14px 20px;
-      display: flex; align-items: center; gap: 10px;
-      font-family: var(--mono); font-size: 13px; color: #e6edf3; letter-spacing: 0.02em;
+    .form-input:focus, .form-select:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px var(--blue-lt);
     }
-    .sim-dot {
-      width: 8px; height: 8px; background: var(--green); border-radius: 50%; flex-shrink: 0;
-      animation: sbSimPulse 1.5s ease-in-out infinite;
-    }
-    .sim-run-again {
-      display: none; margin-left: auto; font-family: var(--mono); font-size: 11px;
-      color: #9ca3af; background: transparent; border: 1px solid #374151;
-      border-radius: 3px; padding: 3px 10px; cursor: pointer; white-space: nowrap;
-    }
-    .sim-terminal {
-      background: #0d1117; padding: 24px; min-height: 160px; max-height: 440px;
-      overflow-y: auto; font-family: var(--mono); font-size: 13px; line-height: 1.9;
-    }
+    .form-select { cursor: pointer; }
 
-    /* How it works strip */
-    .how-strip {
-      display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 48px;
+    .sandbox-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-bottom: 24px;
     }
-    .how-item {
-      background: var(--white); border: 1px solid var(--gray-200); border-radius: 8px;
-      padding: 22px; text-align: center;
+    .sandbox-card {
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: 6px;
+      padding: 24px 28px;
     }
-    .how-icon { font-size: 22px; margin-bottom: 10px; }
-    .how-title { font-size: 14px; font-weight: 700; color: var(--gray-900); margin-bottom: 6px; }
-    .how-desc { font-size: 13px; color: var(--gray-500); line-height: 1.55; }
+    .sandbox-card-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--gray-500);
+      margin-bottom: 16px;
+    }
+    .sandbox-form-group { margin-bottom: 14px; }
+    .sandbox-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--gray-700);
+      margin-bottom: 6px;
+    }
+    .sandbox-hint { font-size: 11px; color: var(--gray-400); margin-top: 3px; }
+    .sandbox-json-block {
+      background: var(--gray-100);
+      border: 1px solid var(--gray-200);
+      border-radius: 4px;
+      padding: 14px 16px;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--gray-700);
+      white-space: pre-wrap;
+      word-break: break-all;
+      min-height: 200px;
+      max-height: 340px;
+      overflow-y: auto;
+      line-height: 1.5;
+    }
+    .sandbox-test-card {
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: 6px;
+      padding: 24px 28px;
+    }
+    .sandbox-action-row {
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+      margin-bottom: 16px;
+    }
+    .sandbox-action-row .form-input { flex: 1; }
+    .btn-sandbox-create {
+      font-family: var(--sans);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--white);
+      background: var(--blue);
+      border: 2px solid var(--blue);
+      border-radius: 4px;
+      padding: 8px 20px;
+      cursor: pointer;
+      transition: background 0.15s;
+      width: 100%;
+    }
+    .btn-sandbox-create:hover { background: var(--blue-dk); border-color: var(--blue-dk); }
+    .btn-sandbox-run {
+      font-family: var(--sans);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--white);
+      background: var(--blue);
+      border: 2px solid var(--blue);
+      border-radius: 4px;
+      padding: 8px 20px;
+      cursor: pointer;
+      transition: background 0.15s;
+      white-space: nowrap;
+    }
+    .btn-sandbox-run:hover { background: var(--blue-dk); border-color: var(--blue-dk); }
+    .sandbox-result {
+      display: none;
+      border-radius: 6px;
+      padding: 16px 20px;
+    }
+    .sandbox-result.permit { background: var(--green-lt); border: 1px solid var(--green-bd); }
+    .sandbox-result.deny   { background: var(--red-lt);   border: 1px solid var(--red-bd); }
+    .sandbox-result-label  { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+    .sandbox-result.permit .sandbox-result-label { color: var(--green); }
+    .sandbox-result.deny   .sandbox-result-label { color: var(--red); }
+    .sandbox-result-reason { font-size: 13px; color: var(--gray-700); }
+    .sandbox-note { font-size: 12px; color: var(--gray-400); margin-top: 14px; line-height: 1.5; }
 
-    /* CTA strip */
-    .cta-strip {
-      margin-top: 48px; background: var(--blue); border-radius: 10px;
-      padding: 36px 40px; display: flex; align-items: center; justify-content: space-between;
-      gap: 24px; flex-wrap: wrap;
+    /* ── CTA strip ── */
+    .sandbox-cta {
+      background: var(--gray-900);
+      color: var(--white);
+      padding: 56px 0;
+      text-align: center;
     }
-    .cta-text { font-size: 18px; font-weight: 700; color: var(--white); line-height: 1.4; }
-    .cta-sub { font-size: 14px; color: rgba(255,255,255,0.7); margin-top: 4px; }
-    .btn-white {
-      background: var(--white); color: var(--blue); border: 2px solid var(--white);
-      font-weight: 700; padding: 11px 24px; border-radius: 980px; font-size: 14px;
-      white-space: nowrap; flex-shrink: 0; font-family: var(--sans);
+    .sandbox-cta h2 { font-size: clamp(20px, 2.5vw, 30px); font-weight: 700; margin-bottom: 10px; }
+    .sandbox-cta p { font-size: 16px; color: rgba(255,255,255,0.7); margin-bottom: 28px; }
+    .btn-dark-primary {
+      display: inline-block;
+      font-family: var(--sans);
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--dark);
+      background: var(--white);
+      border: 2px solid var(--white);
+      padding: 12px 28px;
+      border-radius: 980px;
+      cursor: pointer;
+      transition: background 0.15s;
     }
-    .btn-white:hover { background: rgba(255,255,255,0.92); }
+    .btn-dark-primary:hover { background: rgba(255,255,255,0.88); }
 
-    @keyframes sbSimSlideDown { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
-    @keyframes sbSimPulse { 0%,100% { opacity:1; } 50% { opacity:0.25; } }
-    @keyframes sbSimFadeIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:translateY(0); } }
+    /* ── Footer ── */
+    footer { background: var(--gray-900); color: rgba(255,255,255,0.8); padding: 64px 0 32px; }
+    .footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 40px; margin-bottom: 40px; }
+    .f-brand { font-size: 16px; font-weight: 700; color: var(--white); margin-bottom: 10px; }
+    .f-tagline { font-size: 13px; color: rgba(255,255,255,0.5); line-height: 1.6; max-width: 240px; }
+    .f-col h4 { font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.4); margin-bottom: 14px; }
+    .f-col ul { list-style: none; }
+    .f-col li { margin-bottom: 8px; }
+    .f-col a { font-size: 13px; color: rgba(255,255,255,0.65); transition: color 0.15s; }
+    .f-col a:hover { color: var(--white); }
+    .footer-bottom { border-top: 1px solid rgba(255,255,255,0.08); padding-top: 24px; }
+    .footer-bottom-text { font-size: 12px; color: rgba(255,255,255,0.3); }
 
+    @media (max-width: 900px) {
+      .footer-grid { grid-template-columns: 1fr 1fr; gap: 36px; }
+    }
+    @media (max-width: 700px) {
+      .sandbox-grid { grid-template-columns: 1fr; }
+    }
     @media (max-width: 640px) {
-      .form-grid { grid-template-columns: 1fr; }
-      .how-strip { grid-template-columns: 1fr; }
-      .cta-strip { flex-direction: column; text-align: center; }
+      .nav-links, .nav-actions { display: none; }
+      .hamburger { display: flex; }
+      .footer-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body>
 
-<nav>
-  <div class="nav-inner">
-    <a class="nav-logo" href="/">Authproof <span>Cloud</span></a>
-    <div class="nav-actions">
-      <a href="/login" class="btn btn-outline">Log in</a>
-      <a href="/signup" class="btn btn-primary">Start free</a>
+<!-- Nav -->
+<nav id="nav">
+  <div class="container">
+    <div class="nav-inner">
+      <a class="nav-logo" href="/">Authproof <span>Cloud</span></a>
+      <ul class="nav-links">
+        <li><a href="/features">Features</a></li>
+        <li><a href="/sandbox" class="active">Sandbox</a></li>
+        <li><a href="/#pricing">Pricing</a></li>
+        <li><a href="https://github.com/Commonguy25/authproof-sdk">Docs</a></li>
+        <li><a href="/security">Security</a></li>
+        <li><a href="/managed-ai">For Managed AI</a></li>
+        <li><a href="/healthcare">Healthcare</a></li>
+      </ul>
+      <div class="nav-actions">
+        <a href="/login" class="btn btn-outline">Log in</a>
+        <a href="/signup" class="btn btn-primary">Start free</a>
+      </div>
+      <button class="hamburger" id="hamburgerBtn" onclick="toggleMenu()" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
     </div>
   </div>
 </nav>
 
-<div class="page">
-  <div class="page-eyebrow">Interactive sandbox</div>
-  <h1 class="page-headline">Watch your receipt enforce itself — live</h1>
-  <p class="page-sub">Type what you'd allow and deny. A simulated agent will attempt each action and show you exactly what gets permitted or blocked by your signed receipt.</p>
+<div class="mobile-menu" id="mobileMenu">
+  <a href="/features" onclick="closeMenu()">Features</a>
+  <a href="/sandbox" onclick="closeMenu()">Sandbox</a>
+  <a href="/#pricing" onclick="closeMenu()">Pricing</a>
+  <a href="https://github.com/Commonguy25/authproof-sdk" onclick="closeMenu()">Docs</a>
+  <a href="/security" onclick="closeMenu()">Security</a>
+  <a href="/managed-ai" onclick="closeMenu()">For Managed AI</a>
+  <a href="/healthcare" onclick="closeMenu()">Healthcare</a>
+  <a href="/login" class="btn btn-outline">Log in</a>
+  <a href="/signup" class="btn btn-primary">Start free</a>
+</div>
 
-  <div class="form-card">
-    <div class="form-grid">
-      <div class="form-field">
-        <label>Allowed actions</label>
-        <textarea id="sbSimAllowed" placeholder="read:records, write:scheduling, send:email" rows="4"></textarea>
-        <div class="hint">comma-separated</div>
-      </div>
-      <div class="form-field">
-        <label>Denied actions</label>
-        <textarea id="sbSimDenied" placeholder="delete:*, send:external, modify:system" rows="4"></textarea>
-        <div class="hint">comma-separated</div>
-      </div>
-    </div>
-    <button class="launch-btn" onclick="sbSimLaunch()">Launch simulated agent →</button>
-  </div>
-
-  <div id="sbSimPanel" class="sim-panel">
-    <div class="sim-header">
-      <div class="sim-dot"></div>
-      <span>Agent session — watching live</span>
-      <button id="sbSimRunAgain" class="sim-run-again" onclick="sbSimLaunch()">Run again →</button>
-    </div>
-    <div id="sbSimTerminal" class="sim-terminal"></div>
-  </div>
-
-  <div class="how-strip">
-    <div class="how-item">
-      <div class="how-icon">🔏</div>
-      <div class="how-title">Receipt signed before execution</div>
-      <div class="how-desc">The authorization proof exists before the agent acts — not reconstructed from logs after the fact.</div>
-    </div>
-    <div class="how-item">
-      <div class="how-icon">⛔</div>
-      <div class="how-title">Out-of-scope actions blocked</div>
-      <div class="how-desc">Anything not in the signed scope is denied before execution. No exceptions, no bypasses.</div>
-    </div>
-    <div class="how-item">
-      <div class="how-icon">📋</div>
-      <div class="how-title">Every decision is auditable</div>
-      <div class="how-desc">Each permit and deny is logged with a cryptographic chain your auditor can verify independently.</div>
-    </div>
-  </div>
-
-  <div class="cta-strip">
-    <div>
-      <div class="cta-text">Ready to use this for real?</div>
-      <div class="cta-sub">Free tier — 1,000 receipts per month, no card required.</div>
-    </div>
-    <a href="/signup" class="btn-white">Start free →</a>
+<!-- Hero -->
+<div class="sandbox-hero">
+  <div class="container">
+    <div class="sandbox-hero-label">Interactive demo</div>
+    <h1 class="sandbox-hero-title">Try it yourself</h1>
+    <p class="sandbox-hero-sub">Create a receipt and test an action — no account required. All processing happens in your browser.</p>
   </div>
 </div>
 
+<!-- Sandbox UI -->
+<div class="sandbox-main">
+  <div class="container">
+
+    <div class="sandbox-grid">
+      <div class="sandbox-card">
+        <div class="sandbox-card-title">Step 1 — Create a Receipt</div>
+        <div class="sandbox-form-group">
+          <label class="sandbox-label" for="sbAllowed">Allowed actions</label>
+          <input class="form-input" id="sbAllowed" type="text" placeholder="read calendar, schedule meeting" style="width:100%;" oninput="liveUpdateReceipt()" />
+          <div class="sandbox-hint">Comma-separated — actions this agent may take</div>
+        </div>
+        <div class="sandbox-form-group">
+          <label class="sandbox-label" for="sbDenied">Denied actions</label>
+          <input class="form-input" id="sbDenied" type="text" placeholder="send email, delete events" style="width:100%;" oninput="liveUpdateReceipt()" />
+          <div class="sandbox-hint">Comma-separated — actions that are always blocked</div>
+        </div>
+        <div class="sandbox-form-group">
+          <label class="sandbox-label" for="sbExpiry">Expiry</label>
+          <select class="form-select" id="sbExpiry" style="width:100%;" onchange="liveUpdateReceipt()">
+            <option value="1">1 hour</option>
+            <option value="2">2 hours</option>
+            <option value="8">8 hours</option>
+            <option value="24">24 hours</option>
+          </select>
+        </div>
+        <button class="btn-sandbox-create" onclick="createSandboxReceipt()">Create Receipt</button>
+      </div>
+
+      <div class="sandbox-card">
+        <div class="sandbox-card-title">Step 2 — Receipt JSON</div>
+        <pre class="sandbox-json-block" id="sbReceiptJson">Fill in the form and click "Create Receipt" to generate a receipt.</pre>
+      </div>
+    </div>
+
+    <div class="sandbox-test-card">
+      <div class="sandbox-card-title">Step 3 — Test an Action</div>
+      <div class="sandbox-action-row">
+        <input class="form-input" id="sbAction" type="text"
+          placeholder='e.g. "Read calendar to find free slots on Tuesday"'
+          onkeydown="if(event.key==='Enter') runSandboxCheck()" />
+        <button class="btn-sandbox-run" onclick="runSandboxCheck()">Run</button>
+      </div>
+      <div class="sandbox-result" id="sbResult">
+        <div class="sandbox-result-label" id="sbResultLabel"></div>
+        <div class="sandbox-result-reason" id="sbResultReason"></div>
+      </div>
+      <div class="sandbox-note">
+        Sandbox uses keyword matching against your allowed/denied lists. Denied takes precedence.<br>
+        Real SDK receipts are ECDSA P-256 signed — see
+        <a href="https://github.com/Commonguy25/authproof-sdk" target="_blank" style="color:var(--blue);">the SDK docs</a>
+        for full cryptographic verification.
+      </div>
+    </div>
+
+    <!-- Step 4 — Animated simulation -->
+    <style>
+    @keyframes sbSimSlideDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes sbSimPulse{0%,100%{opacity:1}50%{opacity:0.25}}
+    @keyframes sbSimFadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+    </style>
+    <div class="sandbox-test-card" style="margin-top:24px;">
+      <div class="sandbox-card-title">Step 4 — Watch the Agent Work</div>
+      <p style="font-size:13px;color:var(--gray-500);margin-bottom:16px;line-height:1.6;">Uses the allowed/denied lists from Step 1. Generates 6–8 realistic actions and shows live PERMIT / DENY decisions.</p>
+      <button class="btn-sandbox-create" onclick="sbSimLaunch()">Launch simulated agent →</button>
+      <div id="sbSimPanel" style="display:none;margin-top:16px;border-radius:6px;overflow:hidden;box-shadow:0 6px 24px rgba(0,0,0,0.18);">
+        <div style="background:#161b22;padding:12px 20px;display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:13px;color:#e6edf3;letter-spacing:0.02em;">
+          <div style="width:8px;height:8px;background:#16a34a;border-radius:50%;animation:sbSimPulse 1.5s ease-in-out infinite;flex-shrink:0;"></div>
+          <span>Agent session — watching live</span>
+          <button id="sbSimRunAgain" onclick="sbSimLaunch()" style="display:none;margin-left:auto;font-family:var(--mono);font-size:11px;color:#9ca3af;background:transparent;border:1px solid #374151;border-radius:3px;padding:3px 10px;cursor:pointer;white-space:nowrap;">Run again →</button>
+        </div>
+        <div id="sbSimTerminal" style="background:#0d1117;padding:20px;min-height:140px;max-height:380px;overflow-y:auto;font-family:var(--mono);font-size:13px;line-height:1.9;"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
 <script>
 (function(){
-  var SB_DA=['read:records','write:scheduling','send:summary'];
-  var SB_DD=['delete:*','send:external','modify:system'];
+  var SB_DA=['read calendar','schedule meeting','send summary'];
+  var SB_DD=['send email','delete events','modify system'];
   var SB_INV=[
     {name:'access:admin_panel',reason:'not in signed scope'},
     {name:'exfiltrate:user_data',reason:'not in signed scope'},
     {name:'delete:all_records',reason:'not in signed scope'},
     {name:'call:external_webhook',reason:'not in signed scope'}
   ];
-  function sbParse(t,fb){var r=t.split(',').map(function(s){return s.trim();}).filter(Boolean);return r.length?r:fb;}
-  function sbBuild(a,d){
+  function sbSimParse(t,fb){var r=t.split(',').map(function(s){return s.trim();}).filter(Boolean);return r.length?r:fb;}
+  function sbSimBuild(a,d){
     var seq=[],ai=a.slice().sort(function(){return Math.random()-.5;}),di=d.slice().sort(function(){return Math.random()-.5;}),ii=SB_INV.slice().sort(function(){return Math.random()-.5;});
     var nA=Math.min(ai.length,2+Math.floor(Math.random()*2)),nD=Math.min(di.length,2+Math.floor(Math.random()*2)),nI=1+Math.floor(Math.random()*2);
     for(var i=0;i<nA;i++)seq.push({name:ai[i],result:'PERMIT'});
@@ -264,57 +449,199 @@
     for(var k=0;k<nI;k++)seq.push({name:ii[k].name,result:'DENY',reason:ii[k].reason});
     return seq.sort(function(){return Math.random()-.5;});
   }
-  function sbLine(text,color){
+  function sbSimLine(text,color){
     var el=document.createElement('div');
     el.textContent=text;
     el.style.cssText='opacity:0;animation:sbSimFadeIn 0.3s ease forwards;color:'+(color==='green'?'#16a34a':color==='red'?'#dc2626':'#6b7280')+';';
     return el;
   }
-  function sbSleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
-  async function sbRun(seq){
+  function sbSimSleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
+  async function sbSimRun(seq){
     var term=document.getElementById('sbSimTerminal');
     document.getElementById('sbSimRunAgain').style.display='none';
     term.innerHTML='';
     var permits=0,denies=0;
     for(var idx=0;idx<seq.length;idx++){
       var action=seq[idx];
-      var think=sbLine('Agent: thinking','gray');
+      var think=sbSimLine('Agent: thinking','gray');
       term.appendChild(think);term.scrollTop=term.scrollHeight;
       var dotTick=setInterval((function(el){var c=0;return function(){c=(c+1)%4;el.textContent='Agent: thinking'+'.'.repeat(c);};})(think),220);
-      await sbSleep(800);
+      await sbSimSleep(800);
       clearInterval(dotTick);
       think.textContent='Agent: thinking...';
-      var att=sbLine('→ Attempting: '+action.name,'gray');
+      var att=sbSimLine('→ Attempting: '+action.name,'gray');
       term.appendChild(att);term.scrollTop=term.scrollHeight;
-      await sbSleep(400);
+      await sbSimSleep(400);
       var resText=action.result==='PERMIT'?'✓ PERMIT — within signed scope':'✗ DENY — '+(action.reason||'out of scope');
-      var resEl=sbLine(resText,action.result==='PERMIT'?'green':'red');
+      var resEl=sbSimLine(resText,action.result==='PERMIT'?'green':'red');
       term.appendChild(resEl);term.scrollTop=term.scrollHeight;
       if(action.result==='PERMIT')permits++;else denies++;
-      await sbSleep(350);
+      await sbSimSleep(350);
       var sp=document.createElement('div');sp.style.height='4px';term.appendChild(sp);
     }
-    await sbSleep(500);
+    await sbSimSleep(500);
     var sum=document.createElement('div');
-    sum.style.cssText='margin-top:12px;padding:16px 18px;background:#111827;border:1px solid #1f2937;border-radius:6px;animation:sbSimFadeIn 0.4s ease forwards;opacity:0;';
-    sum.innerHTML='<div style="color:#e5e7eb;font-size:14px;font-weight:600;margin-bottom:8px;">Session complete — '+permits+' PERMIT, '+denies+' DENY.</div>'+
-      '<div style="color:#6b7280;font-size:13px;margin-bottom:14px;">Your receipt worked exactly as designed.</div>'+
-      '<a href="/signup" style="display:inline-block;background:#1a56db;color:#fff;font-size:13px;font-weight:600;padding:9px 20px;border-radius:5px;text-decoration:none;font-family:\'Inter\',sans-serif;">Get your real receipt →</a>';
+    sum.style.cssText='margin-top:12px;padding:14px 16px;background:#111827;border:1px solid #1f2937;border-radius:6px;animation:sbSimFadeIn 0.4s ease forwards;opacity:0;';
+    sum.innerHTML='<div style="color:#e5e7eb;font-size:13px;font-weight:600;margin-bottom:6px;">Session complete — '+permits+' PERMIT, '+denies+' DENY.</div>'+
+      '<div style="color:#6b7280;font-size:12px;margin-bottom:14px;">Your receipt worked exactly as designed.</div>'+
+      '<a href="/signup" style="display:inline-block;background:#1a56db;color:#fff;font-size:12px;font-weight:600;padding:7px 16px;border-radius:4px;text-decoration:none;">Get your real receipt →</a>';
     term.appendChild(sum);term.scrollTop=term.scrollHeight;
     document.getElementById('sbSimRunAgain').style.display='block';
   }
   window.sbSimLaunch=function(){
-    var a=sbParse(document.getElementById('sbSimAllowed').value,SB_DA);
-    var d=sbParse(document.getElementById('sbSimDenied').value,SB_DD);
+    var a=sbSimParse((document.getElementById('sbAllowed')||{}).value||'',SB_DA);
+    var d=sbSimParse((document.getElementById('sbDenied')||{}).value||'',SB_DD);
     var panel=document.getElementById('sbSimPanel');
     panel.style.display='block';
     panel.style.animation='none';
     void panel.offsetWidth;
     panel.style.animation='sbSimSlideDown 0.4s ease forwards';
-    sbRun(sbBuild(a,d));
+    sbSimRun(sbSimBuild(a,d));
   };
 })();
 </script>
 
+<!-- CTA -->
+<div class="sandbox-cta">
+  <div class="container">
+    <h2>Ready to add this to your agent?</h2>
+    <p>Sign up free and get a real API key in minutes. ECDSA P-256 signed receipts, tamper-evident audit trail, compliance exports.</p>
+    <a href="/signup" class="btn-dark-primary">Start free →</a>
+  </div>
+</div>
+
+<!-- Footer -->
+<footer>
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <div class="f-brand">Authproof Cloud</div>
+        <p class="f-tagline">Cryptographic authorization for AI agents. Signed before execution. Independently verifiable.</p>
+      </div>
+      <div class="f-col">
+        <h4>Product</h4>
+        <ul>
+          <li><a href="/features">Features</a></li>
+          <li><a href="/#pricing">Pricing</a></li>
+          <li><a href="/signup">Sign up free</a></li>
+          <li><a href="/login">Log in</a></li>
+        </ul>
+      </div>
+      <div class="f-col">
+        <h4>Compliance</h4>
+        <ul>
+          <li><a href="/security">Security</a></li>
+          <li><a href="/baa">BAA</a></li>
+          <li><a href="/healthcare">Healthcare</a></li>
+          <li><a href="https://github.com/Commonguy25/authproof-sdk/blob/main/LICENSE" target="_blank">MIT License</a></li>
+        </ul>
+      </div>
+      <div class="f-col">
+        <h4>Open Source</h4>
+        <ul>
+          <li><a href="https://github.com/Commonguy25/authproof-sdk" target="_blank">GitHub</a></li>
+          <li><a href="https://datatracker.ietf.org/doc/draft-nelson-agent-delegation-receipts/" target="_blank">IETF Draft</a></li>
+          <li><a href="https://authproof.dev">authproof.dev</a></li>
+          <li><a href="https://github.com/Commonguy25/authproof-sdk/blob/main/WHITEPAPER.md" target="_blank">White Paper</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p class="footer-bottom-text">© 2026 Authproof. MIT Licensed. Built by Ryan Nelson.</p>
+    </div>
+  </div>
+</footer>
+
+<script>
+  window.addEventListener('scroll', function() {
+    document.getElementById('nav').classList.toggle('scrolled', window.scrollY > 10);
+  });
+
+  function toggleMenu() {
+    var menu = document.getElementById('mobileMenu');
+    var btn  = document.getElementById('hamburgerBtn');
+    var isOpen = menu.classList.toggle('open');
+    btn.setAttribute('aria-expanded', isOpen);
+  }
+  function closeMenu() {
+    document.getElementById('mobileMenu').classList.remove('open');
+    document.getElementById('hamburgerBtn').setAttribute('aria-expanded', 'false');
+  }
+  document.addEventListener('click', function(e) {
+    var menu = document.getElementById('mobileMenu');
+    var btn  = document.getElementById('hamburgerBtn');
+    if (menu.classList.contains('open') && !menu.contains(e.target) && !btn.contains(e.target)) {
+      closeMenu();
+    }
+  });
+
+  // ── Sandbox logic ────────────────────────────────────────────────────────────
+  var _sbReceipt = null;
+
+  function _buildSandboxReceipt() {
+    var allowed = (document.getElementById('sbAllowed').value || '')
+      .split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+    var denied  = (document.getElementById('sbDenied').value || '')
+      .split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+    var hours   = parseInt(document.getElementById('sbExpiry').value, 10) || 1;
+    var now     = new Date();
+    var end     = new Date(now.getTime() + hours * 3600000);
+    var id      = 'auth-' + now.getTime() + '-' + Math.random().toString(36).slice(2, 7);
+    return {
+      delegationId:    id,
+      issuedAt:        now.toISOString(),
+      allowedActions:  allowed,
+      deniedActions:   denied,
+      timeWindow:      { start: now.toISOString(), end: end.toISOString() },
+      signerPublicKey: '(sandbox — use AuthProof.create() for real signed receipts)',
+      signature:       '(sandbox simulation only)',
+    };
+  }
+
+  function liveUpdateReceipt() {
+    if (!_sbReceipt) return;
+    _sbReceipt = _buildSandboxReceipt();
+    document.getElementById('sbReceiptJson').textContent = JSON.stringify(_sbReceipt, null, 2);
+  }
+
+  function createSandboxReceipt() {
+    _sbReceipt = _buildSandboxReceipt();
+    document.getElementById('sbReceiptJson').textContent = JSON.stringify(_sbReceipt, null, 2);
+    document.getElementById('sbResult').style.display = 'none';
+  }
+
+  function runSandboxCheck() {
+    if (!_sbReceipt) {
+      alert('Create a receipt first — fill in Step 1 and click "Create Receipt".');
+      return;
+    }
+    var action = (document.getElementById('sbAction').value || '').trim();
+    if (!action) { alert('Enter an action to test in Step 3.'); return; }
+    var a = action.toLowerCase();
+    var result, reason;
+    var denied = _sbReceipt.deniedActions;
+    for (var i = 0; i < denied.length; i++) {
+      var words = denied[i].toLowerCase().split(/\s+/).filter(Boolean);
+      if (words.length && words.every(function(w) { return a.includes(w); })) {
+        result = 'DENY'; reason = 'action matches denied pattern: "' + denied[i] + '"'; break;
+      }
+    }
+    if (!result) {
+      var allowed = _sbReceipt.allowedActions;
+      for (var j = 0; j < allowed.length; j++) {
+        var ws = allowed[j].toLowerCase().split(/\s+/).filter(Boolean);
+        if (ws.length && ws.every(function(w) { return a.includes(w); })) {
+          result = 'PERMIT'; reason = 'action within allowed scope: "' + allowed[j] + '"'; break;
+        }
+      }
+    }
+    if (!result) { result = 'DENY'; reason = 'action not found in allowed scope'; }
+    var el = document.getElementById('sbResult');
+    el.className = 'sandbox-result ' + (result === 'PERMIT' ? 'permit' : 'deny');
+    document.getElementById('sbResultLabel').textContent  = result;
+    document.getElementById('sbResultReason').textContent = reason;
+    el.style.display = 'block';
+  }
+</script>
 </body>
 </html>

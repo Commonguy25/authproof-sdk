@@ -2885,12 +2885,16 @@ class BatchReceipt {
 class AuthProofClient {
   /**
    * @param {object} [opts]
-   * @param {boolean} [opts.guided=false]      — Enable guided (observation-based) delegation mode.
-   * @param {boolean} [opts.sessionAware=false] — Enable session-aware delegation mode.
+   * @param {boolean} [opts.guided=false]              — Enable guided (observation-based) delegation mode.
+   * @param {boolean} [opts.sessionAware=false]         — Enable session-aware delegation mode.
+   * @param {boolean} [opts.sessionScopeAmnesia=true]   — When true each new session starts with a
+   *   completely fresh authorization state.  Prior denial patterns from previous sessions are not
+   *   carried forward into the new session state.
    */
-  constructor({ guided = false, sessionAware = false } = {}) {
-    this._guided       = guided;
-    this._sessionAware = sessionAware;
+  constructor({ guided = false, sessionAware = false, sessionScopeAmnesia = true } = {}) {
+    this._guided              = guided;
+    this._sessionAware        = sessionAware;
+    this._sessionScopeAmnesia = sessionScopeAmnesia;
     /** @private {Map<string, object[]>} sessionId → denied call entries */
     this._deniedCalls  = new Map();
   }
@@ -3055,6 +3059,12 @@ class AuthProofClient {
       publicJwk,
       teeConfig,
     });
+
+    // sessionScopeAmnesia: discard denial state from prior sessions so each new
+    // session starts with a completely clean authorization slate.
+    if (this._sessionScopeAmnesia) {
+      this._deniedCalls = new Map();
+    }
 
     // Dynamic import avoids circular dependency — session-state.js does not
     // import from authproof.js, so this is safe.

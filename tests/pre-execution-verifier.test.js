@@ -691,6 +691,76 @@ async function run() {
   assert(alpPassEntries[0].action.operation === 'receipt_authorized',
     'ActionLog entry operation is receipt_authorized');
 
+  // ── Agent-facing response: decision field ─────────────────────────
+  console.log('\nAgent-facing response — decision field (Change 2)');
+
+  {
+    // PERMIT case: passing check exposes decision: 'PERMIT'
+    const { verifier: vd, delegationLog: dld } = await makeVerifier();
+    const { receipt: rd, receiptId: ridd } = await makeReceipt({ privateKey, publicJwk });
+    dld.add(ridd, rd);
+
+    const permitResult = await vd.check({
+      receiptHash:          ridd,
+      action:               { operation: 'read', resource: 'calendar' },
+      operatorInstructions: 'Summarize clearly. Stay within scope.',
+    });
+    assert(permitResult.decision === 'PERMIT', 'Passing check returns decision: PERMIT');
+    assert(typeof permitResult.decision === 'string', 'decision is a string');
+    assert(permitResult.decision !== 'INVALID_SIGNATURE' &&
+           permitResult.decision !== 'RECEIPT_REVOKED'   &&
+           permitResult.decision !== 'RECEIPT_EXPIRED',
+      'Agent-facing decision contains no reason code — only PERMIT or DENY');
+  }
+
+  {
+    // DENY case: blocked check exposes decision: 'DENY' with no reason code in decision field
+    const { verifier: ve, delegationLog: dle } = await makeVerifier();
+    const { receipt: re, receiptId: ride } = await makeReceipt({ privateKey, publicJwk, ttlHours: -1 });
+    dle.add(ride, re);
+
+    const denyResult = await ve.check({
+      receiptHash:          ride,
+      action:               { operation: 'read', resource: 'calendar' },
+      operatorInstructions: 'Summarize clearly. Stay within scope.',
+    });
+    assert(denyResult.decision === 'DENY', 'Blocked check returns decision: DENY');
+    assert(denyResult.decision !== denyResult.blockedReason,
+      'decision field does not equal blockedReason — reason code is not surfaced in decision');
+    assert(!['INVALID_SIGNATURE','RECEIPT_REVOKED','RECEIPT_EXPIRED',
+             'ACTION_NOT_IN_SCOPE','OPERATOR_INSTRUCTIONS_MISMATCH'].includes(denyResult.decision),
+      'decision field contains only PERMIT or DENY — never a reason code');
+  }
+
+  // ── Audit log still contains full reason codes ─────────────────────
+  console.log('\nAudit log — full reason codes preserved (Change 2)');
+
+  {
+    const { verifier: vf, delegationLog: dlf } = await makeVerifier();
+    const { receipt: rf, receiptId: ridf } = await makeReceipt({ privateKey, publicJwk, ttlHours: -1 });
+    dlf.add(ridf, rf);
+
+    const blockedResult = await vf.check({
+      receiptHash:          ridf,
+      action:               { operation: 'read', resource: 'calendar' },
+      operatorInstructions: 'Summarize clearly. Stay within scope.',
+    });
+
+    // Agent-facing: decision is DENY with no reason detail
+    assert(blockedResult.decision === 'DENY', 'Agent-facing decision is DENY');
+
+    // Audit log: full reason still present in log entry
+    const auditEntries = vf.getAuditLog(ridf);
+    assert(auditEntries.length > 0, 'Audit log has entries for DENY decision');
+    const auditEntry = auditEntries[0];
+    const loggedReason = auditEntry.action.parameters.blockedReason;
+    assert(typeof loggedReason === 'string' && loggedReason.length > 0,
+      'Audit log entry contains non-empty blockedReason');
+    assert(loggedReason.toLowerCase().includes('expir') ||
+           loggedReason.toLowerCase().includes('valid'),
+      'Audit log contains full reason string (not just DENY)');
+  }
+
   // ── Summary ────────────────────────────────────────────────────────
   console.log(`\n${'─'.repeat(40)}`);
   console.log(`Results: ${passed} passed, ${failed} failed`);
