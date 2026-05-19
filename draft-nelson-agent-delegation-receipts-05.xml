@@ -728,6 +728,15 @@ Verify(receipt, action):
          SHA-256(canonical(currentToolSchema))
          != receipt.toolSchemaHash
                                       -> fail
+  (9) if receipt.toolOutputHash PRESENT and
+         action.toolOutput PRESENT and
+         SHA-256(action.toolOutput)
+         != receipt.toolOutputHash
+                                      -> fail
+  (10) if receipt.trustedSources PRESENT and
+          action.instructionSource PRESENT and
+          action.instructionSource NOT IN receipt.trustedSources
+                                      -> fail
   return true
 ]]></sourcecode>
         <t>
@@ -798,6 +807,30 @@ Verify(receipt, action):
             since the receipt was issued, the mismatch is
             immediately detectable from the log entry, with no
             reliance on the Operator's own account.
+          </dd>
+
+          <dt>Tool output hash check (9):</dt>
+          <dd>
+            When the receipt contains a toolOutputHash field, the
+            verifier computes the SHA-256 hash of the tool output
+            that triggered the action and compares it to the
+            committed value.  A mismatch indicates that the tool
+            output was altered between delegation time and
+            execution time.  Returns TOOL_OUTPUT_TAMPERED on
+            failure.
+          </dd>
+
+          <dt>Instruction provenance check (10):</dt>
+          <dd>
+            When the receipt contains a trustedSources field, the
+            verifier inspects the instructionSource field of the
+            action.  If the source is not in the trustedSources
+            list, the action is denied.  This check is the primary
+            defense against prompt injection attacks in which a
+            poisoned document or untrusted tool output manipulates
+            the agent into requesting an in-scope action for
+            malicious purposes.  Returns
+            UNTRUSTED_INSTRUCTION_SOURCE on failure.
           </dd>
         </dl>
       </section>
@@ -896,6 +929,24 @@ Verify(receipt, action):
             Tool schema hash at execution time does not match hash
             committed at receipt issuance time.  Tool specification
             has changed since authorization was granted.
+          </dd>
+
+          <dt>TOOL_OUTPUT_TAMPERED:</dt>
+          <dd>
+            The hash of the tool output that triggered the action
+            does not match the hash committed in the receipt at
+            delegation time.  The tool output may have been
+            modified between delegation and execution.
+          </dd>
+
+          <dt>UNTRUSTED_INSTRUCTION_SOURCE:</dt>
+          <dd>
+            The instruction that triggered the action originated
+            from a source not listed in the receipt's
+            trustedSources field.  The instruction source may have
+            been manipulated by a prompt injection attack delivered
+            through an untrusted input channel such as a retrieved
+            document or external tool output.
           </dd>
         </dl>
       </section>
@@ -1645,6 +1696,30 @@ else                                 --> ALLOW
             this gap by binding a cryptographic measurement of the
             model state to the receipt at delegation time and
             re-verifying inside a TEE at execution time.
+          </dd>
+
+          <dt>Prompt Injection:</dt>
+          <dd>
+            A signed Delegation Receipt enforces what actions are
+            permitted but does not by itself verify that the
+            instruction to take a permitted action originated from
+            a trusted source.  A prompt injection attack may
+            manipulate an agent into requesting an in-scope action
+            for malicious purposes -- for example, a receipt
+            permits send_email but a poisoned retrieved document
+            instructs the agent to send to an attacker-controlled
+            address.  DRP addresses this vector through instruction
+            provenance checking (step 10 of Verify): the receipt
+            <bcp14>MAY</bcp14> include a trustedSources field
+            listing the instruction sources -- such as user,
+            system_prompt, or verified_tool -- that are permitted
+            to influence agent behavior.  When present, the
+            verifier <bcp14>MUST</bcp14> reject any action whose
+            instructionSource is not in the list, returning
+            UNTRUSTED_INSTRUCTION_SOURCE.  This gives the User
+            cryptographic control over which input channels can
+            drive agent behavior, independent of the content of
+            those inputs.
           </dd>
 
           <dt>Micro-Receipt Fatigue:</dt>

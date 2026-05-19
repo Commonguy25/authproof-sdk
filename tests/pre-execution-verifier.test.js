@@ -27,15 +27,19 @@ function assert(condition, label) {
 // ─────────────────────────────────────────────
 
 async function makeReceipt({
-  scope         = 'Read calendar events and summarize meetings',
-  boundaries    = 'Do not send emails. Do not modify records.',
-  instructions  = 'Summarize clearly. Stay within scope.',
-  ttlHours      = 2,
+  scope           = 'Read calendar events and summarize meetings',
+  boundaries      = 'Do not send emails. Do not modify records.',
+  instructions    = 'Summarize clearly. Stay within scope.',
+  ttlHours        = 2,
   privateKey,
   publicJwk,
+  trustedSources,
+  toolOutputHash,
 } = {}) {
   const { receipt, receiptId } = await AuthProof.create({
     scope, boundaries, instructions, ttlHours, privateKey, publicJwk,
+    ...(trustedSources ? { trustedSources } : {}),
+    ...(toolOutputHash ? { toolOutputHash } : {}),
   });
   return { receipt, receiptId };
 }
@@ -690,6 +694,144 @@ async function run() {
     'ActionLog has exactly one entry after all checks pass');
   assert(alpPassEntries[0].action.operation === 'receipt_authorized',
     'ActionLog entry operation is receipt_authorized');
+
+  // ── Check 11: Instruction Provenance (UNTRUSTED_INSTRUCTION_SOURCE) ──
+  console.log('\nCheck 11: Instruction provenance — UNTRUSTED_INSTRUCTION_SOURCE');
+
+  // DENY: trustedSources=['user'], action has instructionSource='external_document'
+  {
+    const { verifier: v11a, delegationLog: dl11a } = await makeVerifier();
+    const { receipt: r11a, receiptId: rid11a } = await makeReceipt({
+      privateKey, publicJwk, trustedSources: ['user', 'system_prompt'],
+    });
+    dl11a.add(rid11a, r11a);
+
+    const res11a = await v11a.check({
+      receiptHash:          rid11a,
+      action:               {
+        operation:         'Read calendar meetings and summarize',
+        resource:          'calendar',
+        instructionSource: 'external_document',
+      },
+      operatorInstructions: 'Summarize clearly. Stay within scope.',
+    });
+
+    assert(res11a.allowed === false,
+      'Check 11: external_document source with trustedSources=[user,system_prompt] → DENY');
+    assert(res11a.blockedReason === 'UNTRUSTED_INSTRUCTION_SOURCE',
+      'Check 11: blockedReason is UNTRUSTED_INSTRUCTION_SOURCE');
+    assert(res11a.checks.instructionProvenanceValid === false,
+      'Check 11: instructionProvenanceValid=false for untrusted source');
+  }
+
+  // PERMIT: trustedSources=['user','system_prompt'], action has instructionSource='user'
+  {
+    const { verifier: v11b, delegationLog: dl11b } = await makeVerifier();
+    const { receipt: r11b, receiptId: rid11b } = await makeReceipt({
+      privateKey, publicJwk, trustedSources: ['user', 'system_prompt'],
+    });
+    dl11b.add(rid11b, r11b);
+
+    const res11b = await v11b.check({
+      receiptHash:          rid11b,
+      action:               {
+        operation:         'Read calendar meetings and summarize',
+        resource:          'calendar',
+        instructionSource: 'user',
+      },
+      operatorInstructions: 'Summarize clearly. Stay within scope.',
+    });
+
+    assert(res11b.allowed === true,
+      'Check 11: instructionSource=user with trustedSources=[user,system_prompt] → PERMIT');
+    assert(res11b.checks.instructionProvenanceValid === true,
+      'Check 11: instructionProvenanceValid=true for trusted source');
+  }
+
+  // PERMIT: no trustedSources in receipt → check 11 skipped, behavior unchanged
+  {
+    const { verifier: v11c, delegationLog: dl11c } = await makeVerifier();
+    const { receipt: r11c, receiptId: rid11c } = await makeReceipt({ privateKey, publicJwk });
+    dl11c.add(rid11c, r11c);
+
+    const res11c = await v11c.check({
+      receiptHash:          rid11c,
+      action:               {
+        operation:         'Read calendar meetings and summarize',
+        resource:          'calendar',
+        instructionSource: 'external_document',
+      },
+      operatorInstructions: 'Summarize clearly. Stay within scope.',
+    });
+
+    assert(res11c.allowed === true,
+      'Check 11: no trustedSources in receipt → check skipped, allowed=true');
+    assert(!('instructionProvenanceValid' in res11c.checks),
+      'Check 11: instructionProvenanceValid absent when trustedSources not in receipt');
+  }
+
+  // ── Check 10: Tool output hash binding (TOOL_OUTPUT_TAMPERED) ─────────
+  console.log('\nCheck 10: Tool output hash binding — TOOL_OUTPUT_TAMPERED');
+
+  // Helper: compute sha256 hex of a string using the WebCrypto API
+  async function sha256hex(str) {
+    const enc = new TextEncoder();
+    const buf = await crypto.subtle.digest('SHA-256', enc.encode(str));
+    return 'sha256:' + Array.from(new Uint8Array(buf)).map(x => x.toString(16).padStart(2, '0')).join('');
+  }
+
+  // DENY: toolOutputHash committed for 'safe content', action delivers 'tampered content'
+  {
+    const committedHash = await sha256hex('safe content');
+    const { verifier: v10a, delegationLog: dl10a } = await makeVerifier();
+    const { receipt: r10a, receiptId: rid10a } = await makeReceipt({
+      privateKey, publicJwk, toolOutputHash: committedHash,
+    });
+    dl10a.add(rid10a, r10a);
+
+    const res10a = await v10a.check({
+      receiptHash:          rid10a,
+      action:               {
+        operation:  'Read calendar meetings and summarize',
+        resource:   'calendar',
+        toolOutput: 'tampered content',
+      },
+      operatorInstructions: 'Summarize clearly. Stay within scope.',
+    });
+
+    assert(res10a.allowed === false,
+      'Check 10: mismatched toolOutput → DENY');
+    assert(res10a.blockedReason === 'TOOL_OUTPUT_TAMPERED',
+      'Check 10: blockedReason is TOOL_OUTPUT_TAMPERED');
+    assert(res10a.checks.toolOutputHashValid === false,
+      'Check 10: toolOutputHashValid=false for mismatched output');
+  }
+
+  // PERMIT: toolOutput hash matches committed hash
+  {
+    const expectedOutput = 'safe content';
+    const committedHash  = await sha256hex(expectedOutput);
+    const { verifier: v10b, delegationLog: dl10b } = await makeVerifier();
+    const { receipt: r10b, receiptId: rid10b } = await makeReceipt({
+      privateKey, publicJwk, toolOutputHash: committedHash,
+    });
+    dl10b.add(rid10b, r10b);
+
+    const res10b = await v10b.check({
+      receiptHash:          rid10b,
+      action:               {
+        operation:  'Read calendar meetings and summarize',
+        resource:   'calendar',
+        toolOutput: expectedOutput,
+      },
+      operatorInstructions: 'Summarize clearly. Stay within scope.',
+    });
+
+    assert(res10b.allowed === true,
+      'Check 10: matching toolOutput hash → PERMIT');
+    assert(res10b.checks.toolOutputHashValid === true,
+      'Check 10: toolOutputHashValid=true for matching output');
+  }
 
   // ── Agent-facing response: decision field ─────────────────────────
   console.log('\nAgent-facing response — decision field (Change 2)');
