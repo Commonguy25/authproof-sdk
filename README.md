@@ -427,6 +427,16 @@ Engineers with eBPF LSM experience (Isovalent, Red Canary, or similar) are espec
 
 ---
 
+## Examples
+
+Two runnable examples live in the `examples/` directory.
+
+**[`examples/langchain-example.js`](examples/langchain-example.js)** — Shows the full LangChain integration path: generate a key pair, issue a delegation receipt, initialize `PreExecutionVerifier`, and wrap any agent with `authproofMiddleware` so every `invoke()` call is gated before the agent runtime gets control. Includes a mock agent you can run immediately and the exact code pattern for a real `AgentExecutor`. Run with `npm run example:langchain`.
+
+**[`examples/webauthn-example.html`](examples/webauthn-example.html)** — A self-contained three-card browser demo of the full delegation flow. Card 1 lets you define scope, boundaries, and operator instructions, then signs a receipt with a local key (swap in `navigator.credentials` for real WebAuthn). Card 2 displays the receipt ID, expiry, system prompt, and raw JSON. Card 3 lets you type any proposed action and verify it against the receipt in real time, showing each check result. Open directly in a browser — no build step required.
+
+---
+
 ## Installation
 
 ```bash

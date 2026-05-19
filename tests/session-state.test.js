@@ -627,6 +627,143 @@ async function run() {
     }
   }
 
+  // ── tauSession: decreases when cumulativeAnomalyMass increases ─────────────
+  console.log('\nSessionState — tauSession gate');
+
+  {
+    const s = makeSession();
+    const initialTau = s.tauSession;
+    assert(initialTau === 100, 'tauSession initializes to sessionCapacity (100)');
+    assert(s._cumulativeAnomalyMass === 0, 'cumulativeAnomalyMass starts at 0');
+
+    // Record an anomaly of severity 3
+    await s.record('write:db', { anomalies: [{ type: 'frequency-spike', severity: 3 }] });
+    assert(s._cumulativeAnomalyMass === 3, 'cumulativeAnomalyMass increments by anomaly.severity');
+    assert(s.tauSession === 97, 'tauSession decreases by anomaly.severity');
+  }
+
+  {
+    // tauSession never recovers after a clean action
+    const s = makeSession();
+    await s.record('write:db', { anomalies: [{ type: 'frequency-spike', severity: 5 }] });
+    const tauAfterAnomaly = s.tauSession;
+    await s.record('read:file', { anomalies: [] });
+    assert(s.tauSession === tauAfterAnomaly, 'tauSession does not recover on clean action');
+    assert(s._cumulativeAnomalyMass === 5, 'cumulativeAnomalyMass is monotone — never decremented');
+  }
+
+  {
+    // tauSession is reflected in getState()
+    const s = makeSession();
+    await s.record('write:db', { anomalies: [{ type: 'prompt-injection', severity: 5 }] });
+    const state = s.getState();
+    assert(typeof state.cumulativeAnomalyMass === 'number', 'getState returns cumulativeAnomalyMass');
+    assert(typeof state.tauSession === 'number', 'getState returns tauSession');
+    assert(state.cumulativeAnomalyMass === 5, 'getState cumulativeAnomalyMass matches severity');
+    assert(state.tauSession === 95, 'getState tauSession = sessionCapacity - cumulativeAnomalyMass');
+  }
+
+  // ── TAU_SESSION_EXHAUSTED fires regardless of trustScore ────────────────────
+  {
+    // Use tauMin=10, sessionCapacity=20 — easy to exhaust
+    const s = makeSession({ sessionCapacity: 20, tauMin: 10 });
+    assert(s.tauSession === 20, 'tauSession starts at custom sessionCapacity');
+
+    // Push cumulativeAnomalyMass past tauMin threshold (>= 10 so tauSession <= 10)
+    await s.record('write:db', { anomalies: [{ type: 'prompt-injection', severity: 11 }] });
+    assert(s.tauSession <= 10, 'tauSession has fallen to or below tauMin');
+
+    // High trustScore — gate must fire anyway
+    s.trustScore = 100;
+    const result = await s.evaluate({ action: 'read', payload: 'safe text' });
+    assert(result.decision === 'BLOCK', 'TAU_SESSION_EXHAUSTED blocks even with trustScore 100');
+    assert(result.reasons.includes('TAU_SESSION_EXHAUSTED'), 'reason is TAU_SESSION_EXHAUSTED');
+  }
+
+  {
+    // tauSession exactly at tauMin — still fires (<=, not <)
+    const s = makeSession({ sessionCapacity: 20, tauMin: 10 });
+    await s.record('write:db', { anomalies: [{ type: 'prompt-injection', severity: 10 }] });
+    assert(s.tauSession === 10, 'tauSession exactly at tauMin');
+    s.trustScore = 100;
+    const result = await s.evaluate({ action: 'read', payload: 'safe text' });
+    assert(result.decision === 'BLOCK', 'tauSession == tauMin triggers TAU_SESSION_EXHAUSTED');
+  }
+
+  {
+    // tauSession one above tauMin — does NOT fire
+    const s = makeSession({ sessionCapacity: 20, tauMin: 10 });
+    await s.record('write:db', { anomalies: [{ type: 'prompt-injection', severity: 9 }] });
+    assert(s.tauSession === 11, 'tauSession one above tauMin');
+    const result = await s.evaluate({ action: 'read', payload: 'safe text' });
+    assert(result.decision !== 'BLOCK' || !result.reasons.includes('TAU_SESSION_EXHAUSTED'),
+      'tauSession above tauMin does not trigger TAU_SESSION_EXHAUSTED');
+  }
+
+  // ── sessionScopeAmnesia: fresh state on new session ─────────────────────────
+  console.log('\nAuthProofClient — sessionScopeAmnesia');
+
+  {
+    const { AuthProofClient } = await import('../src/authproof.js');
+    const { privateKey, publicJwk } = await AuthProof.generateKey();
+
+    // Client with default sessionScopeAmnesia=true
+    const client = new AuthProofClient({ sessionScopeAmnesia: true });
+
+    // Create first session and accumulate some denial history
+    const r1 = await client.delegateWithSession({
+      scope:                'Manage calendar',
+      operatorInstructions: 'Read calendar only.',
+      privateKey,
+      publicJwk,
+      expiresIn: '1h',
+    });
+    client._recordDeniedCall({ sessionId: r1.session._sessionId, decision: 'BLOCK', timestamp: Date.now() });
+
+    const deniedBefore = client.getDeniedCallLog(r1.session._sessionId);
+    assert(deniedBefore.length === 1, 'Prior session has 1 denied call entry');
+
+    // Create second session — amnesia should clear prior session state
+    const r2 = await client.delegateWithSession({
+      scope:                'Manage calendar',
+      operatorInstructions: 'Read calendar only.',
+      privateKey,
+      publicJwk,
+      expiresIn: '1h',
+    });
+
+    assert(r2.session instanceof SessionState, 'New session is a SessionState');
+    assert(r2.session.trustScore === 100, 'New session trustScore starts at 100');
+    assert(r2.session._cumulativeAnomalyMass === 0, 'New session cumulativeAnomalyMass starts at 0');
+    assert(r2.session.tauSession === 100, 'New session tauSession starts at sessionCapacity');
+
+    // With amnesia=true the old session's denied call entries are gone
+    const deniedAfter = client.getDeniedCallLog(r1.session._sessionId);
+    assert(deniedAfter.length === 0, 'sessionScopeAmnesia clears prior session denial state');
+  }
+
+  {
+    // sessionScopeAmnesia=false — prior denial state persists
+    const { AuthProofClient } = await import('../src/authproof.js');
+    const { privateKey, publicJwk } = await AuthProof.generateKey();
+
+    const client = new AuthProofClient({ sessionScopeAmnesia: false });
+
+    const r1 = await client.delegateWithSession({
+      scope: 'Manage calendar', operatorInstructions: 'Read only.', privateKey, publicJwk,
+    });
+    client._recordDeniedCall({ sessionId: r1.session._sessionId, decision: 'BLOCK', timestamp: Date.now() });
+
+    const r2 = await client.delegateWithSession({
+      scope: 'Manage calendar', operatorInstructions: 'Read only.', privateKey, publicJwk,
+    });
+
+    // Denial entries from old session remain because amnesia is disabled
+    const deniedAfter = client.getDeniedCallLog(r1.session._sessionId);
+    assert(deniedAfter.length === 1, 'sessionScopeAmnesia=false preserves prior session denial state');
+    assert(r2.session.trustScore === 100, 'New session still starts fresh regardless of amnesia flag');
+  }
+
   // ─────────────────────────────────────────────────────────────────────────────
   // RESULTS
   // ─────────────────────────────────────────────────────────────────────────────
