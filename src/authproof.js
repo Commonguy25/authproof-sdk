@@ -766,6 +766,8 @@ async function create(options) {
     agentId,
     metadata,
     toolSchemaHash,
+    trustedSources,
+    toolOutputHash,
   } = options;
 
   if (!scope)        throw new Error('AuthProof: scope is required');
@@ -793,6 +795,12 @@ async function create(options) {
     ...(agentId        ? { agentId }        : {}),
     ...(metadata       ? { metadata }       : {}),
     ...(toolSchemaHash ? { toolSchemaHash } : {}),
+    // trustedSources: optional array of trusted instruction sources (user, system_prompt, verified_tool)
+    // that are permitted to influence agent behavior. Used by Check 11 in the pre-execution verifier.
+    ...(trustedSources ? { trustedSources } : {}),
+    // toolOutputHash: optional SHA-256 hash of the expected tool output that triggers the action.
+    // Used by Check 10 in the pre-execution verifier to detect tampered tool outputs.
+    ...(toolOutputHash ? { toolOutputHash } : {}),
   };
 
   const signature = await _sign(privateKey, JSON.stringify(body));
@@ -2956,6 +2964,8 @@ class AuthProofClient {
     publicJwk,
     teeConfig,
     toolSchema,
+    trustedSources,
+    toolOutputHash,
   } = {}) {
     if (!scope)      throw new Error('AuthProofClient.delegate: scope is required');
     if (!privateKey) throw new Error('AuthProofClient.delegate: privateKey is required');
@@ -2995,6 +3005,8 @@ class AuthProofClient {
       privateKey,
       publicJwk,
       toolSchemaHash,
+      trustedSources,
+      toolOutputHash,
     });
 
     if (teeConfig) {

@@ -5,7 +5,7 @@
  * this verifier passes. A compromised or malicious agent cannot skip it
  * because it runs before the runtime.
  *
- * Nine sequential checks (stops at first failure):
+ * Eleven sequential checks (stops at first failure):
  *   1. Receipt signature valid (ECDSA P-256)
  *   2. Receipt not revoked (RevocationRegistry)
  *   3. Within time window (log timestamp as oracle, not client clock)
@@ -15,6 +15,8 @@
  *   7. Session risk evaluation (optional — SessionState.evaluate())
  *   8. Tool schema integrity (optional — toolSchemaHash in receipt)
  *   9. Model state verification (optional — ModelStateAttestation check)
+ *  10. Tool output hash binding (optional — toolOutputHash in receipt)
+ *  11. Instruction provenance (optional — trustedSources in receipt)
  *
  * @module pre-execution-verifier
  */
@@ -543,6 +545,55 @@ class PreExecutionVerifier {
           allowed:       false,
           checks,
           blockedReason: `ModelDriftDetected: ${driftDesc}`,
+          receiptHash,
+          action,
+        });
+      }
+    }
+
+    // ── Check 10: Tool output hash binding (optional) ─────────────────
+    // When the receipt commits a toolOutputHash, verify that the hash of the
+    // tool output that triggered this action matches. A mismatch indicates the
+    // tool output was tampered with between delegation and execution.
+    if (receipt.toolOutputHash !== undefined) {
+      const toolOutput = typeof action === 'object' && action !== null
+        ? action.toolOutput
+        : undefined;
+      if (toolOutput !== undefined) {
+        const toolOutputStr = typeof toolOutput === 'string' ? toolOutput : JSON.stringify(toolOutput);
+        const computedHash  = 'sha256:' + await _sha256(toolOutputStr);
+        const toolOutputValid = computedHash === receipt.toolOutputHash;
+        checks.toolOutputHashValid = toolOutputValid;
+        if (!toolOutputValid) {
+          return this._finalize({
+            allowed:       false,
+            checks,
+            blockedReason: 'TOOL_OUTPUT_TAMPERED',
+            denialCode:    'TOOL_OUTPUT_TAMPERED',
+            receiptHash,
+            action,
+          });
+        }
+      }
+    }
+
+    // ── Check 11: Instruction provenance (optional) ───────────────────
+    // When the receipt specifies trustedSources, verify that the instruction
+    // source on the action is in that list. A source not in the list indicates
+    // a possible prompt injection attack from an untrusted input channel.
+    if (Array.isArray(receipt.trustedSources)) {
+      const instructionSource = typeof action === 'object' && action !== null
+        ? action.instructionSource
+        : undefined;
+      const sourceAllowed = instructionSource === undefined
+        || receipt.trustedSources.includes(instructionSource);
+      checks.instructionProvenanceValid = sourceAllowed;
+      if (!sourceAllowed) {
+        return this._finalize({
+          allowed:       false,
+          checks,
+          blockedReason: 'UNTRUSTED_INSTRUCTION_SOURCE',
+          denialCode:    'UNTRUSTED_INSTRUCTION_SOURCE',
           receiptHash,
           action,
         });
