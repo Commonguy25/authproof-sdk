@@ -1,18 +1,24 @@
 # AuthProof SDK
 
-**A cryptographic delegation protocol for agentic AI — closes the user-to-operator trust gap that IETF frameworks leave open.**
+AuthProof is a cryptographic delegation protocol for agentic AI. Most protocols in this space enforce against an operator-defined policy -- giving the operator authority to expand or reinterpret the user's original intent after the fact. AuthProof is built around a different trust model: the user's own private key signs the authorization object that gates execution, and the live model state is verified at both authorization time and immediately before execution. The combination of user-signed authority and live model-state gating is the specific claim -- not a broad enforcement story.
 
----
+**What makes it different:**
+
+- **The user is the signing authority.** Every competing protocol (AIP, AITH, OAP, SAGA, AgentSpec) enforces against a policy the operator defines. In AuthProof, the user's private key signs the authorization object directly. The operator cannot widen scope after the user has signed.
+
+- **Two-phase model-state commitment.** The model is measured at authorization time and re-measured immediately before execution. If the model has drifted between those two points, execution is blocked at pre-execution verification.
+
+- **Provider update versus malicious substitution, distinguished.** The protocol classifies model-state changes into two categories: legitimate provider updates (`PROVIDER_UPDATE_REQUIRES_REAUTH`) and unauthorized swaps (`MALICIOUS_MODEL_SUBSTITUTION`). Each produces a machine-readable denial reason code identifying which components changed.
 
 ## Pre-Execution Verifier
 
 **The deterministic gate that runs before any agent action executes.**
 
-The `PreExecutionVerifier` sits outside the agent runtime. The runtime never gets control until the verifier passes. A compromised or malicious agent cannot skip it — it runs before the runtime starts.
+The `PreExecutionVerifier` sits outside the agent runtime. The runtime never gets control until the verifier passes. A compromised or malicious agent cannot skip it â it runs before the runtime starts.
 
 ### Why it matters
 
-Traditional authorization checks happen inside the agent runtime. If the runtime is compromised, those checks can be skipped, reordered, or bypassed. `PreExecutionVerifier` eliminates this attack surface by moving authorization outside the runtime entirely. The agent only executes if — and only if — all six sequential checks pass first.
+Traditional authorization checks happen inside the agent runtime. If the runtime is compromised, those checks can be skipped, reordered, or bypassed. `PreExecutionVerifier` eliminates this attack surface by moving authorization outside the runtime entirely. The agent only executes if â and only if â all six sequential checks pass first.
 
 ### Quickstart
 
@@ -31,7 +37,7 @@ await verifier.init({ privateKey: verifierKey, publicJwk: verifierPub })
 // 2. Register your delegation receipt
 delegationLog.add(receiptHash, receipt)
 
-// 3. Gate every action — before the agent runs
+// 3. Gate every action â before the agent runs
 const result = await verifier.check({
   receiptHash,
   action:               { operation: 'read', resource: 'calendar' },
@@ -56,15 +62,15 @@ if (!result.allowed) {
 | 5 | Operator instructions | Current instructions don't match the hash locked into the receipt at issuance |
 | 6 | Program hash | Provided `programHash` doesn't match the committed `executes` hash (code substitution prevention) |
 
-Every check result — pass or fail — is automatically logged to an immutable `ActionLog` signed with the verifier's own key.
+Every check result â pass or fail â is automatically logged to an immutable `ActionLog` signed with the verifier's own key.
 
 ### Middleware integrations
 
 Drop-in wrappers for common frameworks. Each wrapper gates every call through `PreExecutionVerifier` before the wrapped code executes.
 
-- **[LangChain](src/middleware/langchain.js)** — wraps any agent with an `invoke()` method
-- **[Express/HTTP](src/middleware/express.js)** — request middleware for any Express-compatible framework
-- **[Generic function wrapper](src/middleware/generic.js)** — wraps any async function
+- **[LangChain](src/middleware/langchain.js)** â wraps any agent with an `invoke()` method
+- **[Express/HTTP](src/middleware/express.js)** â request middleware for any Express-compatible framework
+- **[Generic function wrapper](src/middleware/generic.js)** â wraps any async function
 
 ```js
 // LangChain
@@ -84,12 +90,12 @@ const guardedExecute = guardFunction(executeAction, { receiptHash, verifier, act
 
 ## The Problem
 
-Every existing IETF framework for agent identity — [AIP](https://identity.foundation/agent-identity-protocol/), [draft-klrc-aiagent-auth](https://datatracker.ietf.org/), [WIMSE](https://datatracker.ietf.org/wg/wimse/about/) — addresses service-to-agent trust: how a downstream service verifies that an agent is authorized to call it. None of them address **user-to-operator trust**.
+Every existing IETF framework for agent identity â [AIP](https://identity.foundation/agent-identity-protocol/), [draft-klrc-aiagent-auth](https://datatracker.ietf.org/), [WIMSE](https://datatracker.ietf.org/wg/wimse/about/) â addresses service-to-agent trust: how a downstream service verifies that an agent is authorized to call it. None of them address **user-to-operator trust**.
 
 The delegation chain in current agentic systems is:
 
 ```
-User → Operator → Agent → Services
+User â Operator â Agent â Services
 ```
 
 The user instructs the operator. The operator instructs the agent. But no cryptographic record of the user's original intent exists at the moment of delegation. The operator becomes a trusted third party with unchecked authority to expand, distort, or omit the user's instructions before they reach the agent.
@@ -111,7 +117,7 @@ A **Delegation Receipt** is a signed Authorization Object anchored to a decentra
 
 ### Scope
 
-An explicit allowlist of permitted operations. Everything not listed is denied by default. Expressed in structured format — not natural language. Operation classes:
+An explicit allowlist of permitted operations. Everything not listed is denied by default. Expressed in structured format â not natural language. Operation classes:
 
 | Class | Description |
 |---|---|
@@ -120,7 +126,7 @@ An explicit allowlist of permitted operations. Everything not listed is denied b
 | `deletes` | Deletion of specified resources |
 | `executes` | Execution of a specific program, referenced by its **static capability signature hash** |
 
-`executes` is the most dangerous class. It must reference the cryptographic hash of a Safescript program's static capability DAG — not a name, URI, or description. No hash match means no execution.
+`executes` is the most dangerous class. It must reference the cryptographic hash of a Safescript program's static capability DAG â not a name, URI, or description. No hash match means no execution.
 
 ### Boundaries
 
@@ -128,7 +134,7 @@ Explicit prohibitions that cannot be overridden by operator instructions under a
 
 ### Time Window
 
-Validity period of the authorization. The **log timestamp** is the time oracle — not the client clock. Client clocks are explicitly excluded from time validation.
+Validity period of the authorization. The **log timestamp** is the time oracle â not the client clock. Client clocks are explicitly excluded from time validation.
 
 ### Operator Instruction Hash
 
@@ -142,19 +148,19 @@ The user signs this object with their private key via **WebAuthn/FIDO2 using the
 
 Three protocol layers eliminate three trusted third parties:
 
-### Layer 1 — Signed Capability Manifest *(removes trust in the registry)*
+### Layer 1 â Signed Capability Manifest *(removes trust in the registry)*
 
 In the current MCP ecosystem, there is no cryptographic attestation that a tool server's descriptions match what it actually does. An operator can present an arbitrary schema.
 
-The fix: tool servers publish a **cryptographically signed capability manifest** before any user authorization occurs. The `scope` field of the Delegation Receipt references the **hash of this manifest** — not the operator's self-reported schema. Divergence between server behavior and manifest is detectable at the log layer.
+The fix: tool servers publish a **cryptographically signed capability manifest** before any user authorization occurs. The `scope` field of the Delegation Receipt references the **hash of this manifest** â not the operator's self-reported schema. Divergence between server behavior and manifest is detectable at the log layer.
 
-### Layer 2 — Delegation Receipt *(removes trust in the operator)*
+### Layer 2 â Delegation Receipt *(removes trust in the operator)*
 
 The user's original intent is immutably recorded before operator instructions reach the agent. Operator deviation is provable.
 
-### Layer 3 — Safescript Execution *(removes trust in the code)*
+### Layer 3 â Safescript Execution *(removes trust in the code)*
 
-[Safescript](https://github.com/safescript) is an open-source sandboxed language for AI agent execution. Its static DAG structure means every program's full capability signature is computable before it runs — no dynamic dispatch, no runtime capability expansion.
+[Safescript](https://github.com/safescript) is an open-source sandboxed language for AI agent execution. Its static DAG structure means every program's full capability signature is computable before it runs â no dynamic dispatch, no runtime capability expansion.
 
 The `executes` scope class references a specific Safescript capability signature hash. If the operator-supplied program does not match the committed hash, execution is blocked. The agent cannot be substituted with a different program after delegation.
 
@@ -171,7 +177,7 @@ const authproof = new AuthProof({
   log: 'https://log.authproof.dev',
 });
 
-// Define permitted operations — explicit allowlist, deny-by-default
+// Define permitted operations â explicit allowlist, deny-by-default
 const scope = new Scope()
   .allow('reads',  ['resource://calendar/events', 'resource://email/inbox'])
   .allow('writes', ['resource://calendar/events'])
@@ -183,7 +189,7 @@ const boundaries = {
   never: ['external-network', 'credential-store', 'payment-methods'],
 };
 
-// Issue the Delegation Receipt — anchored to log before any agent action
+// Issue the Delegation Receipt â anchored to log before any agent action
 const receipt = await authproof.delegate({
   scope,
   boundaries,
@@ -191,9 +197,9 @@ const receipt = await authproof.delegate({
   operatorInstructions: instructionText, // hashed and committed
 });
 
-// receipt.id    — unique receipt identifier
-// receipt.hash  — reference in every agent action
-// receipt.log   — append-only log anchor
+// receipt.id    â unique receipt identifier
+// receipt.hash  â reference in every agent action
+// receipt.log   â append-only log anchor
 
 // Agent-side: validate an action against the receipt
 const check = await authproof.validate({
@@ -221,7 +227,7 @@ For tool calls not covered by the original Delegation Receipt, the agent cannot 
 3. User signs a **micro-receipt** covering only that action.
 4. Agent proceeds, referencing the micro-receipt hash.
 
-Unknown actions require explicit new user authorization. Dependency resolution follows the same rule — dependencies are checked against the hash of the dependency manifest committed at delegation time. Unexpected dependencies are a scope violation.
+Unknown actions require explicit new user authorization. Dependency resolution follows the same rule â dependencies are checked against the hash of the dependency manifest committed at delegation time. Unexpected dependencies are a scope violation.
 
 ---
 
@@ -235,7 +241,7 @@ Each delegation event carries a unique receipt ID. Concurrent agents each refere
 
 | Model | Description | Recommended |
 |---|---|---|
-| **Hardware** | WebAuthn/FIDO2 via device secure enclave. Private key never leaves hardware. | **Yes — default** |
+| **Hardware** | WebAuthn/FIDO2 via device secure enclave. Private key never leaves hardware. | **Yes â default** |
 | **Delegated** | Trusted key manager holds the key on the user's behalf. | Environments without FIDO2 support |
 | **Self-custody** | User holds and manages their own private key. | Advanced users, air-gapped workflows |
 
@@ -245,9 +251,9 @@ Hardware custody is the recommended default. The private key never leaves the se
 
 ## Action Log
 
-A Delegation Receipt defines what an AI agent is authorized to do. The **Action Log** records what it actually did — and makes any deviation instantly verifiable.
+A Delegation Receipt defines what an AI agent is authorized to do. The **Action Log** records what it actually did â and makes any deviation instantly verifiable.
 
-Every action an agent takes produces a signed, timestamped entry linked to the active receipt. Entries form a tamper-evident chain: each entry embeds the SHA-256 hash of the previous one, so any retroactive modification is detectable without a trusted third party. The `diff()` method is the audit primitive — it lines up the receipt's authorized scope against every recorded action and returns any deviations.
+Every action an agent takes produces a signed, timestamped entry linked to the active receipt. Entries form a tamper-evident chain: each entry embeds the SHA-256 hash of the previous one, so any retroactive modification is detectable without a trusted third party. The `diff()` method is the audit primitive â it lines up the receipt's authorized scope against every recorded action and returns any deviations.
 
 ```js
 import AuthProof, { ActionLog } from 'authproof-sdk';
@@ -300,7 +306,7 @@ const report = log.diff(receiptId);
 // A scope violation surfaces immediately
 await log.record(receiptId, { operation: 'Send email', resource: 'email/outbox' });
 const auditReport = log.diff(receiptId);
-// auditReport.violations[0].reason →
+// auditReport.violations[0].reason â
 //   '"Send email" outside authorized scope (0% scope match, 92% boundary overlap)'
 ```
 
@@ -332,8 +338,8 @@ Run AuthProof agents inside hardware-attested Trusted Execution Environments (TE
 
 ### Hardware requirements
 
-- **Intel TDX** — Intel Ice Lake Xeon or newer (4th-gen Xeon Scalable). Azure DCdsv3-series, GCP C3 Confidential VMs.
-- **AMD SEV-SNP** — AMD EPYC 3rd-gen (Milan) or newer. Azure DCasv5-series, AWS m6a with Nitro Enclaves.
+- **Intel TDX** â Intel Ice Lake Xeon or newer (4th-gen Xeon Scalable). Azure DCdsv3-series, GCP C3 Confidential VMs.
+- **AMD SEV-SNP** â AMD EPYC 3rd-gen (Milan) or newer. Azure DCasv5-series, AWS m6a with Nitro Enclaves.
 
 ### Create a receipt with TEE measurement binding
 
@@ -419,9 +425,9 @@ const manifest = ConfidentialRuntime.kubernetesConfig({
 
 Apply with `kubectl apply -f` after serializing to YAML. The node selector `intel.feature.node.kubernetes.io/tdx: "true"` requires the Intel Device Plugin for Kubernetes.
 
-### eBPF kernel module — help wanted
+### eBPF kernel module â help wanted
 
-The TEE enforcement layer is complete through the userspace side (`ConfidentialRuntime`, `TokenPreparer`). The final enforcement step — validating the signed capability token on every syscall via an eBPF LSM hook — requires a kernel module that is open for contribution.
+The TEE enforcement layer is complete through the userspace side (`ConfidentialRuntime`, `TokenPreparer`). The final enforcement step â validating the signed capability token on every syscall via an eBPF LSM hook â requires a kernel module that is open for contribution.
 
 Engineers with eBPF LSM experience (Isovalent, Red Canary, or similar) are especially welcome. Open an issue or PR at https://github.com/Commonguy25/authproof-sdk/issues
 
@@ -431,9 +437,9 @@ Engineers with eBPF LSM experience (Isovalent, Red Canary, or similar) are espec
 
 Two runnable examples live in the `examples/` directory.
 
-**[`examples/langchain-example.js`](examples/langchain-example.js)** — Shows the full LangChain integration path: generate a key pair, issue a delegation receipt, initialize `PreExecutionVerifier`, and wrap any agent with `authproofMiddleware` so every `invoke()` call is gated before the agent runtime gets control. Includes a mock agent you can run immediately and the exact code pattern for a real `AgentExecutor`. Run with `npm run example:langchain`.
+**[`examples/langchain-example.js`](examples/langchain-example.js)** â Shows the full LangChain integration path: generate a key pair, issue a delegation receipt, initialize `PreExecutionVerifier`, and wrap any agent with `authproofMiddleware` so every `invoke()` call is gated before the agent runtime gets control. Includes a mock agent you can run immediately and the exact code pattern for a real `AgentExecutor`. Run with `npm run example:langchain`.
 
-**[`examples/webauthn-example.html`](examples/webauthn-example.html)** — A self-contained three-card browser demo of the full delegation flow. Card 1 lets you define scope, boundaries, and operator instructions, then signs a receipt with a local key (swap in `navigator.credentials` for real WebAuthn). Card 2 displays the receipt ID, expiry, system prompt, and raw JSON. Card 3 lets you type any proposed action and verify it against the receipt in real time, showing each check result. Open directly in a browser — no build step required.
+**[`examples/webauthn-example.html`](examples/webauthn-example.html)** â A self-contained three-card browser demo of the full delegation flow. Card 1 lets you define scope, boundaries, and operator instructions, then signs a receipt with a local key (swap in `navigator.credentials` for real WebAuthn). Card 2 displays the receipt ID, expiry, system prompt, and raw JSON. Card 3 lets you type any proposed action and verify it against the receipt in real time, showing each check result. Open directly in a browser â no build step required.
 
 ---
 
