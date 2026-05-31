@@ -192,23 +192,28 @@ class DelegationLog {
 class PreExecutionVerifier {
   /**
    * @param {object} opts
-   * @param {DelegationLog}        opts.delegationLog          — append-only receipt store
-   * @param {RevocationRegistry}   opts.revocationRegistry     — live revocation registry
-   * @param {boolean}              [opts.requireTEE=false]     — require hardware attestation
-   * @param {SessionState}         [opts.sessionState]         — when provided, enables check 7
-   * @param {ModelStateAttestation} [opts.modelStateAttestation] — when provided, enables check 8
-   * @param {ActionLog}            [opts.actionLog]            — when provided, receives one
+   * @param {DelegationLog}        opts.delegationLog          - append-only receipt store
+   * @param {RevocationRegistry}   opts.revocationRegistry     - live revocation registry
+   * @param {boolean}              [opts.requireTEE=false]     - require hardware attestation
+   * @param {boolean}              [opts.offlineMode=false]    - skip the revocation registry check.
+   *                                                             All other checks run normally.
+   *                                                             Receipts with revocationRequired: true
+   *                                                             are denied even in offline mode.
+   * @param {SessionState}         [opts.sessionState]         - when provided, enables check 7
+   * @param {ModelStateAttestation} [opts.modelStateAttestation] - when provided, enables check 8
+   * @param {ActionLog}            [opts.actionLog]            - when provided, receives one
    *                                                             receipt_authorized entry per
    *                                                             fully-passed check; never written
    *                                                             when any check fails
    */
-  constructor({ delegationLog, revocationRegistry, requireTEE = false, sessionState, modelStateAttestation, actionLog } = {}) {
+  constructor({ delegationLog, revocationRegistry, requireTEE = false, offlineMode = false, sessionState, modelStateAttestation, actionLog } = {}) {
     if (!delegationLog)      throw new Error('PreExecutionVerifier: delegationLog is required');
     if (!revocationRegistry) throw new Error('PreExecutionVerifier: revocationRegistry is required');
 
     this._log                   = delegationLog;
     this._registry              = revocationRegistry;
     this._requireTEE            = requireTEE;
+    this._offlineMode           = offlineMode;
     this._sessionState          = sessionState          ?? null;
     this._modelStateAttestation = modelStateAttestation ?? null;
     this._actionLog             = actionLog             ?? null;
@@ -288,7 +293,7 @@ class PreExecutionVerifier {
 
     const checks = {
       receiptSignatureValid:     false,
-      receiptNotRevoked:         false,
+      ...(!this._offlineMode ? { receiptNotRevoked: false } : {}),
       withinTimeWindow:          false,
       actionWithinScope:         false,
       operatorInstructionsMatch: false,
@@ -345,16 +350,31 @@ class PreExecutionVerifier {
     }
 
     // ── Check 2: Revocation ────────────────────────────────────────────
-    const revokeStatus = await this._registry.check(receiptHash);
-    checks.receiptNotRevoked = !revokeStatus.revoked;
-    if (revokeStatus.revoked) {
-      return this._finalize({
-        allowed:       false,
-        checks,
-        blockedReason: `Receipt revoked: ${revokeStatus.reason}`,
-        receiptHash,
-        action,
-      });
+    if (this._offlineMode) {
+      // In offline mode the registry is not consulted. Receipts that require a live
+      // revocation check are denied immediately after signature verification.
+      if (receipt.revocationRequired) {
+        return this._finalize({
+          allowed:       false,
+          checks,
+          blockedReason: 'REVOCATION_CHECK_REQUIRED',
+          denialCode:    'REVOCATION_CHECK_REQUIRED',
+          receiptHash,
+          action,
+        });
+      }
+    } else {
+      const revokeStatus = await this._registry.check(receiptHash);
+      checks.receiptNotRevoked = !revokeStatus.revoked;
+      if (revokeStatus.revoked) {
+        return this._finalize({
+          allowed:       false,
+          checks,
+          blockedReason: `Receipt revoked: ${revokeStatus.reason}`,
+          receiptHash,
+          action,
+        });
+      }
     }
 
     // ── Check 3: Time window (log timestamp as oracle) ─────────────────
@@ -673,10 +693,12 @@ class PreExecutionVerifier {
     const result = {
       allowed,
       checks,
-      blockedReason: blockedReason ?? null,
+      blockedReason:     blockedReason ?? null,
       verifiedAt,
       verifierSignature,
       verifierPublicKey: this._publicJwk,
+      verificationMode:  this._offlineMode ? 'offline' : 'online',
+      revocationChecked: !this._offlineMode,
     };
 
     // Attach session risk result when available

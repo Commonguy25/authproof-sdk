@@ -744,14 +744,17 @@ async function importPrivateKey(privateJwk) {
  * Create a signed delegation receipt.
  *
  * @param {object} options
- * @param {string}      options.scope          - What the AI is authorized to do
- * @param {string}      options.boundaries     - What the AI must never do
- * @param {string}      options.instructions   - Operator instructions locked into the receipt
- * @param {number}      [options.ttlHours=1]   - How long the receipt is valid (hours)
- * @param {CryptoKey}   options.privateKey     - ECDSA P-256 private signing key
- * @param {object}      options.publicJwk      - Corresponding public key JWK
- * @param {string}      [options.agentId]      - Optional identifier for the agent being authorized
- * @param {object}      [options.metadata]     - Optional arbitrary metadata attached to receipt
+ * @param {string}      options.scope                - What the AI is authorized to do
+ * @param {string}      options.boundaries           - What the AI must never do
+ * @param {string}      options.instructions         - Operator instructions locked into the receipt
+ * @param {number}      [options.ttlHours=1]         - How long the receipt is valid (hours)
+ * @param {CryptoKey}   options.privateKey           - ECDSA P-256 private signing key
+ * @param {object}      options.publicJwk            - Corresponding public key JWK
+ * @param {string}      [options.agentId]            - Optional identifier for the agent being authorized
+ * @param {object}      [options.metadata]           - Optional arbitrary metadata attached to receipt
+ * @param {boolean}     [options.revocationRequired] - If true, offline verifiers must deny this receipt.
+ *                                                     Use for high-stakes delegations that require live
+ *                                                     revocation checking.
  *
  * @returns {{ receipt: object, receiptId: string, systemPrompt: string }}
  */
@@ -766,6 +769,7 @@ async function create(options) {
     agentId,
     metadata,
     toolSchemaHash,
+    revocationRequired,
   } = options;
 
   if (!scope)        throw new Error('AuthProof: scope is required');
@@ -790,9 +794,10 @@ async function create(options) {
     operatorInstructions: instructions,
     instructionsHash,
     signerPublicKey:      { kty, crv, x, y },
-    ...(agentId        ? { agentId }        : {}),
-    ...(metadata       ? { metadata }       : {}),
-    ...(toolSchemaHash ? { toolSchemaHash } : {}),
+    ...(agentId            ? { agentId }            : {}),
+    ...(metadata           ? { metadata }           : {}),
+    ...(toolSchemaHash     ? { toolSchemaHash }     : {}),
+    ...(revocationRequired ? { revocationRequired } : {}),
   };
 
   const signature = await _sign(privateKey, JSON.stringify(body));

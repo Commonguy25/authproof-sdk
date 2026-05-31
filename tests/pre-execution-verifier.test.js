@@ -27,27 +27,29 @@ function assert(condition, label) {
 // ─────────────────────────────────────────────
 
 async function makeReceipt({
-  scope         = 'Read calendar events and summarize meetings',
-  boundaries    = 'Do not send emails. Do not modify records.',
-  instructions  = 'Summarize clearly. Stay within scope.',
-  ttlHours      = 2,
+  scope              = 'Read calendar events and summarize meetings',
+  boundaries         = 'Do not send emails. Do not modify records.',
+  instructions       = 'Summarize clearly. Stay within scope.',
+  ttlHours           = 2,
   privateKey,
   publicJwk,
+  revocationRequired,
 } = {}) {
   const { receipt, receiptId } = await AuthProof.create({
     scope, boundaries, instructions, ttlHours, privateKey, publicJwk,
+    ...(revocationRequired !== undefined ? { revocationRequired } : {}),
   });
   return { receipt, receiptId };
 }
 
-async function makeVerifier({ requireTEE = false } = {}) {
+async function makeVerifier({ requireTEE = false, offlineMode = false } = {}) {
   const { privateKey: vPriv, publicJwk: vPub } = await AuthProof.generateKey();
   const delegationLog      = new DelegationLog();
   const revocationRegistry = new RevocationRegistry();
   const { privateKey: rPriv, publicJwk: rPub } = await AuthProof.generateKey();
   await revocationRegistry.init({ privateKey: rPriv, publicJwk: rPub });
 
-  const verifier = new PreExecutionVerifier({ delegationLog, revocationRegistry, requireTEE });
+  const verifier = new PreExecutionVerifier({ delegationLog, revocationRegistry, requireTEE, offlineMode });
   await verifier.init({ privateKey: vPriv, publicJwk: vPub });
 
   return { verifier, delegationLog, revocationRegistry };
@@ -690,6 +692,67 @@ async function run() {
     'ActionLog has exactly one entry after all checks pass');
   assert(alpPassEntries[0].action.operation === 'receipt_authorized',
     'ActionLog entry operation is receipt_authorized');
+
+  // ── Online/offline mode: verificationMode and revocationChecked fields ──
+  console.log('\nOnline/offline mode result fields');
+
+  // Online mode: confirm new fields on an existing passing result
+  assert(validResult.verificationMode === 'online', 'Online mode: verificationMode is "online"');
+  assert(validResult.revocationChecked === true,    'Online mode: revocationChecked is true');
+
+  // Offline mode, normal receipt -- all checks pass, revocation registry skipped
+  const { verifier: vOff, delegationLog: dlOff } = await makeVerifier({ offlineMode: true });
+  const { receipt: rOff, receiptId: ridOff } = await makeReceipt({ privateKey, publicJwk });
+  dlOff.add(ridOff, rOff);
+
+  const offResult = await vOff.check({
+    receiptHash:          ridOff,
+    action:               'Read calendar meetings and summarize',
+    operatorInstructions: 'Summarize clearly. Stay within scope.',
+  });
+  assert(offResult.allowed === true,               'Offline mode, normal receipt: allowed=true');
+  assert(offResult.verificationMode === 'offline', 'Offline mode, normal receipt: verificationMode is "offline"');
+  assert(offResult.revocationChecked === false,    'Offline mode, normal receipt: revocationChecked is false');
+
+  // Offline mode, receipt with revocationRequired: true -- must DENY
+  const { verifier: vOffReq, delegationLog: dlOffReq } = await makeVerifier({ offlineMode: true });
+  const { receipt: rOffReq, receiptId: ridOffReq } = await makeReceipt({
+    privateKey, publicJwk, revocationRequired: true,
+  });
+  dlOffReq.add(ridOffReq, rOffReq);
+
+  const offReqResult = await vOffReq.check({
+    receiptHash:          ridOffReq,
+    action:               'Read calendar meetings and summarize',
+    operatorInstructions: 'Summarize clearly. Stay within scope.',
+  });
+  assert(offReqResult.allowed === false,
+    'Offline mode, revocationRequired=true: allowed=false');
+  assert(offReqResult.blockedReason === 'REVOCATION_CHECK_REQUIRED',
+    'Offline mode, revocationRequired=true: blockedReason is REVOCATION_CHECK_REQUIRED');
+  assert(offReqResult.verificationMode === 'offline',
+    'Offline mode, revocationRequired=true: verificationMode is "offline"');
+  assert(offReqResult.revocationChecked === false,
+    'Offline mode, revocationRequired=true: revocationChecked is false');
+
+  // Offline mode, revoked receipt -- offline verifier does not consult the registry
+  // Offline mode does not know about revocations -- this is the honest behavior.
+  // Callers must use online mode or SRL refresh for revocation checking.
+  const { verifier: vOffRev, delegationLog: dlOffRev, revocationRegistry: regOffRev } =
+    await makeVerifier({ offlineMode: true });
+  const { receipt: rOffRev, receiptId: ridOffRev } = await makeReceipt({ privateKey, publicJwk });
+  dlOffRev.add(ridOffRev, rOffRev);
+  await regOffRev.revoke(ridOffRev, { reason: 'test revocation' });
+
+  const offRevResult = await vOffRev.check({
+    receiptHash:          ridOffRev,
+    action:               'Read calendar meetings and summarize',
+    operatorInstructions: 'Summarize clearly. Stay within scope.',
+  });
+  assert(offRevResult.allowed === true,
+    'Offline mode, revoked receipt: allowed=true (offline mode does not know about revocations)');
+  assert(offRevResult.verificationMode === 'offline',
+    'Offline mode, revoked receipt: verificationMode is "offline"');
 
   // ── Summary ────────────────────────────────────────────────────────
   console.log(`\n${'─'.repeat(40)}`);
