@@ -5,16 +5,17 @@
  * this verifier passes. A compromised or malicious agent cannot skip it
  * because it runs before the runtime.
  *
- * Nine sequential checks (stops at first failure):
- *   1. Receipt signature valid (ECDSA P-256)
- *   2. Receipt not revoked (RevocationRegistry)
- *   3. Within time window (log timestamp as oracle, not client clock)
- *   4. Action within scope (ScopeSchema.validate or fuzzy fallback)
- *   5. Operator instructions match receipt (Canonicalizer.hash)
- *   6. Program hash match (optional — prevents code substitution attacks)
- *   7. Session risk evaluation (optional — SessionState.evaluate())
- *   8. Tool schema integrity (optional — toolSchemaHash in receipt)
- *   9. Model state verification (optional — ModelStateAttestation check)
+ * Sequential checks (stops at first failure):
+ *   1.  Receipt signature valid (ECDSA P-256)
+ *   2.  Receipt not revoked (RevocationRegistry)
+ *   3.  Within time window (log timestamp as oracle, not client clock)
+ *   4.  Action within scope (ScopeSchema.validate or fuzzy fallback)
+ *   5.  Operator instructions match receipt (Canonicalizer.hash)
+ *   6.  Program hash match (optional — prevents code substitution attacks)
+ *   7.  Session risk evaluation (optional — SessionState.evaluate())
+ *   8.  Tool schema integrity (optional — toolSchemaHash in receipt)
+ *   9.  Model state verification (optional — ModelStateAttestation check)
+ *   14. Parent scope containment (sub-receipts only — parentReceiptId present)
  *
  * @module pre-execution-verifier
  */
@@ -28,6 +29,7 @@ import {
   checkScope,
   TEEAttestation,
   generateKey,
+  checkScopeAttenuation,
 } from './authproof.js';
 
 // ─────────────────────────────────────────────
@@ -83,6 +85,17 @@ function _canonicalizeJson(obj) {
 async function _sha256Schema(schema) {
   return _sha256(_canonicalizeJson(schema));
 }
+
+// ─────────────────────────────────────────────
+// CONSTANTS
+// ─────────────────────────────────────────────
+
+/**
+ * Default maximum delegation chain depth for Check 14.
+ * Matches the RECOMMENDED value in draft-nelson-agent-delegation-receipts-09.
+ * Pass maxChainDepth to the PreExecutionVerifier constructor to override.
+ */
+const MAX_CHAIN_DEPTH = 3;
 
 // ─────────────────────────────────────────────
 // DELEGATION LOG
@@ -205,8 +218,13 @@ class PreExecutionVerifier {
    *                                                             receipt_authorized entry per
    *                                                             fully-passed check; never written
    *                                                             when any check fails
+   * @param {number}               [opts.maxChainDepth=3]     - maximum allowed delegation chain
+   *                                                             depth for sub-receipt Check 14.
+   *                                                             Default 3 matches the RECOMMENDED
+   *                                                             value in draft-nelson-agent-
+   *                                                             delegation-receipts-09.
    */
-  constructor({ delegationLog, revocationRegistry, requireTEE = false, offlineMode = false, sessionState, modelStateAttestation, actionLog } = {}) {
+  constructor({ delegationLog, revocationRegistry, requireTEE = false, offlineMode = false, sessionState, modelStateAttestation, actionLog, maxChainDepth = MAX_CHAIN_DEPTH } = {}) {
     if (!delegationLog)      throw new Error('PreExecutionVerifier: delegationLog is required');
     if (!revocationRegistry) throw new Error('PreExecutionVerifier: revocationRegistry is required');
 
@@ -217,6 +235,7 @@ class PreExecutionVerifier {
     this._sessionState          = sessionState          ?? null;
     this._modelStateAttestation = modelStateAttestation ?? null;
     this._actionLog             = actionLog             ?? null;
+    this._maxChainDepth         = maxChainDepth;
 
     /** @private — internal audit log of every gate decision */
     this._auditLog     = new ActionLog();
@@ -332,7 +351,9 @@ class PreExecutionVerifier {
       });
     }
 
-    const { signature, ...body } = receipt;
+    // orchestratorSignature is excluded from the signed body per the draft spec.
+    // Strip it (along with the main signature) before verifying.
+    const { signature, orchestratorSignature: _orchSig, ...body } = receipt;
     const sigValid = await _verifySignature(
       receipt.signerPublicKey,
       signature,
@@ -569,6 +590,134 @@ class PreExecutionVerifier {
       }
     }
 
+    // ── Check 14: Parent Scope Containment (sub-receipts only) ──────────
+    // Runs ONLY when receipt.parentReceiptId is present.
+    // This check runs in both online and offline mode: parent chain verification
+    // requires only the parent receipt from the delegation log, not network access.
+    if (receipt.parentReceiptId) {
+      checks.parentScopeContainment = false;
+
+      const parentEntry   = this._log.getEntry(receipt.parentReceiptId);
+      const parentReceipt = parentEntry?.receipt ?? null;
+
+      if (!parentReceipt) {
+        return this._finalize({
+          allowed:       false,
+          checks,
+          blockedReason: 'PARENT_SCOPE_VIOLATION',
+          denialCode:    'PARENT_SCOPE_VIOLATION',
+          receiptHash,
+          action,
+        });
+      }
+
+      // Count chain depth by following parentReceiptId links to the root.
+      // Each hop reads only the parentReceiptId field of each ancestor.
+      let depth   = 0;
+      let current = receipt;
+      while (current.parentReceiptId) {
+        depth++;
+        if (depth > this._maxChainDepth) break;
+        const ancestorEntry = this._log.getEntry(current.parentReceiptId);
+        if (!ancestorEntry) break;
+        current = ancestorEntry.receipt;
+      }
+
+      if (depth > this._maxChainDepth) {
+        return this._finalize({
+          allowed:       false,
+          checks,
+          blockedReason: 'PARENT_SCOPE_VIOLATION',
+          denialCode:    'PARENT_SCOPE_VIOLATION',
+          receiptHash,
+          action,
+        });
+      }
+
+      // Verify the parent receipt's main signature.
+      // orchestratorSignature is excluded from the parent's signed body.
+      const { signature: parentSig, orchestratorSignature: _pOrch, ...parentBody } = parentReceipt;
+      const parentSigValid = await _verifySignature(
+        parentReceipt.signerPublicKey,
+        parentSig,
+        JSON.stringify(parentBody)
+      );
+      if (!parentSigValid) {
+        return this._finalize({
+          allowed:       false,
+          checks,
+          blockedReason: 'PARENT_SCOPE_VIOLATION',
+          denialCode:    'PARENT_SCOPE_VIOLATION',
+          receiptHash,
+          action,
+        });
+      }
+
+      // Verify orchestratorSignature when present.
+      // The binding string is exactly: "orchestrator-delegation:" + parentReceiptId + ":" + receiptId
+      // receiptHash IS the receiptId in this implementation (the DelegationLog key).
+      if (receipt.orchestratorSignature) {
+        const bindingStr = `orchestrator-delegation:${receipt.parentReceiptId}:${receiptHash}`;
+        const orchSigValid = await _verifySignature(
+          parentReceipt.signerPublicKey,
+          receipt.orchestratorSignature,
+          bindingStr
+        );
+        if (!orchSigValid) {
+          return this._finalize({
+            allowed:       false,
+            checks,
+            blockedReason: 'PARENT_SCOPE_VIOLATION',
+            denialCode:    'PARENT_SCOPE_VIOLATION',
+            receiptHash,
+            action,
+          });
+        }
+      }
+
+      // Verify time window containment: child window must be within parent window.
+      const childStart  = new Date(receipt.timeWindow.start);
+      const childEnd    = new Date(receipt.timeWindow.end);
+      const parentStart = new Date(parentReceipt.timeWindow.start);
+      const parentEnd   = new Date(parentReceipt.timeWindow.end);
+      if (childStart < parentStart || childEnd > parentEnd) {
+        return this._finalize({
+          allowed:       false,
+          checks,
+          blockedReason: 'PARENT_SCOPE_VIOLATION',
+          denialCode:    'PARENT_SCOPE_VIOLATION',
+          receiptHash,
+          action,
+        });
+      }
+
+      // Verify scope is a strict proper subset of parent scope.
+      // Uses the same checkScopeAttenuation logic as delegation-chain.js.
+      // Parent scope is resolved from the log entry metadata first (matches
+      // how Check 4 resolves scope), then falls back to the receipt body.
+      const parentScope = parentEntry.scopeSchema ?? parentReceipt.scopeSchema ?? parentReceipt.scope;
+      const childScope  = logEntry.scopeSchema     ?? receipt.scopeSchema      ?? receipt.scope;
+      try {
+        checkScopeAttenuation(parentScope, childScope);
+      } catch (err) {
+        // The draft distinguishes SCOPE_NOT_STRICT_SUBSET (child equals parent's
+        // action set exactly) from PARENT_SCOPE_VIOLATION (child exceeds parent).
+        const code = err.message && err.message.includes('proper subset')
+          ? 'SCOPE_NOT_STRICT_SUBSET'
+          : 'PARENT_SCOPE_VIOLATION';
+        return this._finalize({
+          allowed:       false,
+          checks,
+          blockedReason: code,
+          denialCode:    code,
+          receiptHash,
+          action,
+        });
+      }
+
+      checks.parentScopeContainment = true;
+    }
+
     return this._finalize({ allowed: true, checks, blockedReason: null, receiptHash, action });
 
     } finally {
@@ -738,5 +887,5 @@ class PreExecutionVerifier {
 // EXPORTS
 // ─────────────────────────────────────────────
 
-export { PreExecutionVerifier, DelegationLog };
-export default { PreExecutionVerifier, DelegationLog };
+export { PreExecutionVerifier, DelegationLog, MAX_CHAIN_DEPTH };
+export default { PreExecutionVerifier, DelegationLog, MAX_CHAIN_DEPTH };

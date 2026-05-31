@@ -16,6 +16,8 @@ if (typeof globalThis.crypto === 'undefined') {
   globalThis.crypto = webcrypto
 }
 
+import { checkScopeAttenuation, ScopeAttenuationError } from './delegation-chain.js';
+
 // ─────────────────────────────────────────────
 // CRYPTO PRIMITIVES
 // ─────────────────────────────────────────────
@@ -770,6 +772,7 @@ async function create(options) {
     metadata,
     toolSchemaHash,
     revocationRequired,
+    parentReceiptId,
   } = options;
 
   if (!scope)        throw new Error('AuthProof: scope is required');
@@ -798,11 +801,147 @@ async function create(options) {
     ...(metadata           ? { metadata }           : {}),
     ...(toolSchemaHash     ? { toolSchemaHash }     : {}),
     ...(revocationRequired ? { revocationRequired } : {}),
+    ...(parentReceiptId    ? { parentReceiptId }    : {}),
   };
 
-  const signature = await _sign(privateKey, JSON.stringify(body));
-  const receipt   = { ...body, signature };
-  const receiptId = await _sha256(JSON.stringify(receipt));
+  const signature   = await _sign(privateKey, JSON.stringify(body));
+  const baseReceipt = { ...body, signature };
+  const receiptId   = await _sha256(JSON.stringify(baseReceipt));
+
+  // When parentReceiptId is present the receipt is a sub-receipt.
+  // Compute orchestratorSignature over the binding string and attach it to the
+  // receipt object WITHOUT including it in the signed body. The draft defines
+  // orchestratorSignature as excluded from the signed body.
+  let receipt;
+  if (parentReceiptId) {
+    const bindingStr = `orchestrator-delegation:${parentReceiptId}:${receiptId}`;
+    const orchestratorSignature = await _sign(privateKey, bindingStr);
+    receipt = { ...baseReceipt, orchestratorSignature };
+  } else {
+    receipt = baseReceipt;
+  }
+
+  return {
+    receipt,
+    receiptId,
+    systemPrompt: buildSystemPrompt(receipt, receiptId),
+  };
+}
+
+// ─────────────────────────────────────────────
+// SUB-RECEIPT CREATION (MULTI-AGENT DELEGATION)
+// ─────────────────────────────────────────────
+
+/**
+ * Create a signed sub-receipt for a sub-agent delegation.
+ *
+ * The sub-receipt's scope MUST be a strict proper subset of the parent receipt's
+ * scope, and the time window MUST be contained within the parent's time window.
+ * These invariants are verified before signing; a ScopeAttenuationError is thrown
+ * on any scope violation.
+ *
+ * The resulting receipt carries:
+ *   - parentReceiptId in the signed body
+ *   - orchestratorSignature over "orchestrator-delegation:<parentReceiptId>:<receiptId>"
+ *     signed with the orchestrator's key, attached OUTSIDE the signed body
+ *
+ * @param {object}    opts
+ * @param {object}    opts.parentReceipt       - Orchestrator's signed delegation receipt
+ * @param {string}    opts.parentReceiptId     - DelegationLog key for the parent receipt
+ * @param {CryptoKey} opts.parentPrivateKey    - Orchestrator's ECDSA P-256 private key
+ * @param {object}    opts.scope               - Structured scope: { allowedActions, deniedActions }
+ *                                               Must be a strict proper subset of parentReceipt's scope
+ * @param {{ start: string, end: string }} opts.timeWindow  - Must be within parent's time window
+ * @param {string}    opts.boundaries          - Prohibition strings for the sub-agent
+ * @param {string}    opts.instructions        - Operator instructions locked into the sub-receipt
+ * @param {string}    [opts.agentId]           - Optional sub-agent identifier
+ * @param {object}    [opts.metadata]          - Optional arbitrary metadata
+ * @param {string}    [opts.toolSchemaHash]    - Optional tool schema hash
+ * @param {boolean}   [opts.revocationRequired] - If true, offline verifiers must deny
+ *
+ * @throws {ScopeAttenuationError} if scope is not a strict proper subset of parent scope
+ * @throws {Error} if time window exceeds parent's time window
+ * @returns {Promise<{ receipt: object, receiptId: string, systemPrompt: string }>}
+ */
+async function createSubReceipt({
+  parentReceipt,
+  parentReceiptId,
+  parentPrivateKey,
+  scope,
+  timeWindow,
+  boundaries,
+  instructions,
+  agentId,
+  metadata,
+  toolSchemaHash,
+  revocationRequired,
+} = {}) {
+  if (!parentReceipt)    throw new Error('createSubReceipt: parentReceipt is required');
+  if (!parentReceiptId)  throw new Error('createSubReceipt: parentReceiptId is required');
+  if (!parentPrivateKey) throw new Error('createSubReceipt: parentPrivateKey is required');
+  if (!scope)            throw new Error('createSubReceipt: scope is required');
+  if (!timeWindow)       throw new Error('createSubReceipt: timeWindow is required');
+  if (!boundaries)       throw new Error('createSubReceipt: boundaries is required');
+  if (!instructions)     throw new Error('createSubReceipt: instructions is required');
+
+  // Resolve the parent's structured scope (scopeSchema takes precedence over scope)
+  const parentScope = parentReceipt.scopeSchema ?? parentReceipt.scope;
+
+  // Validate scope attenuation: child must be a strict proper subset of parent.
+  // throws ScopeAttenuationError on any violation.
+  checkScopeAttenuation(parentScope, scope);
+
+  // Validate time window containment
+  const childStart  = new Date(timeWindow.start);
+  const childEnd    = new Date(timeWindow.end);
+  const parentStart = new Date(parentReceipt.timeWindow.start);
+  const parentEnd   = new Date(parentReceipt.timeWindow.end);
+  if (childStart < parentStart || childEnd > parentEnd) {
+    throw new Error(
+      'createSubReceipt: child time window must be contained within the parent time window'
+    );
+  }
+
+  // Derive the orchestrator's public JWK from the private key
+  const signerPublicKey = await _exportPublicJwk(parentPrivateKey);
+  if (!signerPublicKey) {
+    throw new Error(
+      'createSubReceipt: could not derive public JWK from parentPrivateKey — ' +
+      'key must be extractable'
+    );
+  }
+
+  const instructionsHash = await Canonicalizer.hash(instructions);
+
+  // Build the signed body. parentReceiptId IS included in the signed body.
+  // scopeSchema carries the structured scope so Check 4 can use ScopeSchema.validate.
+  const body = {
+    delegationId:         `auth-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    issuedAt:             new Date().toISOString(),
+    scopeSchema:          scope,
+    boundaries,
+    timeWindow,
+    operatorInstructions: instructions,
+    instructionsHash,
+    signerPublicKey,
+    parentReceiptId,
+    ...(agentId            ? { agentId }            : {}),
+    ...(metadata           ? { metadata }           : {}),
+    ...(toolSchemaHash     ? { toolSchemaHash }     : {}),
+    ...(revocationRequired ? { revocationRequired } : {}),
+  };
+
+  const signature   = await _sign(parentPrivateKey, JSON.stringify(body));
+  const baseReceipt = { ...body, signature };
+  const receiptId   = await _sha256(JSON.stringify(baseReceipt));
+
+  // orchestratorSignature is over the binding string only and is NOT part of the
+  // signed body. It cryptographically links the orchestrator's key to the specific
+  // parent-child receipt pair. The verifier checks this in Check 14.
+  const bindingStr = `orchestrator-delegation:${parentReceiptId}:${receiptId}`;
+  const orchestratorSignature = await _sign(parentPrivateKey, bindingStr);
+
+  const receipt = { ...baseReceipt, orchestratorSignature };
 
   return {
     receipt,
@@ -3119,6 +3258,7 @@ const AuthProof = {
 
   // Core protocol
   create,
+  createSubReceipt,
   verify,
 
   // Canonicalization
@@ -3201,6 +3341,7 @@ export {
   generateKey,
   importPrivateKey,
   create,
+  createSubReceipt,
   verify,
   buildSystemPrompt,
   checkScope,
@@ -3223,7 +3364,7 @@ export {
 };
 
 // DelegationChain lives in its own module (async crypto primitives require separation)
-export { DelegationChain, ScopeAttenuationError, MaxDepthExceededError } from './delegation-chain.js';
+export { DelegationChain, ScopeAttenuationError, MaxDepthExceededError, checkScopeAttenuation } from './delegation-chain.js';
 
 export { ScopeDiscovery } from './scope-discovery.js';
 
