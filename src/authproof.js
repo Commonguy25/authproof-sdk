@@ -11,6 +11,8 @@
 
 'use strict';
 
+import { AuthorityStateAttestation } from './authority-state-attestation.js';
+
 // ─────────────────────────────────────────────
 // CRYPTO PRIMITIVES
 // ─────────────────────────────────────────────
@@ -732,14 +734,21 @@ async function importPrivateKey(privateJwk) {
  * Create a signed delegation receipt.
  *
  * @param {object} options
- * @param {string}      options.scope          - What the AI is authorized to do
- * @param {string}      options.boundaries     - What the AI must never do
- * @param {string}      options.instructions   - Operator instructions locked into the receipt
- * @param {number}      [options.ttlHours=1]   - How long the receipt is valid (hours)
- * @param {CryptoKey}   options.privateKey     - ECDSA P-256 private signing key
- * @param {object}      options.publicJwk      - Corresponding public key JWK
- * @param {string}      [options.agentId]      - Optional identifier for the agent being authorized
- * @param {object}      [options.metadata]     - Optional arbitrary metadata attached to receipt
+ * @param {string}      options.scope            - What the AI is authorized to do
+ * @param {string}      options.boundaries       - What the AI must never do
+ * @param {string}      options.instructions     - Operator instructions locked into the receipt
+ * @param {number}      [options.ttlHours=1]     - How long the receipt is valid (hours)
+ * @param {CryptoKey}   options.privateKey       - ECDSA P-256 private signing key
+ * @param {object}      options.publicJwk        - Corresponding public key JWK
+ * @param {string}      [options.agentId]        - Optional identifier for the agent being authorized
+ * @param {object}      [options.metadata]       - Optional arbitrary metadata attached to receipt
+ * @param {object}      [options.authorityState] - Optional authority state to commit.
+ *   Recommended shape: { roles?: string[], groups?: string[], entitlements?: string[], attributes?: object }.
+ *   When present, the SHA-256 commitment is stored as authorityStateCommitment in the signed body,
+ *   enabling PreExecutionVerifier Check 15 (authority state drift detection).
+ * @param {object}      [options.reauthPolicy]   - Optional re-authorization policy stored as-is.
+ *   Shape: { secondsBeforeExpiry?: number, trustScoreBelow?: number, onAuthorityStateDrift?: 'block'|'reauth' }.
+ *   Consumed by PreExecutionVerifier to compute the reauthRequired field on every gate result.
  *
  * @returns {{ receipt: object, receiptId: string, systemPrompt: string }}
  */
@@ -753,6 +762,8 @@ async function create(options) {
     publicJwk,
     agentId,
     metadata,
+    authorityState,
+    reauthPolicy,
   } = options;
 
   if (!scope)        throw new Error('AuthProof: scope is required');
@@ -768,6 +779,10 @@ async function create(options) {
 
   const { kty, crv, x, y } = publicJwk;
 
+  const authorityStateCommitment = authorityState
+    ? await AuthorityStateAttestation.commit(authorityState)
+    : undefined;
+
   const body = {
     delegationId:         id,
     issuedAt:             now.toISOString(),
@@ -777,8 +792,10 @@ async function create(options) {
     operatorInstructions: instructions,
     instructionsHash,
     signerPublicKey:      { kty, crv, x, y },
-    ...(agentId   ? { agentId }   : {}),
-    ...(metadata  ? { metadata }  : {}),
+    ...(agentId                  ? { agentId }                  : {}),
+    ...(metadata                 ? { metadata }                 : {}),
+    ...(authorityStateCommitment ? { authorityStateCommitment } : {}),
+    ...(reauthPolicy             ? { reauthPolicy }             : {}),
   };
 
   const signature = await _sign(privateKey, JSON.stringify(body));
@@ -3104,6 +3121,9 @@ const AuthProof = {
 
   // AuthProof client (guided delegation)
   AuthProofClient,
+
+  // Authority state attestation (VDD Phase 1)
+  AuthorityStateAttestation,
 };
 
 // ESM + CJS compatible export
@@ -3121,7 +3141,8 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports.TaintTracker       = TaintTracker;
   module.exports.DataFlowReceipt    = DataFlowReceipt;
   module.exports.BatchReceipt       = BatchReceipt;
-  module.exports.AuthProofClient    = AuthProofClient;
+  module.exports.AuthProofClient          = AuthProofClient;
+  module.exports.AuthorityStateAttestation = AuthorityStateAttestation;
 } else if (typeof globalThis !== 'undefined') {
   globalThis.AuthProof            = AuthProof;
   globalThis.ActionLog            = ActionLog;
@@ -3136,7 +3157,8 @@ if (typeof module !== 'undefined' && module.exports) {
   globalThis.TaintTracker         = TaintTracker;
   globalThis.DataFlowReceipt      = DataFlowReceipt;
   globalThis.BatchReceipt         = BatchReceipt;
-  globalThis.AuthProofClient      = AuthProofClient;
+  globalThis.AuthProofClient           = AuthProofClient;
+  globalThis.AuthorityStateAttestation = AuthorityStateAttestation;
 }
 
 export default AuthProof;
@@ -3163,6 +3185,7 @@ export {
   DataFlowReceipt,
   BatchReceipt,
   AuthProofClient,
+  AuthorityStateAttestation,
 };
 
 // DelegationChain lives in its own module (async crypto primitives require separation)
