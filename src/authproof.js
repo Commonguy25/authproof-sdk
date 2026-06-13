@@ -17,6 +17,7 @@ if (typeof globalThis.crypto === 'undefined') {
 }
 
 import { checkScopeAttenuation, ScopeAttenuationError } from './delegation-chain.js';
+import { AuthorityStateAttestation } from './authority-state-attestation.js';
 
 // ─────────────────────────────────────────────
 // CRYPTO PRIMITIVES
@@ -757,6 +758,13 @@ async function importPrivateKey(privateJwk) {
  * @param {boolean}     [options.revocationRequired] - If true, offline verifiers must deny this receipt.
  *                                                     Use for high-stakes delegations that require live
  *                                                     revocation checking.
+ * @param {object}      [options.authorityState]     - Optional authority state to commit.
+ *   Recommended shape: { roles?: string[], groups?: string[], entitlements?: string[], attributes?: object }.
+ *   When present, the SHA-256 commitment is stored as authorityStateCommitment in the signed body,
+ *   enabling PreExecutionVerifier Check 15 (authority state drift detection).
+ * @param {object}      [options.reauthPolicy]       - Optional re-authorization policy stored as-is.
+ *   Shape: { secondsBeforeExpiry?: number, trustScoreBelow?: number, onAuthorityStateDrift?: 'block'|'reauth' }.
+ *   Consumed by PreExecutionVerifier to compute the reauthRequired field on every gate result.
  *
  * @returns {{ receipt: object, receiptId: string, systemPrompt: string }}
  */
@@ -773,6 +781,8 @@ async function create(options) {
     toolSchemaHash,
     revocationRequired,
     parentReceiptId,
+    authorityState,
+    reauthPolicy,
   } = options;
 
   if (!scope)        throw new Error('AuthProof: scope is required');
@@ -788,6 +798,10 @@ async function create(options) {
 
   const { kty, crv, x, y } = publicJwk;
 
+  const authorityStateCommitment = authorityState
+    ? await AuthorityStateAttestation.commit(authorityState)
+    : undefined;
+
   const body = {
     delegationId:         id,
     issuedAt:             now.toISOString(),
@@ -797,11 +811,13 @@ async function create(options) {
     operatorInstructions: instructions,
     instructionsHash,
     signerPublicKey:      { kty, crv, x, y },
-    ...(agentId            ? { agentId }            : {}),
-    ...(metadata           ? { metadata }           : {}),
-    ...(toolSchemaHash     ? { toolSchemaHash }     : {}),
-    ...(revocationRequired ? { revocationRequired } : {}),
-    ...(parentReceiptId    ? { parentReceiptId }    : {}),
+    ...(agentId                  ? { agentId }                  : {}),
+    ...(metadata                 ? { metadata }                 : {}),
+    ...(toolSchemaHash           ? { toolSchemaHash }           : {}),
+    ...(revocationRequired       ? { revocationRequired }       : {}),
+    ...(parentReceiptId          ? { parentReceiptId }          : {}),
+    ...(authorityStateCommitment ? { authorityStateCommitment } : {}),
+    ...(reauthPolicy             ? { reauthPolicy }             : {}),
   };
 
   const signature   = await _sign(privateKey, JSON.stringify(body));
@@ -3301,6 +3317,9 @@ const AuthProof = {
 
   // AuthProof client (guided delegation)
   AuthProofClient,
+
+  // Authority state attestation (VDD Phase 1)
+  AuthorityStateAttestation,
 };
 
 // ESM + CJS compatible export
@@ -3318,7 +3337,8 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports.TaintTracker       = TaintTracker;
   module.exports.DataFlowReceipt    = DataFlowReceipt;
   module.exports.BatchReceipt       = BatchReceipt;
-  module.exports.AuthProofClient    = AuthProofClient;
+  module.exports.AuthProofClient          = AuthProofClient;
+  module.exports.AuthorityStateAttestation = AuthorityStateAttestation;
 } else if (typeof globalThis !== 'undefined') {
   globalThis.AuthProof            = AuthProof;
   globalThis.ActionLog            = ActionLog;
@@ -3333,7 +3353,8 @@ if (typeof module !== 'undefined' && module.exports) {
   globalThis.TaintTracker         = TaintTracker;
   globalThis.DataFlowReceipt      = DataFlowReceipt;
   globalThis.BatchReceipt         = BatchReceipt;
-  globalThis.AuthProofClient      = AuthProofClient;
+  globalThis.AuthProofClient           = AuthProofClient;
+  globalThis.AuthorityStateAttestation = AuthorityStateAttestation;
 }
 
 export default AuthProof;
@@ -3361,6 +3382,7 @@ export {
   DataFlowReceipt,
   BatchReceipt,
   AuthProofClient,
+  AuthorityStateAttestation,
 };
 
 // DelegationChain lives in its own module (async crypto primitives require separation)

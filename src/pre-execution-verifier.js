@@ -32,6 +32,16 @@ import {
   checkScopeAttenuation,
 } from './authproof.js';
 
+import { AuthorityStateAttestation } from './authority-state-attestation.js';
+
+// ─────────────────────────────────────────────
+// DENIAL CODES
+// ─────────────────────────────────────────────
+
+const DENIAL_CODES = {
+  AUTHORITY_STATE_DRIFT: 'AUTHORITY_STATE_DRIFT',
+};
+
 // ─────────────────────────────────────────────
 // CRYPTO HELPERS (re-implemented — private in authproof.js)
 // ─────────────────────────────────────────────
@@ -223,8 +233,11 @@ class PreExecutionVerifier {
    *                                                             Default 3 matches the RECOMMENDED
    *                                                             value in draft-nelson-agent-
    *                                                             delegation-receipts-09.
+   * @param {object}               [opts.defaultReauthPolicy] - fallback reauth policy when the
+   *   receipt does not carry a reauthPolicy field.
+   *   Default: { secondsBeforeExpiry: 300, trustScoreBelow: 50, onAuthorityStateDrift: 'reauth' }
    */
-  constructor({ delegationLog, revocationRegistry, requireTEE = false, offlineMode = false, sessionState, modelStateAttestation, actionLog, maxChainDepth = MAX_CHAIN_DEPTH } = {}) {
+  constructor({ delegationLog, revocationRegistry, requireTEE = false, offlineMode = false, sessionState, modelStateAttestation, actionLog, maxChainDepth = MAX_CHAIN_DEPTH, defaultReauthPolicy } = {}) {
     if (!delegationLog)      throw new Error('PreExecutionVerifier: delegationLog is required');
     if (!revocationRegistry) throw new Error('PreExecutionVerifier: revocationRegistry is required');
 
@@ -236,6 +249,11 @@ class PreExecutionVerifier {
     this._modelStateAttestation = modelStateAttestation ?? null;
     this._actionLog             = actionLog             ?? null;
     this._maxChainDepth         = maxChainDepth;
+    this._defaultReauthPolicy   = defaultReauthPolicy  ?? {
+      secondsBeforeExpiry:   300,
+      trustScoreBelow:       50,
+      onAuthorityStateDrift: 'reauth',
+    };
 
     /** @private — internal audit log of every gate decision */
     this._auditLog     = new ActionLog();
@@ -281,17 +299,24 @@ class PreExecutionVerifier {
    * Every call (pass or fail) is logged to the internal audit log.
    *
    * @param {object} opts
-   * @param {string}  opts.receiptHash           — hash of the delegation receipt
-   * @param {object|string} opts.action          — action the agent wants to take
-   * @param {string}  opts.operatorInstructions  — what the operator claims to be instructing
-   * @param {string}  [opts.programHash]         — optional Safescript capability DAG hash
+   * @param {string}  opts.receiptHash              — hash of the delegation receipt
+   * @param {object|string} opts.action             — action the agent wants to take
+   * @param {string}  opts.operatorInstructions     — what the operator claims to be instructing
+   * @param {string}  [opts.programHash]            — optional Safescript capability DAG hash
+   * @param {object}  [opts.currentAuthorityState]  — optional current authority state; when provided
+   *   and the receipt carries authorityStateCommitment, triggers Check 15 (authority state drift).
    *
    * @returns {Promise<{
    *   allowed: boolean,
    *   checks: object,
    *   blockedReason: string|null,
-   *   verifiedAt: string
+   *   verifiedAt: string,
+   *   reauthRequired: boolean
    * }>}
+   *
+   * reauthRequired — a soft signal that the caller should prompt for re-authorization before the
+   * next action. Does not change allowed. Non-breaking addition: callers that do not read this
+   * field see no behavior change.
    */
   async check({
     receiptHash,
@@ -304,6 +329,7 @@ class PreExecutionVerifier {
     currentSystemPromptHash,
     currentRuntimeConfigHash,
     currentToolSchema,
+    currentAuthorityState,
   } = {}) {
     if (!this._initialized) {
       throw new Error('PreExecutionVerifier: call init() before check()');
@@ -718,7 +744,36 @@ class PreExecutionVerifier {
       checks.parentScopeContainment = true;
     }
 
-    return this._finalize({ allowed: true, checks, blockedReason: null, receiptHash, action });
+    // ── Check 15: Authority State Drift (optional) ────────────────────────
+    // Runs only when the receipt carries authorityStateCommitment AND
+    // opts.currentAuthorityState was passed to this call.
+    // Runs after Check 14 so a receipt carrying both parentReceiptId and
+    // authorityStateCommitment passes through both checks in sequence.
+    let authorityStateDrifted = false;
+    if (receipt.authorityStateCommitment !== undefined && currentAuthorityState !== undefined) {
+      const stateMatches = await AuthorityStateAttestation.verify(
+        receipt.authorityStateCommitment,
+        currentAuthorityState
+      );
+      if (!stateMatches) {
+        const driftPolicy = receipt.reauthPolicy?.onAuthorityStateDrift
+          ?? this._defaultReauthPolicy.onAuthorityStateDrift;
+        if (driftPolicy === 'block') {
+          return this._finalize({
+            allowed:                false,
+            checks,
+            blockedReason:          DENIAL_CODES.AUTHORITY_STATE_DRIFT,
+            receiptHash,
+            action,
+            reauthRequiredOverride: false,
+          });
+        }
+        // Default: soft signal. Do not deny -- set flag for reauthRequired in result.
+        authorityStateDrifted = true;
+      }
+    }
+
+    return this._finalize({ allowed: true, checks, blockedReason: null, receiptHash, action, authorityStateDrifted });
 
     } finally {
       this._inFlightChecks.delete(receiptHash);
@@ -730,7 +785,7 @@ class PreExecutionVerifier {
    * All decisions (PERMIT and DENY) are logged.
    * @private
    */
-  async _finalize({ allowed, checks, blockedReason, denialCode, receiptHash, action, sessionRiskResult }) {
+  async _finalize({ allowed, checks, blockedReason, denialCode, receiptHash, action, sessionRiskResult, authorityStateDrifted = false, reauthRequiredOverride }) {
     const verifiedAt = new Date().toISOString();
 
     const checkResult = {
@@ -839,6 +894,35 @@ class PreExecutionVerifier {
       }
     }
 
+    // Resolve session result now so it's available for reauthRequired computation.
+    const sessionResult = sessionRiskResult ?? this._sessionRiskResult ?? null;
+
+    // Compute reauthRequired.
+    let reauthRequired = false;
+    if (reauthRequiredOverride !== undefined) {
+      reauthRequired = reauthRequiredOverride;
+    } else {
+      const receipt = this._log.getReceipt(receiptHash);
+      if (receipt) {
+        const rp                  = receipt.reauthPolicy ?? {};
+        const secondsBeforeExpiry = rp.secondsBeforeExpiry   ?? this._defaultReauthPolicy.secondsBeforeExpiry;
+        const trustScoreBelow     = rp.trustScoreBelow       ?? this._defaultReauthPolicy.trustScoreBelow;
+        const onDrift             = rp.onAuthorityStateDrift ?? this._defaultReauthPolicy.onAuthorityStateDrift;
+
+        // Condition 1: receipt will expire within secondsBeforeExpiry seconds.
+        if (receipt.timeWindow?.end) {
+          const secondsLeft = Math.floor((new Date(receipt.timeWindow.end) - new Date()) / 1000);
+          if (secondsLeft >= 0 && secondsLeft <= secondsBeforeExpiry) reauthRequired = true;
+        }
+
+        // Condition 2: session risk score is below the trust score threshold.
+        if (sessionResult && sessionResult.riskScore < trustScoreBelow) reauthRequired = true;
+
+        // Condition 3: authority state drifted and policy is not 'block' (block was handled upstream).
+        if (authorityStateDrifted && onDrift !== 'block') reauthRequired = true;
+      }
+    }
+
     const result = {
       allowed,
       checks,
@@ -848,10 +932,9 @@ class PreExecutionVerifier {
       verifierPublicKey: this._publicJwk,
       verificationMode:  this._offlineMode ? 'offline' : 'online',
       revocationChecked: !this._offlineMode,
+      reauthRequired,
     };
 
-    // Attach session risk result when available
-    const sessionResult = sessionRiskResult ?? this._sessionRiskResult ?? null;
     if (sessionResult) {
       result.sessionRiskResult = sessionResult;
       this._sessionRiskResult  = null; // reset for next call
