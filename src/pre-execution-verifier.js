@@ -34,13 +34,23 @@ import {
 
 import { AuthorityStateAttestation } from './authority-state-attestation.js';
 
+import { InMemoryConsumptionStore } from './consumption-store.js';
+
 // ─────────────────────────────────────────────
 // DENIAL CODES
 // ─────────────────────────────────────────────
 
 const DENIAL_CODES = {
-  AUTHORITY_STATE_DRIFT: 'AUTHORITY_STATE_DRIFT',
+  AUTHORITY_STATE_DRIFT:    'AUTHORITY_STATE_DRIFT',
+  RECEIPT_ALREADY_CONSUMED: 'RECEIPT_ALREADY_CONSUMED',
+  CONSUMPTION_STORE_REQUIRED: 'CONSUMPTION_STORE_REQUIRED',
 };
+
+/** Denial code: receipt was already consumed by a prior verification. Terminal. */
+const RECEIPT_ALREADY_CONSUMED   = 'RECEIPT_ALREADY_CONSUMED';
+
+/** Denial code: receipt has oneTimeUse=true but no durable ConsumptionStore was configured. */
+const CONSUMPTION_STORE_REQUIRED  = 'CONSUMPTION_STORE_REQUIRED';
 
 // ─────────────────────────────────────────────
 // CRYPTO HELPERS (re-implemented — private in authproof.js)
@@ -236,8 +246,13 @@ class PreExecutionVerifier {
    * @param {object}               [opts.defaultReauthPolicy] - fallback reauth policy when the
    *   receipt does not carry a reauthPolicy field.
    *   Default: { secondsBeforeExpiry: 300, trustScoreBelow: 50, onAuthorityStateDrift: 'reauth' }
+   * @param {ConsumptionStore}     [opts.consumptionStore]   - durable store for one-time receipt
+   *   consumption (oneTimeUse: true). When omitted the verifier uses an internal
+   *   InMemoryConsumptionStore but will deny all oneTimeUse receipts with
+   *   CONSUMPTION_STORE_REQUIRED (fail closed). Provide a durable store such as
+   *   RedisConsumptionStore to enable global one-time use.
    */
-  constructor({ delegationLog, revocationRegistry, requireTEE = false, offlineMode = false, sessionState, modelStateAttestation, actionLog, maxChainDepth = MAX_CHAIN_DEPTH, defaultReauthPolicy } = {}) {
+  constructor({ delegationLog, revocationRegistry, requireTEE = false, offlineMode = false, sessionState, modelStateAttestation, actionLog, maxChainDepth = MAX_CHAIN_DEPTH, defaultReauthPolicy, consumptionStore } = {}) {
     if (!delegationLog)      throw new Error('PreExecutionVerifier: delegationLog is required');
     if (!revocationRegistry) throw new Error('PreExecutionVerifier: revocationRegistry is required');
 
@@ -254,6 +269,12 @@ class PreExecutionVerifier {
       trustScoreBelow:       50,
       onAuthorityStateDrift: 'reauth',
     };
+
+    // consumptionStore: when explicitly provided it is treated as durable (global).
+    // When omitted a per-instance InMemoryConsumptionStore is used, but all
+    // oneTimeUse receipts are denied with CONSUMPTION_STORE_REQUIRED (fail closed).
+    this._consumptionStore            = consumptionStore ?? new InMemoryConsumptionStore();
+    this._hasExternalConsumptionStore = consumptionStore != null;
 
     /** @private — internal audit log of every gate decision */
     this._auditLog     = new ActionLog();
@@ -773,6 +794,43 @@ class PreExecutionVerifier {
       }
     }
 
+    // oneTimeUse: global one-time receipt consumption.
+    // Runs after ALL authorization checks (including Check 15) so a consumption
+    // slot is never burned on a receipt that would be denied for another reason.
+    if (receipt.oneTimeUse) {
+      // Fail closed: no durable store configured means no global guarantee.
+      // An InMemoryConsumptionStore cannot enforce uniqueness across instances
+      // or restarts. Mirrors the fail-closed philosophy of revocationRequired.
+      if (!this._hasExternalConsumptionStore) {
+        return this._finalize({
+          allowed:       false,
+          checks,
+          blockedReason: CONSUMPTION_STORE_REQUIRED,
+          denialCode:    CONSUMPTION_STORE_REQUIRED,
+          receiptHash,
+          action,
+        });
+      }
+
+      // Derive key: include nonce when present for receipts that reuse the same
+      // receiptId with a different nonce. Falls back to receiptId alone.
+      const consumptionKey   = receipt.nonce
+        ? `${receiptHash}:${receipt.nonce}`
+        : receiptHash;
+
+      const firstConsumption = await this._consumptionStore.consume(consumptionKey);
+      if (!firstConsumption) {
+        return this._finalize({
+          allowed:       false,
+          checks,
+          blockedReason: RECEIPT_ALREADY_CONSUMED,
+          denialCode:    RECEIPT_ALREADY_CONSUMED,
+          receiptHash,
+          action,
+        });
+      }
+    }
+
     return this._finalize({ allowed: true, checks, blockedReason: null, receiptHash, action, authorityStateDrifted });
 
     } finally {
@@ -970,5 +1028,5 @@ class PreExecutionVerifier {
 // EXPORTS
 // ─────────────────────────────────────────────
 
-export { PreExecutionVerifier, DelegationLog, MAX_CHAIN_DEPTH };
-export default { PreExecutionVerifier, DelegationLog, MAX_CHAIN_DEPTH };
+export { PreExecutionVerifier, DelegationLog, MAX_CHAIN_DEPTH, RECEIPT_ALREADY_CONSUMED, CONSUMPTION_STORE_REQUIRED };
+export default { PreExecutionVerifier, DelegationLog, MAX_CHAIN_DEPTH, RECEIPT_ALREADY_CONSUMED, CONSUMPTION_STORE_REQUIRED };
