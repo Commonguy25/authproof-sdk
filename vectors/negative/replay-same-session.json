@@ -1,0 +1,32 @@
+{
+  "id": "replay-same-session",
+  "description": "Two concurrent check() calls with the same receiptHash -- the second is blocked as a replay attack.",
+  "receipt": {
+    "delegationId": "auth-1781921988447-0iu8v",
+    "issuedAt": "2026-06-20T02:19:48.447Z",
+    "scope": "Read calendar events and summarize meetings",
+    "boundaries": "Do not send emails. Do not delete anything.",
+    "timeWindow": {
+      "start": "2026-06-20T02:19:48.447Z",
+      "end": "2026-06-21T02:19:48.447Z"
+    },
+    "operatorInstructions": "Summarize clearly. Stay within scope.",
+    "instructionsHash": "b47d2fcaab993a6e93d10d4d25010736a9889d91490931ed56b6ec27ce990c79",
+    "signerPublicKey": {
+      "kty": "EC",
+      "crv": "P-256",
+      "x": "IfLcXEmnhHr6yo9ZIo8Nux1K755Z5J89Vzq-XE7A8Qc",
+      "y": "mMYOCWIUay9WP6_J-oo8SPC27pcwrQQ9VKOnyJUETWA"
+    },
+    "signature": "fefef8db1300b834b712884323a706db198cb810fb0892d26124524a45fe6d35778cb790a2903f1dfab26597955155618b7a59f2c6de46d1c42893e7eb1480bc"
+  },
+  "receiptId": "f2f97f0329a5f74d50eb809e7c4f62fc416959614a519e852622ebd687b69212",
+  "action": "Read calendar meetings and summarize",
+  "operatorInstructions": "Summarize clearly. Stay within scope.",
+  "testBehavior": "concurrent_replay",
+  "verifierOptions": {},
+  "expected": {
+    "outcome": "DENY",
+    "denialCode": "Replay attack detected"
+  }
+}

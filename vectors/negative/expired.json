@@ -1,0 +1,31 @@
+{
+  "id": "expired",
+  "description": "Receipt timeWindow.end is in the past -- receipt is expired.",
+  "receipt": {
+    "delegationId": "auth-1781921988442-abr17",
+    "issuedAt": "2026-06-20T02:19:48.442Z",
+    "scope": "Read calendar events and summarize meetings",
+    "boundaries": "Do not send emails. Do not delete anything.",
+    "timeWindow": {
+      "start": "2026-06-20T02:19:48.442Z",
+      "end": "2026-06-20T01:19:48.442Z"
+    },
+    "operatorInstructions": "Summarize clearly. Stay within scope.",
+    "instructionsHash": "b47d2fcaab993a6e93d10d4d25010736a9889d91490931ed56b6ec27ce990c79",
+    "signerPublicKey": {
+      "kty": "EC",
+      "crv": "P-256",
+      "x": "IfLcXEmnhHr6yo9ZIo8Nux1K755Z5J89Vzq-XE7A8Qc",
+      "y": "mMYOCWIUay9WP6_J-oo8SPC27pcwrQQ9VKOnyJUETWA"
+    },
+    "signature": "9fd0b65feda86237a7b0214d215568f3006dc71f8f5e86ebe1696d7e9d3c57010ab6a7e59283e3b242e63359161f713e80302e4076271e5091bdd6127e441d17"
+  },
+  "receiptId": "afe5dd05e5055c689f5d68ded0519bd32381978ecdbb1e490b2d05d747c14603",
+  "action": "Read calendar meetings and summarize",
+  "operatorInstructions": "Summarize clearly. Stay within scope.",
+  "verifierOptions": {},
+  "expected": {
+    "outcome": "DENY",
+    "denialCode": "Receipt expired at"
+  }
+}

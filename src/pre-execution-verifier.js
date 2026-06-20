@@ -5,18 +5,24 @@
  * this verifier passes. A compromised or malicious agent cannot skip it
  * because it runs before the runtime.
  *
- * Eleven sequential checks (stops at first failure):
- *   1. Receipt signature valid (ECDSA P-256)
- *   2. Receipt not revoked (RevocationRegistry)
- *   3. Within time window (log timestamp as oracle, not client clock)
- *   4. Action within scope (ScopeSchema.validate or fuzzy fallback)
- *   5. Operator instructions match receipt (Canonicalizer.hash)
- *   6. Program hash match (optional — prevents code substitution attacks)
- *   7. Session risk evaluation (optional — SessionState.evaluate())
- *   8. Tool schema integrity (optional — toolSchemaHash in receipt)
- *   9. Model state verification (optional — ModelStateAttestation check)
- *  10. Tool output hash binding (optional — toolOutputHash in receipt)
- *  11. Instruction provenance (optional — trustedSources in receipt)
+ * Sequential checks (stops at first failure):
+ *   1.  Receipt signature valid (ECDSA P-256)
+ *   2.  Receipt not revoked (RevocationRegistry)
+ *   3.  Within time window (log timestamp as oracle, not client clock)
+ *   4.  Action within scope (ScopeSchema.validate or fuzzy fallback)
+ *   5.  Operator instructions match receipt (Canonicalizer.hash)
+ *   6.  Program hash match (optional — prevents code substitution attacks)
+ *   7.  Session risk evaluation (optional — SessionState.evaluate())
+ *   8.  Tool schema integrity (optional — toolSchemaHash in receipt)
+ *   9.  Model state verification (optional — ModelStateAttestation check)
+ *  10.  Tool output hash binding (optional — toolOutputHash in receipt)
+ *  11.  Instruction provenance (optional — trustedSources in receipt)
+ *  14.  Parent scope containment (sub-receipts only — parentReceiptId present)
+ *  15.  Authority state drift (optional — authorityStateCommitment in receipt)
+ *
+ * oneTimeUse consumption runs last, after every authorization check above has
+ * passed, so a consumption slot is never burned on a receipt that would be
+ * denied for another reason.
  *
  * @module pre-execution-verifier
  */
@@ -30,7 +36,32 @@ import {
   checkScope,
   TEEAttestation,
   generateKey,
+  checkScopeAttenuation,
 } from './authproof.js';
+
+import { AuthorityStateAttestation } from './authority-state-attestation.js';
+
+import { InMemoryConsumptionStore } from './consumption-store.js';
+
+// ─────────────────────────────────────────────
+// DENIAL CODES
+// ─────────────────────────────────────────────
+
+const DENIAL_CODES = {
+  AUTHORITY_STATE_DRIFT:    'AUTHORITY_STATE_DRIFT',
+  RECEIPT_ALREADY_CONSUMED: 'RECEIPT_ALREADY_CONSUMED',
+  CONSUMPTION_STORE_REQUIRED: 'CONSUMPTION_STORE_REQUIRED',
+  CHAIN_DEPTH_EXCEEDED:     'CHAIN_DEPTH_EXCEEDED',
+};
+
+/** Denial code: receipt was already consumed by a prior verification. Terminal. */
+const RECEIPT_ALREADY_CONSUMED   = 'RECEIPT_ALREADY_CONSUMED';
+
+/** Denial code: receipt has oneTimeUse=true but no durable ConsumptionStore was configured. */
+const CONSUMPTION_STORE_REQUIRED  = 'CONSUMPTION_STORE_REQUIRED';
+
+/** Denial code: delegation chain depth exceeds the configured maxChainDepth. */
+const CHAIN_DEPTH_EXCEEDED        = 'CHAIN_DEPTH_EXCEEDED';
 
 // ─────────────────────────────────────────────
 // CRYPTO HELPERS (re-implemented — private in authproof.js)
@@ -85,6 +116,17 @@ function _canonicalizeJson(obj) {
 async function _sha256Schema(schema) {
   return _sha256(_canonicalizeJson(schema));
 }
+
+// ─────────────────────────────────────────────
+// CONSTANTS
+// ─────────────────────────────────────────────
+
+/**
+ * Default maximum delegation chain depth for Check 14.
+ * Matches the RECOMMENDED value in draft-nelson-agent-delegation-receipts-09.
+ * Pass maxChainDepth to the PreExecutionVerifier constructor to override.
+ */
+const MAX_CHAIN_DEPTH = 3;
 
 // ─────────────────────────────────────────────
 // DELEGATION LOG
@@ -194,26 +236,56 @@ class DelegationLog {
 class PreExecutionVerifier {
   /**
    * @param {object} opts
-   * @param {DelegationLog}        opts.delegationLog          — append-only receipt store
-   * @param {RevocationRegistry}   opts.revocationRegistry     — live revocation registry
-   * @param {boolean}              [opts.requireTEE=false]     — require hardware attestation
-   * @param {SessionState}         [opts.sessionState]         — when provided, enables check 7
-   * @param {ModelStateAttestation} [opts.modelStateAttestation] — when provided, enables check 8
-   * @param {ActionLog}            [opts.actionLog]            — when provided, receives one
+   * @param {DelegationLog}        opts.delegationLog          - append-only receipt store
+   * @param {RevocationRegistry}   opts.revocationRegistry     - live revocation registry
+   * @param {boolean}              [opts.requireTEE=false]     - require hardware attestation
+   * @param {boolean}              [opts.offlineMode=false]    - skip the revocation registry check.
+   *                                                             All other checks run normally.
+   *                                                             Receipts with revocationRequired: true
+   *                                                             are denied even in offline mode.
+   * @param {SessionState}         [opts.sessionState]         - when provided, enables check 7
+   * @param {ModelStateAttestation} [opts.modelStateAttestation] - when provided, enables check 8
+   * @param {ActionLog}            [opts.actionLog]            - when provided, receives one
    *                                                             receipt_authorized entry per
    *                                                             fully-passed check; never written
    *                                                             when any check fails
+   * @param {number}               [opts.maxChainDepth=3]     - maximum allowed delegation chain
+   *                                                             depth for sub-receipt Check 14.
+   *                                                             Default 3 matches the RECOMMENDED
+   *                                                             value in draft-nelson-agent-
+   *                                                             delegation-receipts-09.
+   * @param {object}               [opts.defaultReauthPolicy] - fallback reauth policy when the
+   *   receipt does not carry a reauthPolicy field.
+   *   Default: { secondsBeforeExpiry: 300, trustScoreBelow: 50, onAuthorityStateDrift: 'reauth' }
+   * @param {ConsumptionStore}     [opts.consumptionStore]   - durable store for one-time receipt
+   *   consumption (oneTimeUse: true). When omitted the verifier uses an internal
+   *   InMemoryConsumptionStore but will deny all oneTimeUse receipts with
+   *   CONSUMPTION_STORE_REQUIRED (fail closed). Provide a durable store such as
+   *   RedisConsumptionStore to enable global one-time use.
    */
-  constructor({ delegationLog, revocationRegistry, requireTEE = false, sessionState, modelStateAttestation, actionLog } = {}) {
+  constructor({ delegationLog, revocationRegistry, requireTEE = false, offlineMode = false, sessionState, modelStateAttestation, actionLog, maxChainDepth = MAX_CHAIN_DEPTH, defaultReauthPolicy, consumptionStore } = {}) {
     if (!delegationLog)      throw new Error('PreExecutionVerifier: delegationLog is required');
     if (!revocationRegistry) throw new Error('PreExecutionVerifier: revocationRegistry is required');
 
     this._log                   = delegationLog;
     this._registry              = revocationRegistry;
     this._requireTEE            = requireTEE;
+    this._offlineMode           = offlineMode;
     this._sessionState          = sessionState          ?? null;
     this._modelStateAttestation = modelStateAttestation ?? null;
     this._actionLog             = actionLog             ?? null;
+    this._maxChainDepth         = maxChainDepth;
+    this._defaultReauthPolicy   = defaultReauthPolicy  ?? {
+      secondsBeforeExpiry:   300,
+      trustScoreBelow:       50,
+      onAuthorityStateDrift: 'reauth',
+    };
+
+    // consumptionStore: when explicitly provided it is treated as durable (global).
+    // When omitted a per-instance InMemoryConsumptionStore is used, but all
+    // oneTimeUse receipts are denied with CONSUMPTION_STORE_REQUIRED (fail closed).
+    this._consumptionStore            = consumptionStore ?? new InMemoryConsumptionStore();
+    this._hasExternalConsumptionStore = consumptionStore != null;
 
     /** @private — internal audit log of every gate decision */
     this._auditLog     = new ActionLog();
@@ -255,21 +327,28 @@ class PreExecutionVerifier {
   /**
    * The main gate. Call this before ANY agent action executes.
    *
-   * All six checks run in strict sequence. Stops at first failure.
+   * All checks run in strict sequence. Stops at first failure.
    * Every call (pass or fail) is logged to the internal audit log.
    *
    * @param {object} opts
-   * @param {string}  opts.receiptHash           — hash of the delegation receipt
-   * @param {object|string} opts.action          — action the agent wants to take
-   * @param {string}  opts.operatorInstructions  — what the operator claims to be instructing
-   * @param {string}  [opts.programHash]         — optional Safescript capability DAG hash
+   * @param {string}  opts.receiptHash              — hash of the delegation receipt
+   * @param {object|string} opts.action             — action the agent wants to take
+   * @param {string}  opts.operatorInstructions     — what the operator claims to be instructing
+   * @param {string}  [opts.programHash]            — optional Safescript capability DAG hash
+   * @param {object}  [opts.currentAuthorityState]  — optional current authority state; when provided
+   *   and the receipt carries authorityStateCommitment, triggers Check 15 (authority state drift).
    *
    * @returns {Promise<{
    *   allowed: boolean,
    *   checks: object,
    *   blockedReason: string|null,
-   *   verifiedAt: string
+   *   verifiedAt: string,
+   *   reauthRequired: boolean
    * }>}
+   *
+   * reauthRequired — a soft signal that the caller should prompt for re-authorization before the
+   * next action. Does not change allowed. Non-breaking addition: callers that do not read this
+   * field see no behavior change.
    */
   async check({
     receiptHash,
@@ -282,6 +361,7 @@ class PreExecutionVerifier {
     currentSystemPromptHash,
     currentRuntimeConfigHash,
     currentToolSchema,
+    currentAuthorityState,
   } = {}) {
     if (!this._initialized) {
       throw new Error('PreExecutionVerifier: call init() before check()');
@@ -290,7 +370,7 @@ class PreExecutionVerifier {
 
     const checks = {
       receiptSignatureValid:     false,
-      receiptNotRevoked:         false,
+      ...(!this._offlineMode ? { receiptNotRevoked: false } : {}),
       withinTimeWindow:          false,
       actionWithinScope:         false,
       operatorInstructionsMatch: false,
@@ -329,7 +409,13 @@ class PreExecutionVerifier {
       });
     }
 
-    const { signature, ...body } = receipt;
+    // orchestratorSignature is excluded from the signed body per the draft spec.
+    // Strip it (along with the main signature) before verifying. For a plain
+    // receipt that never had an orchestratorSignature field this is a no-op:
+    // destructuring an absent key does not add it back to `body`, so this
+    // check is a strict superset of verifying a receipt with no orchestrator
+    // signature at all.
+    const { signature, orchestratorSignature: _orchSig, ...body } = receipt;
     const sigValid = await _verifySignature(
       receipt.signerPublicKey,
       signature,
@@ -347,16 +433,31 @@ class PreExecutionVerifier {
     }
 
     // ── Check 2: Revocation ────────────────────────────────────────────
-    const revokeStatus = await this._registry.check(receiptHash);
-    checks.receiptNotRevoked = !revokeStatus.revoked;
-    if (revokeStatus.revoked) {
-      return this._finalize({
-        allowed:       false,
-        checks,
-        blockedReason: `Receipt revoked: ${revokeStatus.reason}`,
-        receiptHash,
-        action,
-      });
+    if (this._offlineMode) {
+      // In offline mode the registry is not consulted. Receipts that require a live
+      // revocation check are denied immediately after signature verification.
+      if (receipt.revocationRequired) {
+        return this._finalize({
+          allowed:       false,
+          checks,
+          blockedReason: 'REVOCATION_CHECK_REQUIRED',
+          denialCode:    'REVOCATION_CHECK_REQUIRED',
+          receiptHash,
+          action,
+        });
+      }
+    } else {
+      const revokeStatus = await this._registry.check(receiptHash);
+      checks.receiptNotRevoked = !revokeStatus.revoked;
+      if (revokeStatus.revoked) {
+        return this._finalize({
+          allowed:       false,
+          checks,
+          blockedReason: `Receipt revoked: ${revokeStatus.reason}`,
+          receiptHash,
+          action,
+        });
+      }
     }
 
     // ── Check 3: Time window (log timestamp as oracle) ─────────────────
@@ -600,7 +701,201 @@ class PreExecutionVerifier {
       }
     }
 
-    return this._finalize({ allowed: true, checks, blockedReason: null, receiptHash, action });
+    // ── Check 14: Parent Scope Containment (sub-receipts only) ──────────
+    // Runs ONLY when receipt.parentReceiptId is present.
+    // This check runs in both online and offline mode: parent chain verification
+    // requires only the parent receipt from the delegation log, not network access.
+    if (receipt.parentReceiptId) {
+      checks.parentScopeContainment = false;
+
+      const parentEntry   = this._log.getEntry(receipt.parentReceiptId);
+      const parentReceipt = parentEntry?.receipt ?? null;
+
+      if (!parentReceipt) {
+        return this._finalize({
+          allowed:       false,
+          checks,
+          blockedReason: 'PARENT_SCOPE_VIOLATION',
+          denialCode:    'PARENT_SCOPE_VIOLATION',
+          receiptHash,
+          action,
+        });
+      }
+
+      // Count chain depth by following parentReceiptId links to the root.
+      // Each hop reads only the parentReceiptId field of each ancestor.
+      let depth   = 0;
+      let current = receipt;
+      while (current.parentReceiptId) {
+        depth++;
+        if (depth > this._maxChainDepth) break;
+        const ancestorEntry = this._log.getEntry(current.parentReceiptId);
+        if (!ancestorEntry) break;
+        current = ancestorEntry.receipt;
+      }
+
+      if (depth > this._maxChainDepth) {
+        return this._finalize({
+          allowed:       false,
+          checks,
+          blockedReason: CHAIN_DEPTH_EXCEEDED,
+          denialCode:    CHAIN_DEPTH_EXCEEDED,
+          receiptHash,
+          action,
+        });
+      }
+
+      // Verify the parent receipt's main signature.
+      // orchestratorSignature is excluded from the parent's signed body.
+      const { signature: parentSig, orchestratorSignature: _pOrch, ...parentBody } = parentReceipt;
+      const parentSigValid = await _verifySignature(
+        parentReceipt.signerPublicKey,
+        parentSig,
+        JSON.stringify(parentBody)
+      );
+      if (!parentSigValid) {
+        return this._finalize({
+          allowed:       false,
+          checks,
+          blockedReason: 'PARENT_SCOPE_VIOLATION',
+          denialCode:    'PARENT_SCOPE_VIOLATION',
+          receiptHash,
+          action,
+        });
+      }
+
+      // Verify orchestratorSignature when present.
+      // The binding string is exactly: "orchestrator-delegation:" + parentReceiptId + ":" + receiptId
+      // receiptHash IS the receiptId in this implementation (the DelegationLog key).
+      if (receipt.orchestratorSignature) {
+        const bindingStr = `orchestrator-delegation:${receipt.parentReceiptId}:${receiptHash}`;
+        const orchSigValid = await _verifySignature(
+          parentReceipt.signerPublicKey,
+          receipt.orchestratorSignature,
+          bindingStr
+        );
+        if (!orchSigValid) {
+          return this._finalize({
+            allowed:       false,
+            checks,
+            blockedReason: 'PARENT_SCOPE_VIOLATION',
+            denialCode:    'PARENT_SCOPE_VIOLATION',
+            receiptHash,
+            action,
+          });
+        }
+      }
+
+      // Verify time window containment: child window must be within parent window.
+      const childStart  = new Date(receipt.timeWindow.start);
+      const childEnd    = new Date(receipt.timeWindow.end);
+      const parentStart = new Date(parentReceipt.timeWindow.start);
+      const parentEnd   = new Date(parentReceipt.timeWindow.end);
+      if (childStart < parentStart || childEnd > parentEnd) {
+        return this._finalize({
+          allowed:       false,
+          checks,
+          blockedReason: 'PARENT_SCOPE_VIOLATION',
+          denialCode:    'PARENT_SCOPE_VIOLATION',
+          receiptHash,
+          action,
+        });
+      }
+
+      // Verify scope is a strict proper subset of parent scope.
+      // Uses the same checkScopeAttenuation logic as delegation-chain.js.
+      // Parent scope is resolved from the log entry metadata first (matches
+      // how Check 4 resolves scope), then falls back to the receipt body.
+      const parentScope = parentEntry.scopeSchema ?? parentReceipt.scopeSchema ?? parentReceipt.scope;
+      const childScope  = logEntry.scopeSchema     ?? receipt.scopeSchema      ?? receipt.scope;
+      try {
+        checkScopeAttenuation(parentScope, childScope);
+      } catch (err) {
+        // The draft distinguishes SCOPE_NOT_STRICT_SUBSET (child equals parent's
+        // action set exactly) from PARENT_SCOPE_VIOLATION (child exceeds parent).
+        const code = err.message && err.message.includes('proper subset')
+          ? 'SCOPE_NOT_STRICT_SUBSET'
+          : 'PARENT_SCOPE_VIOLATION';
+        return this._finalize({
+          allowed:       false,
+          checks,
+          blockedReason: code,
+          denialCode:    code,
+          receiptHash,
+          action,
+        });
+      }
+
+      checks.parentScopeContainment = true;
+    }
+
+    // ── Check 15: Authority State Drift (optional) ────────────────────────
+    // Runs only when the receipt carries authorityStateCommitment AND
+    // opts.currentAuthorityState was passed to this call.
+    // Runs after Check 14 so a receipt carrying both parentReceiptId and
+    // authorityStateCommitment passes through both checks in sequence.
+    let authorityStateDrifted = false;
+    if (receipt.authorityStateCommitment !== undefined && currentAuthorityState !== undefined) {
+      const stateMatches = await AuthorityStateAttestation.verify(
+        receipt.authorityStateCommitment,
+        currentAuthorityState
+      );
+      if (!stateMatches) {
+        const driftPolicy = receipt.reauthPolicy?.onAuthorityStateDrift
+          ?? this._defaultReauthPolicy.onAuthorityStateDrift;
+        if (driftPolicy === 'block') {
+          return this._finalize({
+            allowed:                false,
+            checks,
+            blockedReason:          DENIAL_CODES.AUTHORITY_STATE_DRIFT,
+            receiptHash,
+            action,
+            reauthRequiredOverride: false,
+          });
+        }
+        // Default: soft signal. Do not deny -- set flag for reauthRequired in result.
+        authorityStateDrifted = true;
+      }
+    }
+
+    // oneTimeUse: global one-time receipt consumption.
+    // Runs after ALL authorization checks (including Check 15) so a consumption
+    // slot is never burned on a receipt that would be denied for another reason.
+    if (receipt.oneTimeUse) {
+      // Fail closed: no durable store configured means no global guarantee.
+      // An InMemoryConsumptionStore cannot enforce uniqueness across instances
+      // or restarts. Mirrors the fail-closed philosophy of revocationRequired.
+      if (!this._hasExternalConsumptionStore) {
+        return this._finalize({
+          allowed:       false,
+          checks,
+          blockedReason: CONSUMPTION_STORE_REQUIRED,
+          denialCode:    CONSUMPTION_STORE_REQUIRED,
+          receiptHash,
+          action,
+        });
+      }
+
+      // Derive key: include nonce when present for receipts that reuse the same
+      // receiptId with a different nonce. Falls back to receiptId alone.
+      const consumptionKey   = receipt.nonce
+        ? `${receiptHash}:${receipt.nonce}`
+        : receiptHash;
+
+      const firstConsumption = await this._consumptionStore.consume(consumptionKey);
+      if (!firstConsumption) {
+        return this._finalize({
+          allowed:       false,
+          checks,
+          blockedReason: RECEIPT_ALREADY_CONSUMED,
+          denialCode:    RECEIPT_ALREADY_CONSUMED,
+          receiptHash,
+          action,
+        });
+      }
+    }
+
+    return this._finalize({ allowed: true, checks, blockedReason: null, receiptHash, action, authorityStateDrifted });
 
     } finally {
       this._inFlightChecks.delete(receiptHash);
@@ -612,7 +907,7 @@ class PreExecutionVerifier {
    * All decisions (PERMIT and DENY) are logged.
    * @private
    */
-  async _finalize({ allowed, checks, blockedReason, denialCode, receiptHash, action, sessionRiskResult }) {
+  async _finalize({ allowed, checks, blockedReason, denialCode, receiptHash, action, sessionRiskResult, authorityStateDrifted = false, reauthRequiredOverride }) {
     const verifiedAt = new Date().toISOString();
 
     const checkResult = {
@@ -721,20 +1016,52 @@ class PreExecutionVerifier {
       }
     }
 
+    // Resolve session result now so it's available for reauthRequired computation.
+    const sessionResult = sessionRiskResult ?? this._sessionRiskResult ?? null;
+
+    // Compute reauthRequired.
+    let reauthRequired = false;
+    if (reauthRequiredOverride !== undefined) {
+      reauthRequired = reauthRequiredOverride;
+    } else {
+      const receipt = this._log.getReceipt(receiptHash);
+      if (receipt) {
+        const rp                  = receipt.reauthPolicy ?? {};
+        const secondsBeforeExpiry = rp.secondsBeforeExpiry   ?? this._defaultReauthPolicy.secondsBeforeExpiry;
+        const trustScoreBelow     = rp.trustScoreBelow       ?? this._defaultReauthPolicy.trustScoreBelow;
+        const onDrift             = rp.onAuthorityStateDrift ?? this._defaultReauthPolicy.onAuthorityStateDrift;
+
+        // Condition 1: receipt will expire within secondsBeforeExpiry seconds.
+        if (receipt.timeWindow?.end) {
+          const secondsLeft = Math.floor((new Date(receipt.timeWindow.end) - new Date()) / 1000);
+          if (secondsLeft >= 0 && secondsLeft <= secondsBeforeExpiry) reauthRequired = true;
+        }
+
+        // Condition 2: session risk score is below the trust score threshold.
+        if (sessionResult && sessionResult.riskScore < trustScoreBelow) reauthRequired = true;
+
+        // Condition 3: authority state drifted and policy is not 'block' (block was handled upstream).
+        if (authorityStateDrifted && onDrift !== 'block') reauthRequired = true;
+      }
+    }
+
     const result = {
       allowed,
-      // decision is the agent-facing admission signal: PERMIT or DENY, no reason detail.
-      // Full reason codes are available via getAuditLog() only.
+      // decision is the agent-facing admission signal: PERMIT or DENY. Sits alongside
+      // (not instead of) blockedReason -- see Decision 3 of the merge investigation:
+      // main's result already carried full blockedReason text, so decision is additive
+      // shorthand, not a replacement for a sparser result shape.
       decision:      allowed ? 'PERMIT' : 'DENY',
       checks,
-      blockedReason: blockedReason ?? null,
+      blockedReason:     blockedReason ?? null,
       verifiedAt,
       verifierSignature,
       verifierPublicKey: this._publicJwk,
+      verificationMode:  this._offlineMode ? 'offline' : 'online',
+      revocationChecked: !this._offlineMode,
+      reauthRequired,
     };
 
-    // Attach session risk result when available
-    const sessionResult = sessionRiskResult ?? this._sessionRiskResult ?? null;
     if (sessionResult) {
       result.sessionRiskResult = sessionResult;
       this._sessionRiskResult  = null; // reset for next call
@@ -770,5 +1097,5 @@ class PreExecutionVerifier {
 // EXPORTS
 // ─────────────────────────────────────────────
 
-export { PreExecutionVerifier, DelegationLog };
-export default { PreExecutionVerifier, DelegationLog };
+export { PreExecutionVerifier, DelegationLog, MAX_CHAIN_DEPTH, RECEIPT_ALREADY_CONSUMED, CONSUMPTION_STORE_REQUIRED, CHAIN_DEPTH_EXCEEDED };
+export default { PreExecutionVerifier, DelegationLog, MAX_CHAIN_DEPTH, RECEIPT_ALREADY_CONSUMED, CONSUMPTION_STORE_REQUIRED, CHAIN_DEPTH_EXCEEDED };

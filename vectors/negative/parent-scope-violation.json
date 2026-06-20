@@ -1,0 +1,97 @@
+{
+  "id": "parent-scope-violation",
+  "description": "Sub-receipt scope exceeds parent scope: claims send:email which parent does not allow.",
+  "receipt": {
+    "delegationId": "auth-vector-bad-scope-1781921988452",
+    "issuedAt": "2026-06-20T02:19:48.452Z",
+    "scopeSchema": {
+      "version": "1.0",
+      "allowedActions": [
+        {
+          "operation": "read",
+          "resource": "email"
+        },
+        {
+          "operation": "send",
+          "resource": "email"
+        }
+      ],
+      "deniedActions": [
+        {
+          "operation": "delete",
+          "resource": "*"
+        }
+      ]
+    },
+    "boundaries": "Do not send emails. Do not delete anything.",
+    "timeWindow": {
+      "start": "2026-06-20T02:19:48.452Z",
+      "end": "2026-06-20T14:19:48.452Z"
+    },
+    "operatorInstructions": "Read email only. Do not modify records.",
+    "instructionsHash": "c7770cec36944bd53f6baf7dc9b7f5aa281a292300376e7b42bdfaf6f15c31e5",
+    "signerPublicKey": {
+      "kty": "EC",
+      "crv": "P-256",
+      "x": "IfLcXEmnhHr6yo9ZIo8Nux1K755Z5J89Vzq-XE7A8Qc",
+      "y": "mMYOCWIUay9WP6_J-oo8SPC27pcwrQQ9VKOnyJUETWA"
+    },
+    "parentReceiptId": "6d49fde9dfb1d9a56f2ca70fcc9876ed6c836a33343d4b11f2259404677a90d9",
+    "signature": "33d725221040994c8aff7b84764046d6e8f016637524b02590cb62086fe3fdb27262a5a8c80ca67cae8c3cab8e792471a629f4a5ff2f6312c3e548dcbf98c558",
+    "orchestratorSignature": "ed1c040f9a35c0b1c3a361c0baa8e9acb110bdf068b2feb412eb0259b923b071914bf6a1340cf3726c972d29e3e16cdd58d3e4fbea2056bd4e5c1f15b3f6b027"
+  },
+  "receiptId": "de83a51443a1ad3c953f54d21d03258cecc4f42fce5fb40efb20d23d60590f75",
+  "parentReceipt": {
+    "delegationId": "auth-1781921988452-869fm",
+    "issuedAt": "2026-06-20T02:19:48.452Z",
+    "scope": "Manage email",
+    "boundaries": "Do not send emails. Do not delete anything.",
+    "timeWindow": {
+      "start": "2026-06-20T02:19:48.452Z",
+      "end": "2026-06-21T02:19:48.452Z"
+    },
+    "operatorInstructions": "Read email only. Do not modify records.",
+    "instructionsHash": "c7770cec36944bd53f6baf7dc9b7f5aa281a292300376e7b42bdfaf6f15c31e5",
+    "signerPublicKey": {
+      "kty": "EC",
+      "crv": "P-256",
+      "x": "IfLcXEmnhHr6yo9ZIo8Nux1K755Z5J89Vzq-XE7A8Qc",
+      "y": "mMYOCWIUay9WP6_J-oo8SPC27pcwrQQ9VKOnyJUETWA"
+    },
+    "signature": "3efb9bb27b8da01f195ed1a67d655d3d09190f8649715503e43a6e6eb2164b43a05605bfaa717cb80e58bd729556287f1a7033e05215980289d6671cb72bb8eb"
+  },
+  "parentReceiptId": "6d49fde9dfb1d9a56f2ca70fcc9876ed6c836a33343d4b11f2259404677a90d9",
+  "parentScopeSchema": {
+    "version": "1.0",
+    "allowedActions": [
+      {
+        "operation": "read",
+        "resource": "email"
+      },
+      {
+        "operation": "read",
+        "resource": "calendar"
+      },
+      {
+        "operation": "write",
+        "resource": "calendar"
+      }
+    ],
+    "deniedActions": [
+      {
+        "operation": "delete",
+        "resource": "*"
+      }
+    ]
+  },
+  "action": {
+    "operation": "read",
+    "resource": "email"
+  },
+  "operatorInstructions": "Read email only. Do not modify records.",
+  "verifierOptions": {},
+  "expected": {
+    "outcome": "DENY",
+    "denialCode": "PARENT_SCOPE_VIOLATION"
+  }
+}

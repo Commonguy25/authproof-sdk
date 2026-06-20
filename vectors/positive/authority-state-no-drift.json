@@ -1,0 +1,59 @@
+{
+  "id": "authority-state-no-drift",
+  "description": "Receipt carries authorityStateCommitment; same authority state at check time means no drift.",
+  "receipt": {
+    "delegationId": "auth-1781921988436-hk3vy",
+    "issuedAt": "2026-06-20T02:19:48.436Z",
+    "scope": "Read calendar events and summarize meetings",
+    "boundaries": "Do not send emails. Do not delete anything.",
+    "timeWindow": {
+      "start": "2026-06-20T02:19:48.436Z",
+      "end": "2026-06-21T02:19:48.436Z"
+    },
+    "operatorInstructions": "Read email only. Do not modify records.",
+    "instructionsHash": "c7770cec36944bd53f6baf7dc9b7f5aa281a292300376e7b42bdfaf6f15c31e5",
+    "signerPublicKey": {
+      "kty": "EC",
+      "crv": "P-256",
+      "x": "IfLcXEmnhHr6yo9ZIo8Nux1K755Z5J89Vzq-XE7A8Qc",
+      "y": "mMYOCWIUay9WP6_J-oo8SPC27pcwrQQ9VKOnyJUETWA"
+    },
+    "authorityStateCommitment": "601bfb9bcc8319335f39d8bda29b12bebd7becf10dce76c799b92f5f788d50df",
+    "signature": "6d8c6e518bbb99bc336f40cc026296bae62540aa68d2377215c08c3c7d2965b12ae565c65ccf8910299a3670003a31973c1d1b6ee228478d50daa2fea00c02b3"
+  },
+  "receiptId": "1254686a863d69e3868bc07d17159bd314ac4a08b3bc37a93ec99f4a60ad1429",
+  "action": {
+    "operation": "read",
+    "resource": "calendar"
+  },
+  "operatorInstructions": "Read email only. Do not modify records.",
+  "currentAuthorityState": {
+    "roles": [
+      "editor",
+      "analyst"
+    ],
+    "groups": [
+      "engineering",
+      "data-team"
+    ],
+    "entitlements": [
+      "reports:read",
+      "reports:write"
+    ]
+  },
+  "verifierOptions": {
+    "scopeSchema": {
+      "version": "1.0",
+      "allowedActions": [
+        {
+          "operation": "read",
+          "resource": "calendar"
+        }
+      ],
+      "deniedActions": []
+    }
+  },
+  "expected": {
+    "outcome": "PERMIT"
+  }
+}

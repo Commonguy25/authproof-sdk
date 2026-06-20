@@ -519,5 +519,5 @@ class DelegationChain {
 // EXPORTS
 // ─────────────────────────────────────────────
 
-export { DelegationChain, ScopeAttenuationError, MaxDepthExceededError };
+export { DelegationChain, ScopeAttenuationError, MaxDepthExceededError, _checkScopeAttenuation as checkScopeAttenuation };
 export default DelegationChain;
