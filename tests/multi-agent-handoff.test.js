@@ -12,7 +12,7 @@ import AuthProof, {
   ScopeSchema,
   ScopeAttenuationError,
 } from '../src/authproof.js';
-import { PreExecutionVerifier, DelegationLog, MAX_CHAIN_DEPTH } from '../src/pre-execution-verifier.js';
+import { PreExecutionVerifier, DelegationLog, MAX_CHAIN_DEPTH, CHAIN_DEPTH_EXCEEDED } from '../src/pre-execution-verifier.js';
 
 let passed = 0;
 let failed = 0;
@@ -341,7 +341,7 @@ async function run() {
   }
 
   // ── 6. Verifier DENYs a chain that exceeds MAX_CHAIN_DEPTH (3) ────────
-  console.log('\nCheck 14 — DENY chain depth > 3 (PARENT_SCOPE_VIOLATION)');
+  console.log('\nCheck 14 — DENY chain depth > 3 (CHAIN_DEPTH_EXCEEDED)');
   {
     // Chain: root (depth 0) -> c1 (1) -> c2 (2) -> c3 (3) -> c4 (4)
     // c4 is at depth 4, which exceeds MAX_CHAIN_DEPTH = 3 and must be denied.
@@ -414,8 +414,8 @@ async function run() {
     });
 
     assert(result.allowed === false, 'depth-4 chain denied');
-    assert(result.blockedReason === 'PARENT_SCOPE_VIOLATION',
-      `blockedReason is PARENT_SCOPE_VIOLATION (got: ${result.blockedReason})`);
+    assert(result.blockedReason === CHAIN_DEPTH_EXCEEDED,
+      `blockedReason is CHAIN_DEPTH_EXCEEDED (got: ${result.blockedReason})`);
   }
 
   // ── 7. Non-sub-receipt: Check 14 does not run, receipt is PERMITTED ───
@@ -551,8 +551,142 @@ async function run() {
       operatorInstructions: INSTRUCTIONS,
     });
     assert(r2.allowed === false, 'depth-2 receipt denied with maxChainDepth=1');
-    assert(r2.blockedReason === 'PARENT_SCOPE_VIOLATION',
-      `blockedReason is PARENT_SCOPE_VIOLATION (got: ${r2.blockedReason})`);
+    assert(r2.blockedReason === CHAIN_DEPTH_EXCEEDED,
+      `blockedReason is CHAIN_DEPTH_EXCEEDED (got: ${r2.blockedReason})`);
+  }
+
+  // ── 10. CHAIN_DEPTH_EXCEEDED is distinct from PARENT_SCOPE_VIOLATION ──
+  // Test A: over-deep chain where every level is a valid strict proper subset.
+  // The only possible denial cause is chain depth. Confirms CHAIN_DEPTH_EXCEEDED
+  // is returned and PARENT_SCOPE_VIOLATION is NOT returned.
+  console.log('\nCheck 14 — CHAIN_DEPTH_EXCEEDED vs PARENT_SCOPE_VIOLATION: distinct failure classes');
+  {
+    const depthScope = {
+      allowedActions: [
+        { operation: 'read', resource: 'p' },
+        { operation: 'read', resource: 'q' },
+        { operation: 'read', resource: 'r' },
+        { operation: 'read', resource: 's' },
+        { operation: 'read', resource: 't' },
+      ],
+      deniedActions: [],
+    };
+
+    const { receipt: dRoot, receiptId: dRootId } = await AuthProof.create({
+      scope: 'depth-test root', boundaries: 'none', instructions: INSTRUCTIONS,
+      ttlHours: 10, privateKey: orchKey, publicJwk: orchPub,
+    });
+
+    const now    = new Date();
+    const farEnd = new Date(now.getTime() + 9 * 3_600_000);
+
+    dRoot.scopeSchema = depthScope;
+
+    const { receipt: d1, receiptId: d1Id } = await createSubReceipt({
+      parentReceipt: dRoot, parentReceiptId: dRootId, parentPrivateKey: orchKey,
+      scope: { allowedActions: depthScope.allowedActions.slice(0, 4), deniedActions: [] },
+      timeWindow: { start: now.toISOString(), end: farEnd.toISOString() },
+      boundaries: 'none', instructions: INSTRUCTIONS,
+    });
+    const { receipt: d2, receiptId: d2Id } = await createSubReceipt({
+      parentReceipt: d1, parentReceiptId: d1Id, parentPrivateKey: orchKey,
+      scope: { allowedActions: depthScope.allowedActions.slice(0, 3), deniedActions: [] },
+      timeWindow: { start: now.toISOString(), end: farEnd.toISOString() },
+      boundaries: 'none', instructions: INSTRUCTIONS,
+    });
+    const { receipt: d3, receiptId: d3Id } = await createSubReceipt({
+      parentReceipt: d2, parentReceiptId: d2Id, parentPrivateKey: orchKey,
+      scope: { allowedActions: depthScope.allowedActions.slice(0, 2), deniedActions: [] },
+      timeWindow: { start: now.toISOString(), end: farEnd.toISOString() },
+      boundaries: 'none', instructions: INSTRUCTIONS,
+    });
+    const { receipt: d4, receiptId: d4Id } = await createSubReceipt({
+      parentReceipt: d3, parentReceiptId: d3Id, parentPrivateKey: orchKey,
+      scope: { allowedActions: depthScope.allowedActions.slice(0, 1), deniedActions: [] },
+      timeWindow: { start: now.toISOString(), end: farEnd.toISOString() },
+      boundaries: 'none', instructions: INSTRUCTIONS,
+    });
+
+    const dRootForLog = { ...dRoot };
+    delete dRootForLog.scopeSchema;
+
+    const { verifier, delegationLog } = await makeVerifier();
+    delegationLog.add(dRootId, dRootForLog, { scopeSchema: depthScope });
+    delegationLog.add(d1Id, d1);
+    delegationLog.add(d2Id, d2);
+    delegationLog.add(d3Id, d3);
+    delegationLog.add(d4Id, d4);
+
+    const resultA = await verifier.check({
+      receiptHash:          d4Id,
+      action:               { operation: 'read', resource: 'p' },
+      operatorInstructions: INSTRUCTIONS,
+    });
+
+    assert(resultA.allowed === false,
+      'Test A: over-deep scope-valid chain is denied');
+    assert(resultA.blockedReason === CHAIN_DEPTH_EXCEEDED,
+      `Test A: blockedReason is CHAIN_DEPTH_EXCEEDED (got: ${resultA.blockedReason})`);
+    assert(resultA.blockedReason !== 'PARENT_SCOPE_VIOLATION',
+      'Test A: blockedReason is NOT PARENT_SCOPE_VIOLATION');
+  }
+
+  // Test B: scope-violating chain that is within the depth limit.
+  // Depth 1, but child scope adds an action not in parent.
+  // Confirms PARENT_SCOPE_VIOLATION is returned and CHAIN_DEPTH_EXCEEDED is NOT.
+  {
+    const { receipt: bParent, receiptId: bParentId } = await AuthProof.create({
+      scope: 'scope-test parent', boundaries: 'none', instructions: INSTRUCTIONS,
+      ttlHours: 2, privateKey: orchKey, publicJwk: orchPub,
+    });
+
+    const now    = new Date();
+    const bEnd   = new Date(now.getTime() + 1 * 3_600_000);
+
+    const illegalScope = {
+      allowedActions: [
+        { operation: 'read',  resource: 'email' },
+        { operation: 'write', resource: 'files' }, // not in PARENT_SCOPE
+      ],
+      deniedActions: [{ operation: 'delete', resource: '*' }],
+    };
+
+    const bBody = {
+      delegationId:         'test-b-scope-violation',
+      issuedAt:             now.toISOString(),
+      scopeSchema:          illegalScope,
+      boundaries:           'none',
+      timeWindow:           { start: now.toISOString(), end: bEnd.toISOString() },
+      operatorInstructions: INSTRUCTIONS,
+      instructionsHash:     await AuthProof.Canonicalizer.hash(INSTRUCTIONS),
+      signerPublicKey:      orchPub,
+      parentReceiptId:      bParentId,
+    };
+    const bSig     = await _sign(orchKey, JSON.stringify(bBody));
+    const bReceipt = { ...bBody, signature: bSig };
+    const bId      = await sha256hex(JSON.stringify(bReceipt));
+    const bOrch    = await _sign(orchKey, `orchestrator-delegation:${bParentId}:${bId}`);
+    bReceipt.orchestratorSignature = bOrch;
+
+    const { verifier, delegationLog } = await makeVerifier();
+    delegationLog.add(bParentId, bParent, { scopeSchema: PARENT_SCOPE });
+    delegationLog.add(bId, bReceipt);
+
+    const resultB = await verifier.check({
+      receiptHash:          bId,
+      action:               { operation: 'read', resource: 'email' },
+      operatorInstructions: INSTRUCTIONS,
+    });
+
+    assert(resultB.allowed === false,
+      'Test B: scope-violating within-depth chain is denied');
+    assert(
+      resultB.blockedReason === 'PARENT_SCOPE_VIOLATION' ||
+      resultB.blockedReason === 'SCOPE_NOT_STRICT_SUBSET',
+      `Test B: blockedReason is a scope violation code (got: ${resultB.blockedReason})`
+    );
+    assert(resultB.blockedReason !== CHAIN_DEPTH_EXCEEDED,
+      'Test B: blockedReason is NOT CHAIN_DEPTH_EXCEEDED');
   }
 
   // ─────────────────────────────────────────────

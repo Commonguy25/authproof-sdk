@@ -44,6 +44,7 @@ const DENIAL_CODES = {
   AUTHORITY_STATE_DRIFT:    'AUTHORITY_STATE_DRIFT',
   RECEIPT_ALREADY_CONSUMED: 'RECEIPT_ALREADY_CONSUMED',
   CONSUMPTION_STORE_REQUIRED: 'CONSUMPTION_STORE_REQUIRED',
+  CHAIN_DEPTH_EXCEEDED:     'CHAIN_DEPTH_EXCEEDED',
 };
 
 /** Denial code: receipt was already consumed by a prior verification. Terminal. */
@@ -51,6 +52,9 @@ const RECEIPT_ALREADY_CONSUMED   = 'RECEIPT_ALREADY_CONSUMED';
 
 /** Denial code: receipt has oneTimeUse=true but no durable ConsumptionStore was configured. */
 const CONSUMPTION_STORE_REQUIRED  = 'CONSUMPTION_STORE_REQUIRED';
+
+/** Denial code: delegation chain depth exceeds the configured maxChainDepth. */
+const CHAIN_DEPTH_EXCEEDED        = 'CHAIN_DEPTH_EXCEEDED';
 
 // ─────────────────────────────────────────────
 // CRYPTO HELPERS (re-implemented — private in authproof.js)
@@ -674,8 +678,8 @@ class PreExecutionVerifier {
         return this._finalize({
           allowed:       false,
           checks,
-          blockedReason: 'PARENT_SCOPE_VIOLATION',
-          denialCode:    'PARENT_SCOPE_VIOLATION',
+          blockedReason: CHAIN_DEPTH_EXCEEDED,
+          denialCode:    CHAIN_DEPTH_EXCEEDED,
           receiptHash,
           action,
         });
@@ -1028,5 +1032,5 @@ class PreExecutionVerifier {
 // EXPORTS
 // ─────────────────────────────────────────────
 
-export { PreExecutionVerifier, DelegationLog, MAX_CHAIN_DEPTH, RECEIPT_ALREADY_CONSUMED, CONSUMPTION_STORE_REQUIRED };
-export default { PreExecutionVerifier, DelegationLog, MAX_CHAIN_DEPTH, RECEIPT_ALREADY_CONSUMED, CONSUMPTION_STORE_REQUIRED };
+export { PreExecutionVerifier, DelegationLog, MAX_CHAIN_DEPTH, RECEIPT_ALREADY_CONSUMED, CONSUMPTION_STORE_REQUIRED, CHAIN_DEPTH_EXCEEDED };
+export default { PreExecutionVerifier, DelegationLog, MAX_CHAIN_DEPTH, RECEIPT_ALREADY_CONSUMED, CONSUMPTION_STORE_REQUIRED, CHAIN_DEPTH_EXCEEDED };
