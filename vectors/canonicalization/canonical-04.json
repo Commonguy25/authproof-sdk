@@ -1,0 +1,23 @@
+{
+  "id": "canonical-04",
+  "description": "Canonical encoding lock vector for instruction text",
+  "instructions": "environment: production, mode: strict, level: admin",
+  "normalizedForm": "environment: production level: admin mode: strict",
+  "canonicalBytes": "656e7669726f6e6d656e743a2070726f64756374696f6e206c6576656c3a2061646d696e206d6f64653a20737472696374",
+  "sha256": "04e2c9edb341160133c47f5747db76161fc165e590f3c0bf4506a7e62217f14f",
+  "receipt": {
+    "instructionsHash": "04e2c9edb341160133c47f5747db76161fc165e590f3c0bf4506a7e62217f14f",
+    "signerPublicKey": {
+      "kty": "EC",
+      "crv": "P-256",
+      "x": "IfLcXEmnhHr6yo9ZIo8Nux1K755Z5J89Vzq-XE7A8Qc",
+      "y": "mMYOCWIUay9WP6_J-oo8SPC27pcwrQQ9VKOnyJUETWA"
+    },
+    "timeWindow": {
+      "start": "2026-06-20T02:19:48.426Z",
+      "end": "2026-06-21T02:19:48.426Z"
+    },
+    "issuedAt": "2026-06-20T02:19:48.426Z",
+    "delegationId": "auth-1781921988426-uueck"
+  }
+}

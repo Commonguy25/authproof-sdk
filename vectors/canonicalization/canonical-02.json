@@ -1,0 +1,23 @@
+{
+  "id": "canonical-02",
+  "description": "Canonical encoding lock vector for instruction text",
+  "instructions": "Read email, respond to queries, and summarize findings.",
+  "normalizedForm": "read email respond to queries and summarize findings",
+  "canonicalBytes": "7265616420656d61696c20726573706f6e6420746f207175657269657320616e642073756d6d6172697a652066696e64696e6773",
+  "sha256": "c376c5efdd548f0231bc5725fa718bd0b18d58e12810fc71e22e917a35af9c56",
+  "receipt": {
+    "instructionsHash": "c376c5efdd548f0231bc5725fa718bd0b18d58e12810fc71e22e917a35af9c56",
+    "signerPublicKey": {
+      "kty": "EC",
+      "crv": "P-256",
+      "x": "IfLcXEmnhHr6yo9ZIo8Nux1K755Z5J89Vzq-XE7A8Qc",
+      "y": "mMYOCWIUay9WP6_J-oo8SPC27pcwrQQ9VKOnyJUETWA"
+    },
+    "timeWindow": {
+      "start": "2026-06-20T02:19:48.412Z",
+      "end": "2026-06-21T02:19:48.412Z"
+    },
+    "issuedAt": "2026-06-20T02:19:48.412Z",
+    "delegationId": "auth-1781921988412-dl3e5"
+  }
+}

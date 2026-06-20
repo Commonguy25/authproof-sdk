@@ -1,0 +1,32 @@
+{
+  "id": "invalid-signature",
+  "description": "Receipt body was modified after signing -- ECDSA signature is invalid.",
+  "receipt": {
+    "delegationId": "auth-1781921988440-cc2zy",
+    "issuedAt": "2026-06-20T02:19:48.440Z",
+    "scope": "Send emails to all contacts",
+    "boundaries": "Do not send emails. Do not delete anything.",
+    "timeWindow": {
+      "start": "2026-06-20T02:19:48.440Z",
+      "end": "2026-06-21T02:19:48.440Z"
+    },
+    "operatorInstructions": "Summarize clearly. Stay within scope.",
+    "instructionsHash": "b47d2fcaab993a6e93d10d4d25010736a9889d91490931ed56b6ec27ce990c79",
+    "signerPublicKey": {
+      "kty": "EC",
+      "crv": "P-256",
+      "x": "IfLcXEmnhHr6yo9ZIo8Nux1K755Z5J89Vzq-XE7A8Qc",
+      "y": "mMYOCWIUay9WP6_J-oo8SPC27pcwrQQ9VKOnyJUETWA"
+    },
+    "signature": "ea182ce2af70ab875dd90b97cc38adebad419a59b4a27ead4ea18249404b11a7726b7d3fe3d4daf2a9b9e211e46b313b9ce16127429c576bbf8ce3e29bf41546"
+  },
+  "receiptId": "afe316f04af7a0aab8822b44040bbc1ffd5f4ea43973022445606a7891c5d356",
+  "action": "Read calendar meetings and summarize",
+  "operatorInstructions": "Summarize clearly. Stay within scope.",
+  "verifierOptions": {},
+  "_notes": "receipt.scope was mutated after signing; receipt.signature covers the original body. receiptId is the SHA-256 of the original receipt, used as the DelegationLog key.",
+  "expected": {
+    "outcome": "DENY",
+    "denialCode": "Receipt signature invalid"
+  }
+}
