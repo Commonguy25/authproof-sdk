@@ -2,26 +2,26 @@
   "id": "authority-state-no-drift",
   "description": "Receipt carries authorityStateCommitment; same authority state at check time means no drift.",
   "receipt": {
-    "delegationId": "auth-1781921988436-hk3vy",
-    "issuedAt": "2026-06-20T02:19:48.436Z",
+    "delegationId": "auth-1781977995510-pd9i2",
+    "issuedAt": "2026-06-20T17:53:15.510Z",
     "scope": "Read calendar events and summarize meetings",
     "boundaries": "Do not send emails. Do not delete anything.",
     "timeWindow": {
-      "start": "2026-06-20T02:19:48.436Z",
-      "end": "2026-06-21T02:19:48.436Z"
+      "start": "2026-06-20T17:53:15.510Z",
+      "end": "2100-01-01T00:00:00.019Z"
     },
     "operatorInstructions": "Read email only. Do not modify records.",
     "instructionsHash": "c7770cec36944bd53f6baf7dc9b7f5aa281a292300376e7b42bdfaf6f15c31e5",
     "signerPublicKey": {
       "kty": "EC",
       "crv": "P-256",
-      "x": "IfLcXEmnhHr6yo9ZIo8Nux1K755Z5J89Vzq-XE7A8Qc",
-      "y": "mMYOCWIUay9WP6_J-oo8SPC27pcwrQQ9VKOnyJUETWA"
+      "x": "fz16sKfZ0cJPvDhpMqeQgaY9mFeqje0GIgG0qglsOEg",
+      "y": "plEsP-HKoZltbCe80aKRDD28JsMfugD2DEe0QnEloX8"
     },
     "authorityStateCommitment": "601bfb9bcc8319335f39d8bda29b12bebd7becf10dce76c799b92f5f788d50df",
-    "signature": "6d8c6e518bbb99bc336f40cc026296bae62540aa68d2377215c08c3c7d2965b12ae565c65ccf8910299a3670003a31973c1d1b6ee228478d50daa2fea00c02b3"
+    "signature": "441cfb254b965b95752e979f3441b116edb895db0b9ec06e41e9314fcfe421790737e139b2927b4992324e9e30dc2e079a08b290e9bd1ec24cf5e6e9b01f3617"
   },
-  "receiptId": "1254686a863d69e3868bc07d17159bd314ac4a08b3bc37a93ec99f4a60ad1429",
+  "receiptId": "e80a6e168ee538860926ece5f7060cdc7e62d539bd4a107fc7a869c6a74088ec",
   "action": {
     "operation": "read",
     "resource": "calendar"

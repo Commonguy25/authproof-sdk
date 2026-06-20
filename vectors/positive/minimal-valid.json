@@ -2,25 +2,25 @@
   "id": "minimal-valid",
   "description": "Minimal valid receipt with a single allowed action verified by fuzzy scope matching.",
   "receipt": {
-    "delegationId": "auth-1781921988429-du02v",
-    "issuedAt": "2026-06-20T02:19:48.429Z",
+    "delegationId": "auth-1781977995492-lcsc1",
+    "issuedAt": "2026-06-20T17:53:15.492Z",
     "scope": "Read calendar events and summarize meetings",
     "boundaries": "Do not send emails. Do not modify records.",
     "timeWindow": {
-      "start": "2026-06-20T02:19:48.429Z",
-      "end": "2026-06-21T02:19:48.429Z"
+      "start": "2026-06-20T17:53:15.492Z",
+      "end": "2100-01-01T00:00:00.001Z"
     },
     "operatorInstructions": "Summarize clearly. Stay within scope.",
     "instructionsHash": "b47d2fcaab993a6e93d10d4d25010736a9889d91490931ed56b6ec27ce990c79",
     "signerPublicKey": {
       "kty": "EC",
       "crv": "P-256",
-      "x": "IfLcXEmnhHr6yo9ZIo8Nux1K755Z5J89Vzq-XE7A8Qc",
-      "y": "mMYOCWIUay9WP6_J-oo8SPC27pcwrQQ9VKOnyJUETWA"
+      "x": "fz16sKfZ0cJPvDhpMqeQgaY9mFeqje0GIgG0qglsOEg",
+      "y": "plEsP-HKoZltbCe80aKRDD28JsMfugD2DEe0QnEloX8"
     },
-    "signature": "bd5286cd22907e20b1f914b82a1c0cbc027dc4f06b80b4a288b8f7bd252dac2cc7101c989eb6e35ade4d57917498885ef0aa14717bb9435c57855ef2ba22f23a"
+    "signature": "a379416938cbf209d9ea5273a24e2564e5e47ce61ed43fe140b2887f632b7dc2ab333fd09bfed5f7c0be4b91677843e55bf2fe526f3bc5c5cabdaebe7f1d4f34"
   },
-  "receiptId": "cc399018153726f839bf6c82ab220a91a1e9ba6c6e5dacb6f128df0f4349d957",
+  "receiptId": "86666bf047b5d77b79ee145486374a793b645bd155195af07582928fa6641263",
   "action": "Read calendar meetings and summarize",
   "operatorInstructions": "Summarize clearly. Stay within scope.",
   "verifierOptions": {},

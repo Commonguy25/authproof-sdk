@@ -2,8 +2,8 @@
   "id": "narrowed-sub-receipt",
   "description": "Child scope is strict proper subset of parent scope -- export permission removed.",
   "receipt": {
-    "delegationId": "auth-1781921988434-mjnck",
-    "issuedAt": "2026-06-20T02:19:48.434Z",
+    "delegationId": "auth-1781977527031-a59eq",
+    "issuedAt": "2026-06-20T17:45:27.031Z",
     "scopeSchema": {
       "version": "1.0",
       "allowedActions": [
@@ -29,42 +29,42 @@
     },
     "boundaries": "Do not send emails. Do not delete anything.",
     "timeWindow": {
-      "start": "2026-06-20T02:19:48.434Z",
-      "end": "2026-06-20T14:19:48.434Z"
+      "start": "2026-06-20T17:45:27.031Z",
+      "end": "2100-01-01T00:00:00.000Z"
     },
     "operatorInstructions": "Read email only. Do not modify records.",
     "instructionsHash": "c7770cec36944bd53f6baf7dc9b7f5aa281a292300376e7b42bdfaf6f15c31e5",
     "signerPublicKey": {
       "kty": "EC",
       "crv": "P-256",
-      "x": "IfLcXEmnhHr6yo9ZIo8Nux1K755Z5J89Vzq-XE7A8Qc",
-      "y": "mMYOCWIUay9WP6_J-oo8SPC27pcwrQQ9VKOnyJUETWA"
+      "x": "YOCYzuRIo-jNl6zFBC-jF6p0LTbTN59-OBUYe4EJtxA",
+      "y": "CO4pmWi_NNbht-q87YpOsZH7G2WLjnlkd6Z5D_RhdVM"
     },
-    "parentReceiptId": "4d6325863e96c3474c4ea498a8b38c179731db6809cb5c958f4f1e4d05dafc15",
-    "signature": "d0e3ef8957334934330b46a41a649df0172a0c05c7b6608517f09b621151673efbd7a39a46d22c25c5b42565b8086759eda2285609e0e5fd2ef9de2d755ff963",
-    "orchestratorSignature": "44cde1c6fc88eacda9afff35add7fb0510144e119d4063f01d10e45e05f9ff374a1cd925627d9e8a325570be8129acc80440e16c4655fafc45118d43201758f3"
+    "parentReceiptId": "244d31cef7f3be8d655ad5e68fbde9e71314317fe2926ee4cdde559d4bf49ea1",
+    "signature": "756547589057791d28e6e55cc87a54bfebc2f4ae4b04b737e575af83bf8f01b55cf14151098ac5d7bc5269a4c796fd1e8b16ffa1adfe7754e8a9b012ea75a47d",
+    "orchestratorSignature": "6ac4b7c5140cb92bf1cdfb463105cc548523befe5f60028817ff0a37e707e1fd4ec44b9a351b1c1bd206cd9014cf74f34aeef4ae90a482b56bb25406d4941426"
   },
-  "receiptId": "bb52f821b209381294d1910e47124b2badee1635521cb1206356d6bc89487fe9",
+  "receiptId": "6099e15da4d0495ba66e144c74b1be2f7d87c54bf92beec6876a6fc37e4f1023",
   "parentReceipt": {
-    "delegationId": "auth-1781921988433-503e6",
-    "issuedAt": "2026-06-20T02:19:48.433Z",
+    "delegationId": "auth-1781977527030-zvf18",
+    "issuedAt": "2026-06-20T17:45:27.030Z",
     "scope": "Access documents and reports",
     "boundaries": "Do not send emails. Do not delete anything.",
     "timeWindow": {
-      "start": "2026-06-20T02:19:48.433Z",
-      "end": "2026-06-21T02:19:48.433Z"
+      "start": "2026-06-20T17:45:27.030Z",
+      "end": "2100-01-02T00:00:00.000Z"
     },
     "operatorInstructions": "Read email only. Do not modify records.",
     "instructionsHash": "c7770cec36944bd53f6baf7dc9b7f5aa281a292300376e7b42bdfaf6f15c31e5",
     "signerPublicKey": {
       "kty": "EC",
       "crv": "P-256",
-      "x": "IfLcXEmnhHr6yo9ZIo8Nux1K755Z5J89Vzq-XE7A8Qc",
-      "y": "mMYOCWIUay9WP6_J-oo8SPC27pcwrQQ9VKOnyJUETWA"
+      "x": "YOCYzuRIo-jNl6zFBC-jF6p0LTbTN59-OBUYe4EJtxA",
+      "y": "CO4pmWi_NNbht-q87YpOsZH7G2WLjnlkd6Z5D_RhdVM"
     },
-    "signature": "a69894f9b0f70dbf03fa2f14c3470da92cd3462a0fde6dd75410781e957f31b5aca6c2f5b12d418136f0d759b2cc38f25f086b55de61abfb1d5f8e559e81ccbe"
+    "signature": "20792123372a3286ffa199b007cf2140aeaaf4c24045a9440b0419676909f3bbd84fcfceb4a65f8525362d484341b042bee188bc1452d5e6e10541b48de4f9d5"
   },
-  "parentReceiptId": "4d6325863e96c3474c4ea498a8b38c179731db6809cb5c958f4f1e4d05dafc15",
+  "parentReceiptId": "244d31cef7f3be8d655ad5e68fbde9e71314317fe2926ee4cdde559d4bf49ea1",
   "parentScopeSchema": {
     "version": "1.0",
     "allowedActions": [

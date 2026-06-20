@@ -2,26 +2,26 @@
   "id": "one-time-use-first-presentation",
   "description": "oneTimeUse receipt presented for the first time with a durable store -- PERMIT.",
   "receipt": {
-    "delegationId": "auth-1781921988438-19k4c",
-    "issuedAt": "2026-06-20T02:19:48.438Z",
+    "delegationId": "auth-1781977995512-v6fav",
+    "issuedAt": "2026-06-20T17:53:15.512Z",
     "scope": "Read calendar events",
     "boundaries": "Do not send emails",
     "timeWindow": {
-      "start": "2026-06-20T02:19:48.438Z",
-      "end": "2026-06-21T02:19:48.438Z"
+      "start": "2026-06-20T17:53:15.512Z",
+      "end": "2100-01-01T00:00:00.021Z"
     },
     "operatorInstructions": "Stay within scope",
     "instructionsHash": "2cf53c29f07d1164f47190209e12719d0b74c6ac52c1a2afd679972a1dc2bff7",
     "signerPublicKey": {
       "kty": "EC",
       "crv": "P-256",
-      "x": "IfLcXEmnhHr6yo9ZIo8Nux1K755Z5J89Vzq-XE7A8Qc",
-      "y": "mMYOCWIUay9WP6_J-oo8SPC27pcwrQQ9VKOnyJUETWA"
+      "x": "fz16sKfZ0cJPvDhpMqeQgaY9mFeqje0GIgG0qglsOEg",
+      "y": "plEsP-HKoZltbCe80aKRDD28JsMfugD2DEe0QnEloX8"
     },
     "oneTimeUse": true,
-    "signature": "10569073a26b741a274dd46fe33e5479cae10ceda4268f418cb862dab08dfeac7f268e9785aa3418cfc286782a13ddd7d2e6580ce9e79014b1aab84c28812df7"
+    "signature": "cc84f5ba5716436fc941c1724a58c00fc39febda0e394d4990104430ad53d87df36e17af88e2f99162801a03d5b7d5a1811a0088f1ca961f65ba192b66c5ed20"
   },
-  "receiptId": "4932ac9c776477f59edaeb92a19cf16f7c4f5f9812dfbcac24e3cabbc58831ad",
+  "receiptId": "f356818f58363e2949077d6697a6cc1f67cda80bbc384c878d971634e434ce76",
   "action": {
     "operation": "read",
     "resource": "calendar"

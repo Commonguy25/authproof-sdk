@@ -1,9 +1,9 @@
 {
   "id": "chain-exceeds-max-depth",
-  "description": "Delegation chain depth 4 exceeds MAX_CHAIN_DEPTH=3 -- denied with CHAIN_DEPTH_EXCEEDED.",
+  "description": "Delegation chain depth 4 exceeds MAX_CHAIN_DEPTH=3 -- denied with PARENT_SCOPE_VIOLATION.",
   "receipt": {
-    "delegationId": "auth-1781921988457-eb8r4",
-    "issuedAt": "2026-06-20T02:19:48.457Z",
+    "delegationId": "auth-1781977995528-xt7l1",
+    "issuedAt": "2026-06-20T17:53:15.528Z",
     "scopeSchema": {
       "version": "1.0",
       "allowedActions": [
@@ -16,27 +16,27 @@
     },
     "boundaries": "none",
     "timeWindow": {
-      "start": "2026-06-20T02:19:48.455Z",
-      "end": "2026-06-21T01:19:48.455Z"
+      "start": "2026-06-20T17:53:15.525Z",
+      "end": "2100-01-01T00:00:00.000Z"
     },
     "operatorInstructions": "Read email only. Do not modify records.",
     "instructionsHash": "c7770cec36944bd53f6baf7dc9b7f5aa281a292300376e7b42bdfaf6f15c31e5",
     "signerPublicKey": {
       "kty": "EC",
       "crv": "P-256",
-      "x": "IfLcXEmnhHr6yo9ZIo8Nux1K755Z5J89Vzq-XE7A8Qc",
-      "y": "mMYOCWIUay9WP6_J-oo8SPC27pcwrQQ9VKOnyJUETWA"
+      "x": "fz16sKfZ0cJPvDhpMqeQgaY9mFeqje0GIgG0qglsOEg",
+      "y": "plEsP-HKoZltbCe80aKRDD28JsMfugD2DEe0QnEloX8"
     },
-    "parentReceiptId": "cc24f0fd0a83ad63a1c0cfe9613a8d41916c9ea10d9a43d0a39a2bd81604c96e",
-    "signature": "af162116361098b4490191813a33ad88e58384998577a6e94deb2af6838073933ac7f86938c937a9a266367c216f6f5432dfa75618b0ef10b49e0c2845806a58",
-    "orchestratorSignature": "24577a60e888eb52d4a91a4fcfb5b8e9c184b9a3d2fc70c8fc5b15a6aba1acbd6a2948ba25d7414dc7beb6840ed56e1771e781a16d1a54ef747c47fa4a0ff454"
+    "parentReceiptId": "6d9eb45fbc52c5ea2f8da7a20f46ab800ca75a7b05415beb27e2a3e1cbc11ee4",
+    "signature": "714f03d5dfe247d3ad58163153aa94d19499689ca5246d23101d513f8c34117950537d870234fcde28a9ff60d75c3c8836952ff76ecfb340bd5392fba3482e38",
+    "orchestratorSignature": "3bf6d5c9bfbfd22a888ea61f4b97d240205d4ca0e14689cee1a7e044dba3f812aedc9afd54bfea86fe2efd9e2014ca4a6fb2d2019b1e2bee7187d3ae12e9a914"
   },
-  "receiptId": "6480ed7e0209b539d1864e1ff12708df3a123a57ab1cd68dd5af4a9f63a0b99d",
+  "receiptId": "da0a0c3b4c6913e0a015b4c6ce19001df4af0fac679ced73b276ba6e3a7d4185",
   "chainReceipts": [
     {
       "receipt": {
-        "delegationId": "auth-1781921988457-977wb",
-        "issuedAt": "2026-06-20T02:19:48.457Z",
+        "delegationId": "auth-1781977995527-lqj3e",
+        "issuedAt": "2026-06-20T17:53:15.527Z",
         "scopeSchema": {
           "version": "1.0",
           "allowedActions": [
@@ -53,27 +53,27 @@
         },
         "boundaries": "none",
         "timeWindow": {
-          "start": "2026-06-20T02:19:48.455Z",
-          "end": "2026-06-21T01:19:48.455Z"
+          "start": "2026-06-20T17:53:15.525Z",
+          "end": "2100-01-01T00:00:00.000Z"
         },
         "operatorInstructions": "Read email only. Do not modify records.",
         "instructionsHash": "c7770cec36944bd53f6baf7dc9b7f5aa281a292300376e7b42bdfaf6f15c31e5",
         "signerPublicKey": {
           "kty": "EC",
           "crv": "P-256",
-          "x": "IfLcXEmnhHr6yo9ZIo8Nux1K755Z5J89Vzq-XE7A8Qc",
-          "y": "mMYOCWIUay9WP6_J-oo8SPC27pcwrQQ9VKOnyJUETWA"
+          "x": "fz16sKfZ0cJPvDhpMqeQgaY9mFeqje0GIgG0qglsOEg",
+          "y": "plEsP-HKoZltbCe80aKRDD28JsMfugD2DEe0QnEloX8"
         },
-        "parentReceiptId": "cfd8101b0477758bc2449478049d3d67cd6e8dcca57fc52d775ffff838dbcf92",
-        "signature": "9c781d798b0823e501f64ba44e5e5f606be2c86dd001eb5cca4ffd4a136b91ec6c93ce1aeca1bfdccf93482b3797146550fc87cc6ad023266f1b0f3d650b5712",
-        "orchestratorSignature": "bfaf8179083715e4c9cf4ff98ce525994fba52bfffc7c4cd480789a3df8e79dd0e6f1401e3f92057209878f5243ad7d07834566a2fc1064611a11ee3163b4ae0"
+        "parentReceiptId": "eb32832bc11ba6ce90b0c15eee1c163e73ce9294062342c8114ab61b6edae4d7",
+        "signature": "0b43c535c915a7ef6bd90b5c293e66f5921748ed256c9b8482f1f65390d7780f5c6137b05f6064742417fcb2f7c61cde1e14613f44968888d0faa7578d2320a4",
+        "orchestratorSignature": "0ca2b2717de7040404dc7af0f6f2ed6425b599475d951914f964e01a55e4ae5315d310c1122b3ea5b6ba42345619078cde6102a4203732ff008fbb67d82bb95d"
       },
-      "receiptId": "cc24f0fd0a83ad63a1c0cfe9613a8d41916c9ea10d9a43d0a39a2bd81604c96e"
+      "receiptId": "6d9eb45fbc52c5ea2f8da7a20f46ab800ca75a7b05415beb27e2a3e1cbc11ee4"
     },
     {
       "receipt": {
-        "delegationId": "auth-1781921988456-zkkhm",
-        "issuedAt": "2026-06-20T02:19:48.456Z",
+        "delegationId": "auth-1781977995527-ezghq",
+        "issuedAt": "2026-06-20T17:53:15.527Z",
         "scopeSchema": {
           "version": "1.0",
           "allowedActions": [
@@ -94,27 +94,27 @@
         },
         "boundaries": "none",
         "timeWindow": {
-          "start": "2026-06-20T02:19:48.455Z",
-          "end": "2026-06-21T01:19:48.455Z"
+          "start": "2026-06-20T17:53:15.525Z",
+          "end": "2100-01-01T00:00:00.000Z"
         },
         "operatorInstructions": "Read email only. Do not modify records.",
         "instructionsHash": "c7770cec36944bd53f6baf7dc9b7f5aa281a292300376e7b42bdfaf6f15c31e5",
         "signerPublicKey": {
           "kty": "EC",
           "crv": "P-256",
-          "x": "IfLcXEmnhHr6yo9ZIo8Nux1K755Z5J89Vzq-XE7A8Qc",
-          "y": "mMYOCWIUay9WP6_J-oo8SPC27pcwrQQ9VKOnyJUETWA"
+          "x": "fz16sKfZ0cJPvDhpMqeQgaY9mFeqje0GIgG0qglsOEg",
+          "y": "plEsP-HKoZltbCe80aKRDD28JsMfugD2DEe0QnEloX8"
         },
-        "parentReceiptId": "9aa099320d37768c33617c502261ddd2600f90e9fed8e928e9f1c313996de186",
-        "signature": "1ba458016bff95bd53d63af649caa45266363547ea0affbdf08d3003d01b5d141af12c74194df536c6948e0b35ddf3d050e987d46dffa8b5ed0d940c34c1bd68",
-        "orchestratorSignature": "99a88dc39259d5b03ab4b23eda19ecfa624cf6d497bba7fba8725e86734608fded63311f926e44f2a9ff303dba40eddebb4c6087b1ab316fcc978455c200ffe6"
+        "parentReceiptId": "c7ac5b0c1394cee67e20b227676fb5867cf25e4291950efcd8dbabb86f9b9665",
+        "signature": "8447366ce88b7aa8cef0a1f11dfb2533ee889d95603dca1ae4a428bc9ae7c6a13f0045e9d23e4bd7fe6cd79899af2f959eeb851ca77684f3bf6fb16f3e486736",
+        "orchestratorSignature": "e2c1a6ff2b3b0c97a6e1f938a5a7da9ac6b97b1e7f404e589d4486645c8e8eab59ffc98a2d3783caf7e54831c5077cd2598b412857fc3d18f2f1cc3bbf03a38c"
       },
-      "receiptId": "cfd8101b0477758bc2449478049d3d67cd6e8dcca57fc52d775ffff838dbcf92"
+      "receiptId": "eb32832bc11ba6ce90b0c15eee1c163e73ce9294062342c8114ab61b6edae4d7"
     },
     {
       "receipt": {
-        "delegationId": "auth-1781921988456-g8mme",
-        "issuedAt": "2026-06-20T02:19:48.456Z",
+        "delegationId": "auth-1781977995526-ak55m",
+        "issuedAt": "2026-06-20T17:53:15.526Z",
         "scopeSchema": {
           "version": "1.0",
           "allowedActions": [
@@ -139,44 +139,44 @@
         },
         "boundaries": "none",
         "timeWindow": {
-          "start": "2026-06-20T02:19:48.455Z",
-          "end": "2026-06-21T01:19:48.455Z"
+          "start": "2026-06-20T17:53:15.525Z",
+          "end": "2100-01-01T00:00:00.000Z"
         },
         "operatorInstructions": "Read email only. Do not modify records.",
         "instructionsHash": "c7770cec36944bd53f6baf7dc9b7f5aa281a292300376e7b42bdfaf6f15c31e5",
         "signerPublicKey": {
           "kty": "EC",
           "crv": "P-256",
-          "x": "IfLcXEmnhHr6yo9ZIo8Nux1K755Z5J89Vzq-XE7A8Qc",
-          "y": "mMYOCWIUay9WP6_J-oo8SPC27pcwrQQ9VKOnyJUETWA"
+          "x": "fz16sKfZ0cJPvDhpMqeQgaY9mFeqje0GIgG0qglsOEg",
+          "y": "plEsP-HKoZltbCe80aKRDD28JsMfugD2DEe0QnEloX8"
         },
-        "parentReceiptId": "fcd83c72bdd214b795a7f2b95a97ef97503bfc38eef676f1e75658e78847f93c",
-        "signature": "81aa7f032d3f2bd4b5af3b5f5b729087135805c63416b059ba75f9286ec87dd6dcfcae2a5435b911c416e497ee8d7ca6b1ecde92e4245c31e03136392e564e07",
-        "orchestratorSignature": "f395d8b1ad6665305427e5152066a67fd87c623f2f50365533d4fc48c5c573838fed10a18c99cd95fbacde3ea5fb0d518bd1dca552fe819a4e5b71d84fcb1331"
+        "parentReceiptId": "0bcefb17401efca077e0e678856053597f04732b0b9c0fc094ca51aca4ea1ef9",
+        "signature": "619d8dddf1735b629bb8f3be47a4722529ec204c2e1edaa1f023c6f1c27d5be034541f9694a9a06a8a36f6345237dab28e2108cc83d0c6991ce8c1aa0b782509",
+        "orchestratorSignature": "ecf2cafac4d8ae20a5013f83094537a4a80146ae1d9b46807452f20642ce7fc6d0a383348a5b1a11d7d104c6447509fa4a73493c19b45507d9b7aa69a7f0b8b7"
       },
-      "receiptId": "9aa099320d37768c33617c502261ddd2600f90e9fed8e928e9f1c313996de186"
+      "receiptId": "c7ac5b0c1394cee67e20b227676fb5867cf25e4291950efcd8dbabb86f9b9665"
     },
     {
       "receipt": {
-        "delegationId": "auth-1781921988455-f3oeo",
-        "issuedAt": "2026-06-20T02:19:48.455Z",
+        "delegationId": "auth-1781977995524-veney",
+        "issuedAt": "2026-06-20T17:53:15.524Z",
         "scope": "root scope for deep chain test",
         "boundaries": "none",
         "timeWindow": {
-          "start": "2026-06-20T02:19:48.455Z",
-          "end": "2026-06-21T02:19:48.455Z"
+          "start": "2026-06-20T17:53:15.524Z",
+          "end": "2100-01-02T00:00:00.000Z"
         },
         "operatorInstructions": "Read email only. Do not modify records.",
         "instructionsHash": "c7770cec36944bd53f6baf7dc9b7f5aa281a292300376e7b42bdfaf6f15c31e5",
         "signerPublicKey": {
           "kty": "EC",
           "crv": "P-256",
-          "x": "IfLcXEmnhHr6yo9ZIo8Nux1K755Z5J89Vzq-XE7A8Qc",
-          "y": "mMYOCWIUay9WP6_J-oo8SPC27pcwrQQ9VKOnyJUETWA"
+          "x": "fz16sKfZ0cJPvDhpMqeQgaY9mFeqje0GIgG0qglsOEg",
+          "y": "plEsP-HKoZltbCe80aKRDD28JsMfugD2DEe0QnEloX8"
         },
-        "signature": "556c91632940cc25544e9c5ad81b835f4f7c63167442306b7cdf8843f684b19385d35050599746f9b6782425f064e776213134db65dc1e8fa4801ab30f277cfb"
+        "signature": "1c89a60ddb0a52c51c09a4075a8331873f48380ba0ff148b09f23208234c3d74c46c548fd669708fb2c57df3aa4481696f5efd80ba01f0066bd00db5d09806e5"
       },
-      "receiptId": "fcd83c72bdd214b795a7f2b95a97ef97503bfc38eef676f1e75658e78847f93c",
+      "receiptId": "0bcefb17401efca077e0e678856053597f04732b0b9c0fc094ca51aca4ea1ef9",
       "scopeSchema": {
         "version": "1.0",
         "allowedActions": [

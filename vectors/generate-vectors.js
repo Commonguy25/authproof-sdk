@@ -30,6 +30,7 @@ import {
   DelegationLog,
   RECEIPT_ALREADY_CONSUMED,
   CONSUMPTION_STORE_REQUIRED,
+  CHAIN_DEPTH_EXCEEDED,
   MAX_CHAIN_DEPTH,
 } from '../src/pre-execution-verifier.js';
 
@@ -118,6 +119,17 @@ const CHILD_SCOPE = {
 const INSTRUCTIONS = 'Read email only. Do not modify records.';
 const BOUNDARIES   = 'Do not send emails. Do not delete anything.';
 
+// Far-future window for vectors that test scope/chain logic rather than expiry.
+// These vectors used a short (12h) window tied to generation time, so they
+// silently started failing with "Receipt expired" once 12 hours passed --
+// the vector's intended check (scope attenuation, chain depth) was never
+// reached. A fixed multi-decade window keeps the receipt valid for the
+// practical lifetime of this test suite without it looking like a magic
+// "forever" value. FAR_FUTURE_PARENT_END is one day after FAR_FUTURE_CHILD_END
+// so the child's window is always strictly contained in the parent's.
+const FAR_FUTURE_CHILD_END  = '2100-01-01T00:00:00.000Z';
+const FAR_FUTURE_PARENT_END = '2100-01-02T00:00:00.000Z';
+
 // ---------------------------------------------------------------------------
 // Main generator
 // ---------------------------------------------------------------------------
@@ -127,6 +139,12 @@ async function main() {
 
   // Generate a signing key pair for all vectors
   const { privateKey, publicJwk } = await generateKey();
+
+  // Shared far-future ttlHours for standalone (non-delegation) vectors whose
+  // test is not about expiry. Computed once from FAR_FUTURE_CHILD_END so a
+  // single AuthProof.create() call below ends up with the same far-future
+  // window without each block re-deriving it.
+  const FAR_FUTURE_TTL_HOURS = (new Date(FAR_FUTURE_CHILD_END) - new Date()) / 3_600_000;
 
   // =========================================================================
   // PART 1: Canonicalization vectors
@@ -196,7 +214,7 @@ async function main() {
       scope:        'Read calendar events and summarize meetings',
       boundaries:   'Do not send emails. Do not modify records.',
       instructions: 'Summarize clearly. Stay within scope.',
-      ttlHours:     24,
+      ttlHours:     FAR_FUTURE_TTL_HOURS,
       privateKey,
       publicJwk,
     });
@@ -215,17 +233,19 @@ async function main() {
 
   // --- 2b. delegation-chain ---
   {
+    const refNow = new Date();
+    const parentTtlHours = (new Date(FAR_FUTURE_PARENT_END) - refNow) / 3_600_000;
     const { receipt: parent, receiptId: parentId } = await AuthProof.create({
       scope:        'Manage email and calendar',
       boundaries:   BOUNDARIES,
       instructions: INSTRUCTIONS,
-      ttlHours:     24,
+      ttlHours:     parentTtlHours,
       privateKey,
       publicJwk,
     });
 
     const now      = new Date();
-    const childEnd = new Date(now.getTime() + 12 * 3_600_000);
+    const childEnd = new Date(FAR_FUTURE_CHILD_END);
 
     // createSubReceipt requires parentReceipt to have scopeSchema for attenuation check.
     // Attach it temporarily for the call; strip before storing in vector.
@@ -282,17 +302,19 @@ async function main() {
       ],
     };
 
+    const refNow = new Date();
+    const nParentTtlHours = (new Date(FAR_FUTURE_PARENT_END) - refNow) / 3_600_000;
     const { receipt: nParent, receiptId: nParentId } = await AuthProof.create({
       scope:        'Access documents and reports',
       boundaries:   BOUNDARIES,
       instructions: INSTRUCTIONS,
-      ttlHours:     24,
+      ttlHours:     nParentTtlHours,
       privateKey,
       publicJwk,
     });
 
     const now      = new Date();
-    const childEnd = new Date(now.getTime() + 12 * 3_600_000);
+    const childEnd = new Date(FAR_FUTURE_CHILD_END);
     const nParentWithScope = { ...nParent, scopeSchema: narrowParentScope };
 
     const { receipt: nChild, receiptId: nChildId } = await createSubReceipt({
@@ -332,7 +354,7 @@ async function main() {
       scope:        'Read calendar events and summarize meetings',
       boundaries:   BOUNDARIES,
       instructions: INSTRUCTIONS,
-      ttlHours:     24,
+      ttlHours:     FAR_FUTURE_TTL_HOURS,
       privateKey,
       publicJwk,
       authorityState,
@@ -363,7 +385,7 @@ async function main() {
       scope:        'Read calendar events',
       boundaries:   'Do not send emails',
       instructions: 'Stay within scope',
-      ttlHours:     24,
+      ttlHours:     FAR_FUTURE_TTL_HOURS,
       privateKey,
       publicJwk,
       oneTimeUse:   true,
@@ -401,7 +423,7 @@ async function main() {
       scope:        'Read calendar events and summarize meetings',
       boundaries:   BOUNDARIES,
       instructions: 'Summarize clearly. Stay within scope.',
-      ttlHours:     24,
+      ttlHours:     FAR_FUTURE_TTL_HOURS,
       privateKey,
       publicJwk,
     });
@@ -468,7 +490,7 @@ async function main() {
       scope:        'Read calendar events only',
       boundaries:   BOUNDARIES,
       instructions: 'Summarize clearly. Stay within scope.',
-      ttlHours:     24,
+      ttlHours:     FAR_FUTURE_TTL_HOURS,
       privateKey,
       publicJwk,
     });
@@ -497,7 +519,7 @@ async function main() {
       scope:        'Read calendar events and summarize meetings',
       boundaries:   BOUNDARIES,
       instructions: 'Summarize clearly. Stay within scope.',
-      ttlHours:     24,
+      ttlHours:     FAR_FUTURE_TTL_HOURS,
       privateKey,
       publicJwk,
     });
@@ -525,7 +547,7 @@ async function main() {
       scope:        'Read calendar events and summarize meetings',
       boundaries:   BOUNDARIES,
       instructions: 'Summarize clearly. Stay within scope.',
-      ttlHours:     24,
+      ttlHours:     FAR_FUTURE_TTL_HOURS,
       privateKey,
       publicJwk,
     });
@@ -552,7 +574,7 @@ async function main() {
       scope:        'Read calendar events',
       boundaries:   'Do not send emails',
       instructions: 'Stay within scope',
-      ttlHours:     24,
+      ttlHours:     FAR_FUTURE_TTL_HOURS,
       privateKey,
       publicJwk,
       oneTimeUse:   true,
@@ -589,7 +611,7 @@ async function main() {
       scope:        'Read calendar events',
       boundaries:   'Do not send emails',
       instructions: 'Stay within scope',
-      ttlHours:     24,
+      ttlHours:     FAR_FUTURE_TTL_HOURS,
       privateKey,
       publicJwk,
       oneTimeUse:   true,
@@ -623,11 +645,13 @@ async function main() {
   // Manually craft a child receipt whose scope exceeds the parent scope.
   // (createSubReceipt would throw ScopeAttenuationError -- must craft manually)
   {
+    const refNow = new Date();
+    const parentTtlHours = (new Date(FAR_FUTURE_PARENT_END) - refNow) / 3_600_000;
     const { receipt: parent, receiptId: parentId } = await AuthProof.create({
       scope:        'Manage email',
       boundaries:   BOUNDARIES,
       instructions: INSTRUCTIONS,
-      ttlHours:     24,
+      ttlHours:     parentTtlHours,
       privateKey,
       publicJwk,
     });
@@ -643,7 +667,7 @@ async function main() {
     };
 
     const now      = new Date();
-    const childEnd = new Date(now.getTime() + 12 * 3_600_000);
+    const childEnd = new Date(FAR_FUTURE_CHILD_END);
 
     const childBody = {
       delegationId:         'auth-vector-bad-scope-' + Date.now(),
@@ -696,17 +720,19 @@ async function main() {
       deniedActions: [],
     };
 
+    const refNow = new Date();
+    const rootTtlHours = (new Date(FAR_FUTURE_PARENT_END) - refNow) / 3_600_000;
     const { receipt: root, receiptId: rootId } = await AuthProof.create({
       scope:        'root scope for deep chain test',
       boundaries:   'none',
       instructions: INSTRUCTIONS,
-      ttlHours:     24,
+      ttlHours:     rootTtlHours,
       privateKey,
       publicJwk,
     });
 
     const now    = new Date();
-    const farEnd = new Date(now.getTime() + 23 * 3_600_000);
+    const farEnd = new Date(FAR_FUTURE_CHILD_END);
 
     root.scopeSchema = rootScope;
 
@@ -758,7 +784,7 @@ async function main() {
       verifierOptions:      { maxChainDepth: MAX_CHAIN_DEPTH },
       expected:             {
         outcome:    'DENY',
-        denialCode: 'PARENT_SCOPE_VIOLATION',
+        denialCode: CHAIN_DEPTH_EXCEEDED,
       },
     });
   }

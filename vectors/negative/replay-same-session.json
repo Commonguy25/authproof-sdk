@@ -2,25 +2,25 @@
   "id": "replay-same-session",
   "description": "Two concurrent check() calls with the same receiptHash -- the second is blocked as a replay attack.",
   "receipt": {
-    "delegationId": "auth-1781921988447-0iu8v",
-    "issuedAt": "2026-06-20T02:19:48.447Z",
+    "delegationId": "auth-1781977995519-hpa2g",
+    "issuedAt": "2026-06-20T17:53:15.519Z",
     "scope": "Read calendar events and summarize meetings",
     "boundaries": "Do not send emails. Do not delete anything.",
     "timeWindow": {
-      "start": "2026-06-20T02:19:48.447Z",
-      "end": "2026-06-21T02:19:48.447Z"
+      "start": "2026-06-20T17:53:15.519Z",
+      "end": "2100-01-01T00:00:00.028Z"
     },
     "operatorInstructions": "Summarize clearly. Stay within scope.",
     "instructionsHash": "b47d2fcaab993a6e93d10d4d25010736a9889d91490931ed56b6ec27ce990c79",
     "signerPublicKey": {
       "kty": "EC",
       "crv": "P-256",
-      "x": "IfLcXEmnhHr6yo9ZIo8Nux1K755Z5J89Vzq-XE7A8Qc",
-      "y": "mMYOCWIUay9WP6_J-oo8SPC27pcwrQQ9VKOnyJUETWA"
+      "x": "fz16sKfZ0cJPvDhpMqeQgaY9mFeqje0GIgG0qglsOEg",
+      "y": "plEsP-HKoZltbCe80aKRDD28JsMfugD2DEe0QnEloX8"
     },
-    "signature": "fefef8db1300b834b712884323a706db198cb810fb0892d26124524a45fe6d35778cb790a2903f1dfab26597955155618b7a59f2c6de46d1c42893e7eb1480bc"
+    "signature": "23474f91f11574bd3898ab8aeb1a0fbf8c90161cf374232a32e0f5af14e5a31003dacbdc9915b6fd355b0a4347ac34ca3cc0b1d7e1dd63f1668a6363ce04e086"
   },
-  "receiptId": "f2f97f0329a5f74d50eb809e7c4f62fc416959614a519e852622ebd687b69212",
+  "receiptId": "13af245654529ae27f345be1962846c2d2f88c5417a193e1c6aabe335da32d27",
   "action": "Read calendar meetings and summarize",
   "operatorInstructions": "Summarize clearly. Stay within scope.",
   "testBehavior": "concurrent_replay",

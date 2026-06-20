@@ -2,25 +2,25 @@
   "id": "invalid-signature",
   "description": "Receipt body was modified after signing -- ECDSA signature is invalid.",
   "receipt": {
-    "delegationId": "auth-1781921988440-cc2zy",
-    "issuedAt": "2026-06-20T02:19:48.440Z",
+    "delegationId": "auth-1781977995514-vcpe7",
+    "issuedAt": "2026-06-20T17:53:15.514Z",
     "scope": "Send emails to all contacts",
     "boundaries": "Do not send emails. Do not delete anything.",
     "timeWindow": {
-      "start": "2026-06-20T02:19:48.440Z",
-      "end": "2026-06-21T02:19:48.440Z"
+      "start": "2026-06-20T17:53:15.514Z",
+      "end": "2100-01-01T00:00:00.023Z"
     },
     "operatorInstructions": "Summarize clearly. Stay within scope.",
     "instructionsHash": "b47d2fcaab993a6e93d10d4d25010736a9889d91490931ed56b6ec27ce990c79",
     "signerPublicKey": {
       "kty": "EC",
       "crv": "P-256",
-      "x": "IfLcXEmnhHr6yo9ZIo8Nux1K755Z5J89Vzq-XE7A8Qc",
-      "y": "mMYOCWIUay9WP6_J-oo8SPC27pcwrQQ9VKOnyJUETWA"
+      "x": "fz16sKfZ0cJPvDhpMqeQgaY9mFeqje0GIgG0qglsOEg",
+      "y": "plEsP-HKoZltbCe80aKRDD28JsMfugD2DEe0QnEloX8"
     },
-    "signature": "ea182ce2af70ab875dd90b97cc38adebad419a59b4a27ead4ea18249404b11a7726b7d3fe3d4daf2a9b9e211e46b313b9ce16127429c576bbf8ce3e29bf41546"
+    "signature": "2db458ab333353cf604e96befe444cadcb5ffdad2f925b175c6fc0f9231133436c681626268b757a7d4e840e831cee505865f8e1414e77bd7ccad2270de09d73"
   },
-  "receiptId": "afe316f04af7a0aab8822b44040bbc1ffd5f4ea43973022445606a7891c5d356",
+  "receiptId": "bfe5274573604c8c32d30602553ebfccc100a5ee94f939f6fac3005bcf5b2615",
   "action": "Read calendar meetings and summarize",
   "operatorInstructions": "Summarize clearly. Stay within scope.",
   "verifierOptions": {},

@@ -2,25 +2,25 @@
   "id": "action-not-in-scope",
   "description": "Action is explicitly denied by the receipt ScopeSchema.",
   "receipt": {
-    "delegationId": "auth-1781921988444-9xzsy",
-    "issuedAt": "2026-06-20T02:19:48.444Z",
+    "delegationId": "auth-1781977995516-cot6e",
+    "issuedAt": "2026-06-20T17:53:15.516Z",
     "scope": "Read calendar events only",
     "boundaries": "Do not send emails. Do not delete anything.",
     "timeWindow": {
-      "start": "2026-06-20T02:19:48.444Z",
-      "end": "2026-06-21T02:19:48.444Z"
+      "start": "2026-06-20T17:53:15.516Z",
+      "end": "2100-01-01T00:00:00.025Z"
     },
     "operatorInstructions": "Summarize clearly. Stay within scope.",
     "instructionsHash": "b47d2fcaab993a6e93d10d4d25010736a9889d91490931ed56b6ec27ce990c79",
     "signerPublicKey": {
       "kty": "EC",
       "crv": "P-256",
-      "x": "IfLcXEmnhHr6yo9ZIo8Nux1K755Z5J89Vzq-XE7A8Qc",
-      "y": "mMYOCWIUay9WP6_J-oo8SPC27pcwrQQ9VKOnyJUETWA"
+      "x": "fz16sKfZ0cJPvDhpMqeQgaY9mFeqje0GIgG0qglsOEg",
+      "y": "plEsP-HKoZltbCe80aKRDD28JsMfugD2DEe0QnEloX8"
     },
-    "signature": "3577335c965f34b0ad8284d8cd6cb15ea9bf364fb51196a2c348c33cbddb59b5927ef964dfeca585432a0af973f7f004408af30ed9bb263f0dc55b6349f7440f"
+    "signature": "d0175801ca62460f3020336798a0f6f9c83bba0d3477172832cda46257dd110cc47ea5dcee4f4a450dedfd897a405e9d156a5bd6afba897584f4937c2ea895bf"
   },
-  "receiptId": "4fbaacaeb1693e92bc63b07f6686330817fe59dcead8bbe1ad1e2c71cedbf503",
+  "receiptId": "d1ec80839fc1b6b4fd7149918e84f80181d8f47b3880e666dbd9317f9cae6a12",
   "action": {
     "operation": "send",
     "resource": "email"
