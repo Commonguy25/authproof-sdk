@@ -1,0 +1,47 @@
+{
+  "id": "one-time-use-no-store",
+  "description": "oneTimeUse receipt with no durable ConsumptionStore configured -- fail closed with CONSUMPTION_STORE_REQUIRED.",
+  "receipt": {
+    "delegationId": "auth-1781921988450-jblr4",
+    "issuedAt": "2026-06-20T02:19:48.450Z",
+    "scope": "Read calendar events",
+    "boundaries": "Do not send emails",
+    "timeWindow": {
+      "start": "2026-06-20T02:19:48.450Z",
+      "end": "2026-06-21T02:19:48.450Z"
+    },
+    "operatorInstructions": "Stay within scope",
+    "instructionsHash": "2cf53c29f07d1164f47190209e12719d0b74c6ac52c1a2afd679972a1dc2bff7",
+    "signerPublicKey": {
+      "kty": "EC",
+      "crv": "P-256",
+      "x": "IfLcXEmnhHr6yo9ZIo8Nux1K755Z5J89Vzq-XE7A8Qc",
+      "y": "mMYOCWIUay9WP6_J-oo8SPC27pcwrQQ9VKOnyJUETWA"
+    },
+    "oneTimeUse": true,
+    "signature": "6c708e4859ddeae69cdd9e00d68ebbfeea4e2f9f57f176423f57c43f8ae7de0952838e89a69a12443db80ab197a8020c704b09c850c0834e6a3b9e5004e590ba"
+  },
+  "receiptId": "953717e5b79698f58785d3b8a9b108776e120f2f5606ce890170930fb5f47b9f",
+  "action": {
+    "operation": "read",
+    "resource": "calendar"
+  },
+  "operatorInstructions": "Stay within scope",
+  "verifierOptions": {
+    "scopeSchema": {
+      "version": "1.0",
+      "allowedActions": [
+        {
+          "operation": "read",
+          "resource": "calendar"
+        }
+      ],
+      "deniedActions": []
+    },
+    "consumptionStore": null
+  },
+  "expected": {
+    "outcome": "DENY",
+    "denialCode": "CONSUMPTION_STORE_REQUIRED"
+  }
+}

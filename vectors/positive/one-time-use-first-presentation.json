@@ -1,0 +1,46 @@
+{
+  "id": "one-time-use-first-presentation",
+  "description": "oneTimeUse receipt presented for the first time with a durable store -- PERMIT.",
+  "receipt": {
+    "delegationId": "auth-1781921988438-19k4c",
+    "issuedAt": "2026-06-20T02:19:48.438Z",
+    "scope": "Read calendar events",
+    "boundaries": "Do not send emails",
+    "timeWindow": {
+      "start": "2026-06-20T02:19:48.438Z",
+      "end": "2026-06-21T02:19:48.438Z"
+    },
+    "operatorInstructions": "Stay within scope",
+    "instructionsHash": "2cf53c29f07d1164f47190209e12719d0b74c6ac52c1a2afd679972a1dc2bff7",
+    "signerPublicKey": {
+      "kty": "EC",
+      "crv": "P-256",
+      "x": "IfLcXEmnhHr6yo9ZIo8Nux1K755Z5J89Vzq-XE7A8Qc",
+      "y": "mMYOCWIUay9WP6_J-oo8SPC27pcwrQQ9VKOnyJUETWA"
+    },
+    "oneTimeUse": true,
+    "signature": "10569073a26b741a274dd46fe33e5479cae10ceda4268f418cb862dab08dfeac7f268e9785aa3418cfc286782a13ddd7d2e6580ce9e79014b1aab84c28812df7"
+  },
+  "receiptId": "4932ac9c776477f59edaeb92a19cf16f7c4f5f9812dfbcac24e3cabbc58831ad",
+  "action": {
+    "operation": "read",
+    "resource": "calendar"
+  },
+  "operatorInstructions": "Stay within scope",
+  "verifierOptions": {
+    "scopeSchema": {
+      "version": "1.0",
+      "allowedActions": [
+        {
+          "operation": "read",
+          "resource": "calendar"
+        }
+      ],
+      "deniedActions": []
+    },
+    "consumptionStore": "durable"
+  },
+  "expected": {
+    "outcome": "PERMIT"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "id": "canonical-05",
+  "description": "Canonical encoding lock vector for instruction text",
+  "instructions": "  Do NOT send emails.  Do NOT delete records.  Do NOT modify data.  ",
+  "normalizedForm": "do not send emails do not delete records do not modify data",
+  "canonicalBytes": "646f206e6f742073656e6420656d61696c7320646f206e6f742064656c657465207265636f72647320646f206e6f74206d6f646966792064617461",
+  "sha256": "2a05c3a7154d50c58bd1d7173a06780659b57086683008cae7eb6af95b7cb826",
+  "receipt": {
+    "instructionsHash": "2a05c3a7154d50c58bd1d7173a06780659b57086683008cae7eb6af95b7cb826",
+    "signerPublicKey": {
+      "kty": "EC",
+      "crv": "P-256",
+      "x": "IfLcXEmnhHr6yo9ZIo8Nux1K755Z5J89Vzq-XE7A8Qc",
+      "y": "mMYOCWIUay9WP6_J-oo8SPC27pcwrQQ9VKOnyJUETWA"
+    },
+    "timeWindow": {
+      "start": "2026-06-20T02:19:48.428Z",
+      "end": "2026-06-21T02:19:48.428Z"
+    },
+    "issuedAt": "2026-06-20T02:19:48.428Z",
+    "delegationId": "auth-1781921988428-53ihg"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "id": "canonical-03",
+  "description": "Canonical encoding lock vector for instruction text",
+  "instructions": "\"Read\" the calendar events and provide a \"summary\".",
+  "normalizedForm": "read the calendar events and provide a summary",
+  "canonicalBytes": "72656164207468652063616c656e646172206576656e747320616e642070726f7669646520612073756d6d617279",
+  "sha256": "64dbbfeedff390f55764b257349839639f45f16dce00dc66c0a5c0a231218246",
+  "receipt": {
+    "instructionsHash": "64dbbfeedff390f55764b257349839639f45f16dce00dc66c0a5c0a231218246",
+    "signerPublicKey": {
+      "kty": "EC",
+      "crv": "P-256",
+      "x": "IfLcXEmnhHr6yo9ZIo8Nux1K755Z5J89Vzq-XE7A8Qc",
+      "y": "mMYOCWIUay9WP6_J-oo8SPC27pcwrQQ9VKOnyJUETWA"
+    },
+    "timeWindow": {
+      "start": "2026-06-20T02:19:48.414Z",
+      "end": "2026-06-21T02:19:48.414Z"
+    },
+    "issuedAt": "2026-06-20T02:19:48.414Z",
+    "delegationId": "auth-1781921988414-vrpe9"
+  }
+}

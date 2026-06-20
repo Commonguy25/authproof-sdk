@@ -1,0 +1,104 @@
+{
+  "id": "narrowed-sub-receipt",
+  "description": "Child scope is strict proper subset of parent scope -- export permission removed.",
+  "receipt": {
+    "delegationId": "auth-1781921988434-mjnck",
+    "issuedAt": "2026-06-20T02:19:48.434Z",
+    "scopeSchema": {
+      "version": "1.0",
+      "allowedActions": [
+        {
+          "operation": "read",
+          "resource": "documents"
+        },
+        {
+          "operation": "read",
+          "resource": "reports"
+        },
+        {
+          "operation": "write",
+          "resource": "reports"
+        }
+      ],
+      "deniedActions": [
+        {
+          "operation": "delete",
+          "resource": "*"
+        }
+      ]
+    },
+    "boundaries": "Do not send emails. Do not delete anything.",
+    "timeWindow": {
+      "start": "2026-06-20T02:19:48.434Z",
+      "end": "2026-06-20T14:19:48.434Z"
+    },
+    "operatorInstructions": "Read email only. Do not modify records.",
+    "instructionsHash": "c7770cec36944bd53f6baf7dc9b7f5aa281a292300376e7b42bdfaf6f15c31e5",
+    "signerPublicKey": {
+      "kty": "EC",
+      "crv": "P-256",
+      "x": "IfLcXEmnhHr6yo9ZIo8Nux1K755Z5J89Vzq-XE7A8Qc",
+      "y": "mMYOCWIUay9WP6_J-oo8SPC27pcwrQQ9VKOnyJUETWA"
+    },
+    "parentReceiptId": "4d6325863e96c3474c4ea498a8b38c179731db6809cb5c958f4f1e4d05dafc15",
+    "signature": "d0e3ef8957334934330b46a41a649df0172a0c05c7b6608517f09b621151673efbd7a39a46d22c25c5b42565b8086759eda2285609e0e5fd2ef9de2d755ff963",
+    "orchestratorSignature": "44cde1c6fc88eacda9afff35add7fb0510144e119d4063f01d10e45e05f9ff374a1cd925627d9e8a325570be8129acc80440e16c4655fafc45118d43201758f3"
+  },
+  "receiptId": "bb52f821b209381294d1910e47124b2badee1635521cb1206356d6bc89487fe9",
+  "parentReceipt": {
+    "delegationId": "auth-1781921988433-503e6",
+    "issuedAt": "2026-06-20T02:19:48.433Z",
+    "scope": "Access documents and reports",
+    "boundaries": "Do not send emails. Do not delete anything.",
+    "timeWindow": {
+      "start": "2026-06-20T02:19:48.433Z",
+      "end": "2026-06-21T02:19:48.433Z"
+    },
+    "operatorInstructions": "Read email only. Do not modify records.",
+    "instructionsHash": "c7770cec36944bd53f6baf7dc9b7f5aa281a292300376e7b42bdfaf6f15c31e5",
+    "signerPublicKey": {
+      "kty": "EC",
+      "crv": "P-256",
+      "x": "IfLcXEmnhHr6yo9ZIo8Nux1K755Z5J89Vzq-XE7A8Qc",
+      "y": "mMYOCWIUay9WP6_J-oo8SPC27pcwrQQ9VKOnyJUETWA"
+    },
+    "signature": "a69894f9b0f70dbf03fa2f14c3470da92cd3462a0fde6dd75410781e957f31b5aca6c2f5b12d418136f0d759b2cc38f25f086b55de61abfb1d5f8e559e81ccbe"
+  },
+  "parentReceiptId": "4d6325863e96c3474c4ea498a8b38c179731db6809cb5c958f4f1e4d05dafc15",
+  "parentScopeSchema": {
+    "version": "1.0",
+    "allowedActions": [
+      {
+        "operation": "read",
+        "resource": "documents"
+      },
+      {
+        "operation": "read",
+        "resource": "reports"
+      },
+      {
+        "operation": "write",
+        "resource": "reports"
+      },
+      {
+        "operation": "export",
+        "resource": "reports"
+      }
+    ],
+    "deniedActions": [
+      {
+        "operation": "delete",
+        "resource": "*"
+      }
+    ]
+  },
+  "action": {
+    "operation": "read",
+    "resource": "documents"
+  },
+  "operatorInstructions": "Read email only. Do not modify records.",
+  "verifierOptions": {},
+  "expected": {
+    "outcome": "PERMIT"
+  }
+}
