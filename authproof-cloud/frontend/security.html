@@ -306,7 +306,7 @@
       <div class="crypto-card">
         <div class="crypto-icon">🕐</div>
         <h3>RFC 3161 Timestamps</h3>
-        <p>Every log entry receives a cryptographic timestamp from a trusted timestamping authority. RFC 3161 timestamps are used in legally admissible digital evidence and cannot be backdated or falsified.</p>
+        <p>Every log entry can carry a timestamp token from an RFC 3161 timestamping authority. The SDK presence-checks these tokens: it confirms the token bytes contain the entry's digest. It does not verify the TSA's signature or certificate chain, so a forged token embedding the digest would pass. Treat timestamps as audit support, not as independently verified legal proof.</p>
       </div>
       <div class="crypto-card">
         <div class="crypto-icon">🔗</div>
@@ -349,7 +349,7 @@
           </tr>
           <tr>
             <td class="td-what">Dependency management</td>
-            <td>The open source SDK has 1,151 tests across 14 suites with zero failures. Dependencies are reviewed and pinned. The SDK is MIT licensed and auditable by anyone.</td>
+            <td>The open source SDK has 1,392 JS tests across 23 suites with zero failures, plus 36 Python tests, all green. Dependencies are reviewed and pinned. The SDK is MIT licensed and auditable by anyone.</td>
           </tr>
           <tr>
             <td class="td-what">Secret management</td>
@@ -400,7 +400,7 @@
     <div class="section-label">Key Custody</div>
     <div class="section-headline">Key custody and user control</div>
     <div class="prose">
-      <p>Authproof is designed so that your private signing key never leaves your hardware. We use WebAuthn and FIDO2, which leverage your device's secure enclave — the same protected chip that stores Face ID and fingerprint data on modern devices. The secure enclave performs the cryptographic signing operation internally. The private key is never exported, never transmitted, and never accessible to Authproof or any other party.</p>
+      <p>Hardware custody is the recommended model: WebAuthn and FIDO2 keep your private signing key in your device's secure enclave — the same protected chip that stores Face ID and fingerprint data on modern devices. The enclave performs the signing operation internally, and the key is never exported, transmitted, or accessible to Authproof. The SDK also supports software key generation, where the key is only as safe as the machine holding it — use hardware custody for anything that matters.</p>
       <p>This means that even if Authproof Cloud's infrastructure were completely compromised, an attacker could not forge delegation receipts signed by your users. The receipts require the user's hardware key to create.</p>
     </div>
   </div>
@@ -431,6 +431,10 @@
         <li><strong>Penetration test — not yet completed.</strong> An independent penetration test of the Authproof Cloud API and infrastructure is on our roadmap.</li>
         <li><strong>On-chain log anchoring — in development.</strong> Publishing receipt hashes to a public blockchain would remove Authproof as a trusted party in the audit chain entirely. This is our roadmap item for removing centralized log dependency.</li>
         <li><strong>Bug bounty program — planned.</strong> A formal bug bounty program with defined rewards is planned once the product reaches sufficient maturity.</li>
+        <li><strong>Independent security audit — not done.</strong> No third-party security audit or penetration test has been completed yet; the test suite (1,392 JS + 36 Python, all green) is the current assurance baseline.</li>
+        <li><strong>Key management story — missing.</strong> Key rotation, KMS/HSM integration, and compromise procedures are not part of the SDK.</li>
+        <li><strong>Canonical signatures and JS/Python interop — planned.</strong> The JS SDK signs insertion-order JSON, and the Python SDK is a partial port that cannot verify JS receipts. A JWS/COSE canonical profile would fix both; until then, do not mix SDKs across the same receipts.</li>
+        <li><strong>Full RFC 3161 signature verification — out of scope.</strong> The SDK presence-checks timestamp tokens (digest in token bytes) but does not validate the TSA's signature chain.</li>
       </ul>
     </div>
   </div>

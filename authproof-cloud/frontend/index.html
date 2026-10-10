@@ -532,7 +532,7 @@
 <section class="hook-section" id="hero">
   <div class="hook-inner">
     <h1 class="hook-headline">The user signs. The operator cannot widen scope after.</h1>
-    <p class="hook-sub">Most agent authorization protocols enforce against a policy the operator defines. AuthProof is different: your users sign the authorization object with their own private key, and that signature gates execution. Before any action runs, the live model state is measured and compared to what was measured at authorization time. Drift blocks execution. The user's intent is the constraint, not an operator-managed policy that can be rewritten after the fact.</p>
+    <p class="hook-sub">Your users sign the authorization object with their own private key, and that signature gates execution. Before any action runs, the live model state is measured and compared to what was measured at authorization time. Drift blocks execution. The user's intent is the constraint, not an operator-managed policy that can be rewritten after the fact. One thing to be clear about: AuthProof is an audit and attribution layer for honest deployments. The gate runs in your agent's process. It verifies proof; it does not stop a dishonest operator from refusing to call it.</p>
     <a href="/signup.html" class="btn-dark-primary">Start free</a>
   </div>
 </section>
@@ -567,7 +567,7 @@
         <ul class="gap-list">
           <li>Cryptographic proof before the agent acts</li>
           <li>A session budget that only goes down</li>
-          <li>Constraints the agent cannot reason around</li>
+          <li>Signed constraints the operator cannot widen after signing</li>
           <li>Pre-hoc authorization that predates execution</li>
         </ul>
       </div>
@@ -602,7 +602,7 @@
       <div class="step">
         <div class="step-num">02</div>
         <h3>Every action is checked before it executes</h3>
-        <p>Every agent action is verified against the signed receipt before execution. Anything outside scope is blocked automatically. No exceptions. No bypasses. The receipt is not advisory  --  it is enforced.</p>
+        <p>Every agent action routed through the gate is verified against the signed receipt before execution. Structured scope is enforced: anything outside it is blocked. Free-text scope without a structured schema produces an advisory signal only  --  real enforcement requires a scope schema.</p>
       </div>
       <div class="step">
         <div class="step-num">03</div>
@@ -811,7 +811,7 @@
         <ul class="p-features">
           <li>1,000 receipts per month</li>
           <li>Full verification API</li>
-          <li>7-check pre-execution gate</li>
+          <li>13-check pre-execution gate</li>
           <li>Dashboard and audit export</li>
           <li>Community support</li>
         </ul>
@@ -862,7 +862,7 @@
       <div class="why-pay-grid">
         <div style="background:var(--gray-50);border:1px solid var(--gray-200);border-radius:6px;padding:28px;">
           <div style="font-size:15px;font-weight:700;color:var(--gray-900);margin-bottom:8px;">Compliance-grade exports</div>
-          <div style="font-size:14px;color:var(--gray-600);line-height:1.65;">The hosted log produces RFC 3161 timestamped exports that satisfy HIPAA audit requirements out of the box. Self-hosted requires you to configure and maintain your own timestamping authority.</div>
+          <div style="font-size:14px;color:var(--gray-600);line-height:1.65;">The hosted log produces RFC 3161 timestamped exports for your HIPAA audit trail. Timestamps are presence-checked by the SDK (the token must contain the entry digest); the TSA's signature is not independently verified. Self-hosted requires you to configure and maintain your own timestamping authority.</div>
         </div>
         <div style="background:var(--gray-50);border:1px solid var(--gray-200);border-radius:6px;padding:28px;">
           <div style="font-size:15px;font-weight:700;color:var(--gray-900);margin-bottom:8px;">Managed retention and legal hold</div>
@@ -903,7 +903,7 @@
             <td><span class="ct-check">✓</span></td>
           </tr>
           <tr>
-            <td class="feat-name">7-check pre-execution gate</td>
+            <td class="feat-name">13-check pre-execution gate</td>
             <td><span class="ct-check">✓</span></td>
             <td><span class="ct-check">✓</span></td>
             <td><span class="ct-check">✓</span></td>
@@ -1031,7 +1031,7 @@
       <img src="ryan-nelson.png" alt="Ryan Nelson" class="founder-avatar-small">
       <div>
         <h2 class="founder-headline-small">Built by one person</h2>
-        <p class="founder-body-small">Ryan Nelson. HVAC technician at Arctic Air. Accounting student at Oklahoma State University. Father of a daughter turning three in June. IETF Internet-Draft filed April 2026. 1,229 tests. MIT licensed. Full time job. Full time school. Built it anyway.</p>
+        <p class="founder-body-small">Ryan Nelson. HVAC technician at Arctic Air. Accounting student at Oklahoma State University. Father of a daughter turning three in June. IETF Internet-Draft filed April 2026. 1,392 JS tests + 36 Python tests, all green. MIT licensed. Full time job. Full time school. Built it anyway.</p>
         <div class="founder-links-small">
           <a href="https://linkedin.com/in/ryan-nelson-582353342" target="_blank" rel="noopener">LinkedIn →</a>
           <a href="mailto:ryan@authproof.dev">ryan@authproof.dev</a>

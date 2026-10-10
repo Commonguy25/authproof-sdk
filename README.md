@@ -1,24 +1,30 @@
 # AuthProof SDK
 
-AuthProof is a cryptographic delegation protocol for agentic AI. Most protocols in this space enforce against an operator-defined policy -- giving the operator authority to expand or reinterpret the user's original intent after the fact. AuthProof is built around a different trust model: the user's own private key signs the authorization object that gates execution, and the live model state is verified at both authorization time and immediately before execution. The combination of user-signed authority and live model-state gating is the specific claim -- not a broad enforcement story.
+AuthProof is an audit and attribution layer for AI agents. It lets you prove what a user authorized before the agent acted, and it records what the agent actually did against that authorization.
+
+The mechanism is simple. The user signs a delegation receipt with their own private key. The receipt carries scope, boundaries, operator instructions (hashed), and a time window. A pre-execution verifier checks each proposed action against the receipt, and an append-only action log records what ran. The result is evidence: what was authorized, diffed against what happened.
+
+This is not a security control against a malicious operator. The verifier runs in the same process as the agent, and a dishonest operator can simply not call it. No cryptographic property can fix that from inside the same runtime. AuthProof proves authorization for deployments that run the gate, and it gives auditors, regulators, and users a record they can check after the fact.
 
 **What makes it different:**
 
-- **The user is the signing authority.** Every competing protocol (AIP, AITH, OAP, SAGA, AgentSpec) enforces against a policy the operator defines. In AuthProof, the user's private key signs the authorization object directly. The operator cannot widen scope after the user has signed.
+- **The user is the signing authority.** The authorization object is signed with the user's private key, not written into an operator-managed policy. The signed scope and program hash in the receipt always win over operator log metadata. If operator metadata conflicts with the signed receipt, the gate denies the action instead of following the metadata.
 
-- **Two-phase model-state commitment.** The model is measured at authorization time and re-measured immediately before execution. If the model has drifted between those two points, execution is blocked at pre-execution verification.
+- **Two-phase model-state commitment.** The model is measured at authorization time and re-measured before execution. These measurements are software-computed and self-attested, not hardware-rooted. They are tamper-evidence for honest deployments, not proof against a hostile host.
 
-- **Provider update versus malicious substitution, distinguished.** The protocol classifies model-state changes into two categories: legitimate provider updates (`PROVIDER_UPDATE_REQUIRES_REAUTH`) and unauthorized swaps (`MALICIOUS_MODEL_SUBSTITUTION`). Each produces a machine-readable denial reason code identifying which components changed.
+- **Provider update versus malicious substitution, distinguished.** Model-state changes classify into legitimate provider updates (`PROVIDER_UPDATE_REQUIRES_REAUTH`) and unauthorized swaps (`MALICIOUS_MODEL_SUBSTITUTION`). Each produces a machine-readable denial reason code identifying which components changed.
 
 ## Pre-Execution Verifier
 
-**The deterministic gate that runs before any agent action executes.**
+**The gate that runs before any agent action executes.**
 
-The `PreExecutionVerifier` sits outside the agent runtime. The runtime never gets control until the verifier passes. A compromised or malicious agent cannot skip it â it runs before the runtime starts.
+`PreExecutionVerifier.check()` verifies each proposed action against the signed delegation receipt. Route every action through it in your agent's process, before the action runs. The verifier signs its own allow/deny decisions into an audit log, so every result is part of the record.
+
+One hard truth to build around: the verifier is same-process. It verifies proof; it cannot stop an operator who refuses to call it. Use it where you want evidence, not where you need enforcement against the operator running the code.
 
 ### Why it matters
 
-Traditional authorization checks happen inside the agent runtime. If the runtime is compromised, those checks can be skipped, reordered, or bypassed. `PreExecutionVerifier` eliminates this attack surface by moving authorization outside the runtime entirely. The agent only executes if â and only if â all six sequential checks pass first.
+Most agent authorization today is the operator’s word: a policy the operator wrote, enforced by code the operator controls. When something goes wrong, there is no record of what the user actually authorized, only the operator’s reconstruction of it. AuthProof flips that. The user’s signed receipt predates execution, and the action log records what ran against it. The question “did the user authorize this?” becomes checkable instead of arguable.
 
 ### Quickstart
 
@@ -48,21 +54,34 @@ const result = await verifier.check({
 if (!result.allowed) {
   throw new Error(`Blocked: ${result.blockedReason}`)
 }
-// Agent runtime only reaches here after all six checks pass
+// Agent runtime only reaches here after all thirteen checks pass
 ```
 
-### Six sequential checks (stops at first failure)
+### Thirteen sequential checks (stops at first failure)
 
 | # | Check | Blocks when |
 |---|-------|-------------|
 | 1 | Receipt signature | ECDSA P-256 signature invalid or receipt tampered |
-| 2 | Revocation | Receipt has been revoked via `RevocationRegistry` |
+| 2 | Revocation | Receipt has been revoked via `RevocationRegistry` (cascade: a revoked ancestor denies its descendants) |
 | 3 | Time window | Receipt expired or not yet valid (log timestamp oracle, not client clock) |
-| 4 | Scope | Action not in `ScopeSchema.allowedActions` or fails text-based scope matching |
-| 5 | Operator instructions | Current instructions don't match the hash locked into the receipt at issuance |
-| 6 | Program hash | Provided `programHash` doesn't match the committed `executes` hash (code substitution prevention) |
+| 4 | Scope | Action not in `ScopeSchema.allowedActions`; without a structured schema, keyword matching is advisory-only and never gates |
+| 5 | Operator instructions | Provided instructions don't match the hash locked into the receipt at issuance; skipped with a warning when the caller omits them |
+| 6 | Program hash | Provided `programHash` doesn't match the committed `executes` hash (optional) |
+| 7 | Session risk | Trust/risk thresholds exceeded (optional) |
+| 8 | Tool schema integrity | `toolSchemaHash` doesn't match the receipt (optional) |
+| 9 | Model state | Model drift detected (optional; software-computed, self-attested measurement) |
+| 10 | Tool output hash binding | Output hash doesn't match the receipt (optional) |
+| 11 | Instruction provenance | Instruction source not in the receipt's `trustedSources` (optional) |
+| 14 | Parent scope containment | Sub-receipt exceeds the parent's scope (sub-receipts only); revoking any ancestor denies the child at check time |
+| 15 | Authority state drift | `authorityStateCommitment` drifted since issuance (optional) |
 
-Every check result â pass or fail â is automatically logged to an immutable `ActionLog` signed with the verifier's own key.
+Slots 12 and 13 were never implemented; the numbering gap is historical. The gate stops at the first failed check. One-time-use consumption runs last, after every check passes, so a consumption slot is never burned on a receipt that would be denied for another reason.
+
+Every check result, pass or fail, is automatically logged to an immutable `ActionLog` signed with the verifier's own key.
+
+**Signed data wins.** The signed receipt's scope and program hash always win over operator log metadata. If unsigned `DelegationLog` metadata disagrees with the signed receipt, the gate denies the action (`SCOPE_METADATA_MISMATCH` / `PROGRAM_METADATA_MISMATCH`). Log metadata is a fallback only when the receipt carries no structured scope or signed `executes` value.
+
+**Guided delegation is guided by observation.** `ScopeDiscovery.guided()` and `AuthProofClient.delegateGuided()` run `observe → generateScope → approve → finalize` in one call, and the full observed draft scope is auto-approved with no human review. For a genuine human-authorization moment, pass the `reviewDraft` hook (approve, modify, or decline the draft before issuance) or run the steps separately with an explicit `approve()`.
 
 ### Middleware integrations
 
@@ -87,6 +106,19 @@ const guardedExecute = guardFunction(executeAction, { receiptHash, verifier, act
 ```
 
 ---
+
+## What It Is Not
+
+Read this before deciding what AuthProof proves for you.
+
+- **Not a barrier to a malicious operator.** The verifier runs in the same process as the agent. Nothing in the SDK stops a dishonest operator from skipping the gate. AuthProof is proof for deployments that run the gate, not control for deployments that refuse to.
+- **No hardware attestation.** TEE and model-state features are software-computed, self-attested measurements for audit and tamper-evidence in honest deployments. Hardware guarantees require real TEE hardware and are not provided by this SDK.
+- **Signatures are not canonical.** The JS SDK signs insertion-order JSON. Cross-implementation verification breaks, and a JWS/COSE canonical profile is future work. The Python SDK is a partial port, not a mirror: it is wire-incompatible with the JavaScript SDK (different field names, signature encoding, and canonicalization), so the two cannot verify each other's receipts.
+- **Timestamps are presence-checked.** The SDK confirms an RFC 3161 token's bytes contain the entry digest. It does not verify the TSA's cryptographic signature or certificate chain. Full RFC 3161 signature verification is out of scope.
+- **Text-scope matching is advisory only.** Without a structured `ScopeSchema`, scope matching is a keyword-overlap signal recorded for observability. It never allows or denies. Real scope enforcement requires a `ScopeSchema`.
+- **Check 5 can be skipped.** If the caller does not supply the operator's claimed instructions, check 5 is skipped with a warning. Operator drift is not verified for that call. Always pass `operatorInstructions` when drift detection matters.
+- **No key management story.** Key rotation, KMS/HSM integration, and compromise procedures are not part of this SDK.
+- **No receipt nonce.** Single-use semantics need a durable `ConsumptionStore` (a Redis adapter is included). Without one, replay detection across processes is not guaranteed.
 
 ## The Problem
 
@@ -140,7 +172,7 @@ Validity period of the authorization. The **log timestamp** is the time oracle �
 
 A cryptographic hash of the operator's stated instructions at delegation time. If the operator subsequently instructs the agent differently, the discrepancy is detectable from the log without any additional trust assumptions.
 
-The user signs this object with their private key via **WebAuthn/FIDO2 using the device secure enclave**. The signature is published to the log before any agent action. Every subsequent agent action references the receipt hash. Actions outside scope are cryptographically invalid.
+The user signs this object with their private key. Hardware-backed signing via WebAuthn/FIDO2 and the device secure enclave is the recommended custody model; software key generation is also supported. The signature is published to the log before any agent action. Every subsequent agent action references the receipt hash. Actions routed through the gate that fall outside scope are denied.
 
 ---
 
@@ -324,7 +356,7 @@ const auditReport = log.diff(receiptId);
 
 ### Production Warning
 
-Timestamps in v1 use the client clock. For compliance or legal contexts where timestamps must be independently verifiable, replace with an RFC 3161 trusted timestamp authority before deploying in production.
+Timestamps in v1 use the client clock. The SDK can request RFC 3161 trusted timestamps from a configured TSA, but timestamp verification is presence-only: the SDK confirms the token bytes contain the entry's digest. It does not validate the TSA's signature or certificate chain, so a forged token embedding the digest would pass. For compliance or legal contexts that require real trusted timestamps, pair the SDK with a TSA you trust and verify its tokens with an independent RFC 3161 implementation. Full TSA-signature verification is out of scope for this SDK.
 
 ### Important
 
@@ -334,7 +366,9 @@ Always define scope using explicit `allowedActions` arrays. Text-based scope mat
 
 ## Confidential Deployment
 
-Run AuthProof agents inside hardware-attested Trusted Execution Environments (TEEs). The `ConfidentialRuntime` class binds delegation receipts to enclave measurements, so any substitution of model weights, verifier code, or platform is detectable before execution.
+Bind delegation receipts to enclave measurements. On real TDX or SEV-SNP hardware, those measurements come from the platform. Everywhere else, and in every default configuration, they are software-computed and self-attested.
+
+Honesty note: `ConfidentialRuntime` computes `mrenclave` as SHA-256 over caller-supplied strings, and its "TDX quote" is a deterministic hash, not a hardware-signed attestation. `TEERuntime` defaults to `platform: 'simulation'` (signed mock attestation). `launch()` does not execute inside a hardware TEE. These features give you tamper-evidence for audit in honest deployments. They are not hardware-rooted attestation, and real hardware guarantees require real TEE hardware.
 
 ### Hardware requirements
 
@@ -442,6 +476,18 @@ Two runnable examples live in the `examples/` directory.
 **[`examples/webauthn-example.html`](examples/webauthn-example.html)** â A self-contained three-card browser demo of the full delegation flow. Card 1 lets you define scope, boundaries, and operator instructions, then signs a receipt with a local key (swap in `navigator.credentials` for real WebAuthn). Card 2 displays the receipt ID, expiry, system prompt, and raw JSON. Card 3 lets you type any proposed action and verify it against the receipt in real time, showing each check result. Open directly in a browser â no build step required.
 
 ---
+
+## Tests
+
+- JavaScript: **1,392 tests across 23 suites, all passing** (`npm test`). Verified with a fresh run on this branch, October 9, 2026.
+- Python (`sdk-python/`): **36 tests, all passing** (`pytest tests/` in a clean venv with `pytest-asyncio` installed). Verified with a fresh run on this branch, October 9, 2026.
+
+Test counts drift when hard-coded, so treat these as a snapshot of this branch, not a promise. If a number above stops matching the suite, the suite is right.
+
+## Install Notes
+
+- `require('authproof')` needs Node >= 20.19 or >= 22.12 (synchronous `require(esm)`). On older Node, use `import`. The `engines` field still lists `>=18.0.0`.
+- The Python SDK (`authproof-py`) is a partial port of the JS primitives for Python clients. It is wire-incompatible with the JavaScript SDK, so one cannot verify the other's receipts.
 
 ## Installation
 

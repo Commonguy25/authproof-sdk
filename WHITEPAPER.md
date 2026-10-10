@@ -255,6 +255,8 @@ The AuthProof protocol uses SHA-256 throughout: for receipt ID computation, inst
 
 **Intel TDX and AMD SEV-SNP** provide encrypted memory pages that are inaccessible to the host OS and hypervisor, hardware-rooted attestation quotes signed by the CPU vendor's key, and measured boot that hashes every component loaded into the enclave. AuthProof binds delegation receipts to enclave measurements via `ConfidentialRuntime`: `mrenclave = SHA-256(platform + verifierHash + modelHash)`. This value is committed into the receipt's `teeMeasurement.expectedMrenclave` field at delegation time. At execution time, `ConfidentialRuntime.launch()` recomputes `mrenclave` from its runtime parameters and rejects the execution if there is any mismatch.
 
+**Honesty note on what these measurements are.** `ConfidentialRuntime` computes `mrenclave` as SHA-256 over caller-supplied strings, and the "TDX quote" it produces is a deterministic hash — not a hardware-signed attestation from a CPU vendor key. `TEERuntime` defaults to `platform: 'simulation'`, which signs a mock attestation rather than producing real SGX/TrustZone evidence. `launch()` does not execute inside a hardware TEE. Until a deployment runs on real TDX/SEV-SNP hosts with a genuine attestation flow, treat the Layer 2 measurements as software-computed, self-attested tamper-evidence for honest deployments — the same honest-deployment boundary that applies to the rest of the SDK. The one genuine hardware path is the OP-TEE token verification subprocess (`optee_verify_token`), which calls an external verifier and fails closed when the binary or hardware is absent.
+
 **Token injection pattern:** The TEE enforcement layer follows this sequence:
 1. `ConfidentialRuntime.launch()` computes `mrenclave` and verifies the receipt measurement
 2. `PreExecutionVerifier.check()` gates execution — no valid receipt, no run
@@ -289,7 +291,7 @@ The Data Flow Receipt addresses this. It is a cryptographically signed complianc
 
 **TaintTracker** is the egress policy enforcer. Before the agent sends any output — to a log, an external API, a file, a downstream system — the operator calls `tracker.recordOutput({ output, destination, outputType })`. The tracker runs two checks: (1) exact-hash matching against the DataTagger manifest, detecting when a previously tagged value appears verbatim in the output; (2) PII regex scanning, detecting email addresses, US phone numbers, credit card numbers, and Social Security numbers that may not have been tagged at ingestion. If the output contains PII (either by tag or by pattern) and the destination is classified as high-risk (`external-api`, `file`), a policy violation is flagged. The egress event — clean or violating — is appended to an internal log.
 
-**DataFlowReceipt** is the signed artifact. At the end of execution, `DataFlowReceipt.generate({ delegationReceiptHash, tagger, tracker, privateKey, publicJwk })` serializes the full data manifest and egress log, computes `bodyHash = SHA-256(JSON.stringify(body))`, signs the body with ECDSA P-256, and requests a RFC 3161 trusted timestamp from the configured TSA (falling back to a local-clock `UNVERIFIED_TIMESTAMP` if the TSA is unreachable). The result is a self-contained, verifiable record. `DataFlowReceipt.verify(receipt)` recomputes the body hash and verifies the ECDSA signature, returning `{ valid, reason }`.
+**DataFlowReceipt** is the signed artifact. At the end of execution, `DataFlowReceipt.generate({ delegationReceiptHash, tagger, tracker, privateKey, publicJwk })` serializes the full data manifest and egress log, computes `bodyHash = SHA-256(JSON.stringify(body))`, signs the body with ECDSA P-256, and requests a RFC 3161 trusted timestamp from the configured TSA (falling back to a local-clock `UNVERIFIED_TIMESTAMP` if the TSA is unreachable). The result is a self-contained, verifiable record. `DataFlowReceipt.verify(receipt)` recomputes the body hash and verifies the ECDSA signature, returning `{ valid, reason }`. The RFC 3161 timestamp attached to the receipt is presence-checked (the SDK confirms the token bytes contain the entry digest); the TSA's signature and certificate chain are not validated, so a forged token embedding the digest would pass. Full RFC 3161 signature verification is out of scope.
 
 ### 8.3 Policy Model
 
@@ -421,9 +423,9 @@ The `generateChainProof()` method produces a single serializable artifact that e
 
 **What Model State Attestation proves:**
 
-1. **Model identity at commitment time.** The operator committed to a specific `(modelId, modelVersion, systemPromptHash, runtimeConfigHash)` tuple before execution began. The ECDSA signature and TEE attestation prove this commitment was made inside a trusted environment and has not been altered.
+1. **Model identity at commitment time.** The operator committed to a specific `(modelId, modelVersion, systemPromptHash, runtimeConfigHash)` tuple before execution began. The ECDSA signature binds that commitment to the signer. The TEE attestation, in non-simulation deployments, is a software-computed measurement of caller-supplied values — it is self-attested evidence, not a hardware-rooted proof that the commitment was made inside a trusted environment. Treat it as tamper-evidence for honest deployments.
 
-2. **Model state at execution time.** The TEE verification attestation proves that the model measurement was recomputed inside the enclave immediately before execution, and that the recomputed measurement matched the committed measurement.
+2. **Model state at execution time.** The verification attestation records that the model measurement was recomputed immediately before execution, and that the recomputed measurement matched the committed measurement. This is a software-computed, self-attested measurement over caller-supplied values — not a hardware-rooted guarantee that the measurement happened inside an enclave.
 
 3. **Delegation binding.** The `receiptHash` component in the measurement ensures the commitment is irrevocably bound to a specific delegation. A commitment made under receipt A cannot be presented as valid under receipt B.
 
@@ -453,9 +455,9 @@ The measurement check is redundant given the component checks but provides an ad
 
 The Model State Attestation integrates with the existing delegation primitives at three points:
 
-**PreExecutionVerifier (check 7).** When a `ModelStateAttestation` instance is provided to the verifier constructor and a `commitmentId` is passed to `check()`, check 7 runs after all six existing checks. If model drift is detected, execution is blocked with `ModelDriftDetected` before the agent function ever receives control.
+**PreExecutionVerifier (check 7).** When a `ModelStateAttestation` instance is provided to the verifier constructor and a `commitmentId` is passed to `check()`, check 7 runs after checks 1–6 (and before checks 8–11, 14, 15). If model drift is detected, execution is blocked with `ModelDriftDetected` before the agent function ever receives control.
 
-**TEERuntime.execute().** When an agent function is executed via `TEERuntime.execute()` with a `commitment` and `modelStateAttestation` instance, the runtime automatically verifies model state inside the enclave before invoking the function. This provides defense-in-depth: even if the PreExecutionVerifier is bypassed, the runtime enforces the commitment.
+**TEERuntime.execute().** When an agent function is executed via `TEERuntime.execute()` with a `commitment` and `modelStateAttestation` instance, the runtime verifies model state before invoking the function. This is defense-in-depth within an honest deployment — but it is still same-process code. A malicious operator who refuses to route execution through `TEERuntime` bypasses this exactly as they would bypass the `PreExecutionVerifier` itself.
 
 **ActionLog.record().** When `modelCommitmentId` is passed to `ActionLog.record()`, the commitment ID is embedded in the log entry, creating an auditable link between every recorded action and the model state commitment under which it was authorized.
 
@@ -631,6 +633,8 @@ const { receipt, receiptId, riskFlags, observations } = await ScopeDiscovery.gui
 ```
 
 Guided mode runs `observe → generateScope → approve → finalize` automatically. The returned `riskFlags` allow operators to inspect what was flagged even when they choose not to gate on it. `AuthProofClient.delegateGuided()` provides the same capability through the client API.
+
+Guided delegation is guided by observation, not by a human. The one-call flow auto-approves the full observed draft scope with no human review. For a genuine human-authorization moment, pass the `reviewDraft` hook — it receives the draft scope, plain-language summary, risk flags, and observations, and can approve, modify, or decline the draft before any receipt is issued — or run `observe → generateScope → approve → finalize` as separate steps with an explicit `approve()`.
 
 ### 10.7 Closing Both Gaps
 

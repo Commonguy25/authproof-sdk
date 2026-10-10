@@ -245,7 +245,7 @@
       <div class="feature-card">
         <div class="feat-icon">🔒</div>
         <h3>Tamper-evident audit trail</h3>
-        <p>Every action chains to the previous entry with RFC 3161 timestamps. Modify any record and the chain breaks. Independently verifiable by any auditor without trusting your infrastructure.</p>
+        <p>Every action chains to the previous entry with RFC 3161 timestamps. Modify any record and the chain breaks. Timestamps are presence-checked by the SDK (the token must contain the entry digest); the TSA's signature is not independently verified.</p>
       </div>
       <div class="feature-card">
         <div class="feat-icon">📋</div>
@@ -368,7 +368,7 @@
   Trust score: <span class="ok">94.1</span>
   Risk score: <span>8.3</span>
   Decision: <span class="ok">ALLOW</span></div>
-        <div class="demo-desc">The 7-check pre-execution gate runs before every tool call. Out-of-scope actions are blocked before they execute.</div>
+        <div class="demo-desc">The 13-check pre-execution gate runs before every tool call routed through it. Out-of-scope actions are blocked before they execute; free-text scope without a structured schema produces an advisory signal only.</div>
       </div>
       <div class="demo-card">
         <div class="demo-header">

@@ -2,7 +2,9 @@
 
 Python SDK for [AuthProof](https://github.com/Commonguy25/authproof-sdk) — cryptographic delegation receipts for AI agents.
 
-Mirrors the JavaScript `authproof-sdk` primitives with a Pythonic async API:
+A partial Python port of the `authproof-sdk` primitives with a Pythonic async API:
+
+> Wire-compatibility note: this is not a mirror of the JavaScript SDK. Field names, signature encoding (DER vs raw r||s), and JSON canonicalization differ between the two SDKs, so Python and JavaScript receipts are not interchangeable and the SDKs cannot verify each other's receipts. Treat `authproof-py` as a standalone client library, not a drop-in of the JS package.
 
 | JS primitive | Python module |
 |---|---|
