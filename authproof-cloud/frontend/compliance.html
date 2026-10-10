@@ -491,7 +491,7 @@
             <tr>
               <td class="td-req">Technical Robustness</td>
               <td class="td-cite">Art. 15</td>
-              <td class="td-desc">ECDSA P-256 signatures with RFC 3161 timestamps provide cryptographic robustness that survives operator failure or compromise. The append-only log cannot be silently modified.</td>
+              <td class="td-desc">ECDSA P-256 signatures and RFC 3161 timestamps provide cryptographic evidence that survives operator failure. The append-only log cannot be silently modified without breaking the chain. Note: the verifier runs in the agent's process, so a dishonest operator can bypass the gate; and timestamps are presence-checked, not TSA-signature-verified.</td>
               <td class="td-status"><span class="badge badge-green">Addressed</span></td>
             </tr>
             <tr>
@@ -532,13 +532,13 @@
             <tr>
               <td class="td-req">Restrict Access to System Components</td>
               <td class="td-cite">PCI-DSS v4.0 R7</td>
-              <td class="td-desc">Scope-limited receipts restrict which data the AI agent can access or modify. Delete and write operations on cardholder data can be explicitly excluded from scope. Scope is cryptographically enforced — not advisory.</td>
+              <td class="td-desc">Scope-limited receipts restrict which data the AI agent can access or modify. Delete and write operations on cardholder data can be explicitly excluded from scope. Structured scope schemas are enforced at the gate; free-text scope without a schema is advisory-only.</td>
               <td class="td-status"><span class="badge badge-green">Addressed</span></td>
             </tr>
             <tr>
               <td class="td-req">Log and Monitor All Access</td>
               <td class="td-cite">PCI-DSS v4.0 R10</td>
-              <td class="td-desc">Every agent action is logged with a cryptographic receipt before execution. The tamper-evident log satisfies Requirement 10's cardholder data environment audit log obligations. RFC 3161 timestamps provide legally verifiable time ordering.</td>
+              <td class="td-desc">Every agent action is logged with a cryptographic receipt before execution. The tamper-evident log satisfies Requirement 10's cardholder data environment audit log obligations. RFC 3161 timestamps are requested from a timestamping authority and presence-checked (token bytes must contain the entry digest); the TSA's signature is not independently verified.</td>
               <td class="td-status"><span class="badge badge-green">Addressed</span></td>
             </tr>
             <tr>

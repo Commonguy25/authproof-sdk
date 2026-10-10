@@ -584,7 +584,9 @@
 
   <p class="hero-sub">
     Authproof gives every agent action a cryptographic receipt that existed before execution started.
-    Not reconstructed from logs. Not the operator's word against yours. Math.
+    Not reconstructed from logs. Not the operator's word against yours. Proof you can check after the fact.
+    An audit and attribution layer for honest deployments: it proves what the user authorized before the agent acted.
+    It does not stop a dishonest operator from refusing to run the gate.
   </p>
 
   <div class="hero-ctas">
@@ -620,7 +622,7 @@ pip install authproof-py</pre>
       <div class="problem-col">
         <div class="problem-num">02 / model substitution</div>
         <h3>The model was swapped after you signed.</h3>
-        <p>An operator can substitute a modified model after authorization. Standard receipts don't detect this. Ours do.</p>
+        <p>An operator can substitute a modified model after authorization. Model-state attestation (an optional gate check) detects the drift and blocks the action, and the mismatch is recorded in the audit log.</p>
       </div>
       <div class="problem-col">
         <div class="problem-num">03 / server-side logs</div>
@@ -630,7 +632,7 @@ pip install authproof-py</pre>
       <div class="problem-col">
         <div class="problem-num">04 / confidential deployment</div>
         <h3>Confidential Deployment</h3>
-        <p>Azure TDX and AWS Nitro Enclaves supported. Execution happens inside hardware-attested confidential compute â verifiable from outside the operator's stack.</p>
+        <p>Bind receipts to enclave measurements on TDX and Nitro hosts. The measurements are software-computed and self-attested by default, not hardware-signed quotes. Real hardware guarantees require real TEE hardware.</p>
       </div>
       <div class="problem-col">
         <div class="problem-num">05 / session state</div>
@@ -652,7 +654,7 @@ pip install authproof-py</pre>
 <section id="primitives" class="section">
   <div class="prim-header">
     <h2>Two primitives. One complete chain.</h2>
-    <p>Seven verification checks. Every one must pass before execution proceeds. Scope defined from observed behavior, not guesswork.</p>
+    <p>Thirteen verification checks (slots 1–11, 14, 15). Every one must pass before execution proceeds. Scope defined from observed behavior, not guesswork.</p>
   </div>
 
   <div class="terminal-wrap">
@@ -666,23 +668,29 @@ pip install authproof-py</pre>
       <div class="terminal-body" id="terminal-body">
         <span class="tline" id="tl-0"><span class="t-cmd">$ authproof verify --receipt 0x7f3a...</span></span>
         <span class="tline" id="tl-1"><span class="t-blank"> </span></span>
-        <span class="tline" id="tl-2"><span class="t-label">[1/7] </span><span class="t-check">Receipt signature         </span><span class="t-pass">PASS</span></span>
-        <span class="tline" id="tl-3"><span class="t-label">[2/7] </span><span class="t-check">Revocation check          </span><span class="t-pass">PASS</span></span>
-        <span class="tline" id="tl-4"><span class="t-label">[3/7] </span><span class="t-check">Time window               </span><span class="t-pass">PASS</span></span>
-        <span class="tline" id="tl-5"><span class="t-label">[4/7] </span><span class="t-check">Scope validation          </span><span class="t-pass">PASS</span></span>
-        <span class="tline" id="tl-6"><span class="t-label">[5/7] </span><span class="t-check">Operator instruction hash </span><span class="t-pass">PASS</span></span>
-        <span class="tline" id="tl-7"><span class="t-label">[6/7] </span><span class="t-check">Model state attestation   </span><span class="t-pass">PASS</span></span>
-        <span class="tline" id="tl-8"><span class="t-label">[7/7] </span><span class="t-check">Replay protection         </span><span class="t-pass">PASS</span></span>
-        <span class="tline" id="tl-9"><span class="t-blank"> </span></span>
-        <span class="tline" id="tl-10"><span class="t-ok">â Authorization verified. Receipt pre-dates execution.</span></span>
-        <span class="tline" id="tl-11"><span class="t-blank"> </span></span>
-        <span class="tline" id="tl-12"><span class="t-sub">  </span><span class="t-key">Delegation Receipt   </span><span class="t-sub">â </span><span class="t-val">signed by user</span></span>
-        <span class="tline" id="tl-13"><span class="t-sub">  </span><span class="t-key">Model Commitment     </span><span class="t-sub">â </span><span class="t-val">bound to receipt</span></span>
-        <span class="tline" id="tl-14"><span class="t-sub">  </span><span class="t-key">Execution Proof      </span><span class="t-sub">â </span><span class="t-val">hardware attested</span></span>
-        <span class="tline" id="tl-15"><span class="t-sub">  </span><span class="t-key">Action Log           </span><span class="t-sub">â </span><span class="t-val">tamper evident chain</span></span>
-        <span class="tline" id="tl-16"><span class="t-sub">  </span><span class="t-key">Delegation Chain     </span><span class="t-sub">â </span><span class="t-val">scope attenuation enforced</span></span>
-        <span class="tline" id="tl-17"><span class="t-sub">  </span><span class="t-key">[session]            </span><span class="t-sub">  </span><span class="t-val">trust: 97.3 | risk: 12.1 | ALLOW</span></span>
-        <span class="tline" id="tl-18"><span class="t-blank"> </span><span class="t-cursor" id="t-cursor"></span></span>
+        <span class="tline" id="tl-2"><span class="t-check">[1] Receipt signature     </span><span class="t-pass">PASS</span></span>
+        <span class="tline" id="tl-3"><span class="t-check">[2] Revocation check      </span><span class="t-pass">PASS</span></span>
+        <span class="tline" id="tl-4"><span class="t-check">[3] Time window           </span><span class="t-pass">PASS</span></span>
+        <span class="tline" id="tl-5"><span class="t-check">[4] Scope validation      </span><span class="t-pass">PASS</span></span>
+        <span class="tline" id="tl-6"><span class="t-check">[5] Operator instruction hash</span><span class="t-pass">PASS</span></span>
+        <span class="tline" id="tl-7"><span class="t-check">[6] Program hash          </span><span class="t-pass">PASS</span></span>
+        <span class="tline" id="tl-8"><span class="t-check">[7] Session risk evaluation</span><span class="t-pass">PASS</span></span>
+        <span class="tline" id="tl-9"><span class="t-check">[8] Tool schema integrity </span><span class="t-pass">PASS</span></span>
+        <span class="tline" id="tl-10"><span class="t-check">[9] Model state attestation</span><span class="t-pass">PASS</span></span>
+        <span class="tline" id="tl-11"><span class="t-check">[10] Tool output hash binding</span><span class="t-pass">PASS</span></span>
+        <span class="tline" id="tl-12"><span class="t-check">[11] Instruction provenance</span><span class="t-pass">PASS</span></span>
+        <span class="tline" id="tl-13"><span class="t-label">[14] </span><span class="t-check">Parent scope containment </span><span class="t-sub">SKIP (root receipt)</span></span>
+        <span class="tline" id="tl-14"><span class="t-check">[15] Authority state drift </span><span class="t-pass">PASS</span></span>
+        <span class="tline" id="tl-15"><span class="t-blank"> </span></span>
+        <span class="tline" id="tl-16"><span class="t-ok">✓ Authorization verified. Receipt pre-dates execution.</span></span>
+        <span class="tline" id="tl-17"><span class="t-blank"> </span></span>
+        <span class="tline" id="tl-18"><span class="t-sub">  </span><span class="t-key">Delegation Receipt   </span><span class="t-sub">→ </span><span class="t-val">signed by user</span></span>
+        <span class="tline" id="tl-19"><span class="t-sub">  </span><span class="t-key">Model Commitment     </span><span class="t-sub">→ </span><span class="t-val">bound to receipt</span></span>
+        <span class="tline" id="tl-20"><span class="t-sub">  </span><span class="t-key">Execution Proof      </span><span class="t-sub">→ </span><span class="t-val">software-attested measurement</span></span>
+        <span class="tline" id="tl-21"><span class="t-sub">  </span><span class="t-key">Action Log           </span><span class="t-sub">→ </span><span class="t-val">tamper evident chain</span></span>
+        <span class="tline" id="tl-22"><span class="t-sub">  </span><span class="t-key">Delegation Chain     </span><span class="t-sub">→ </span><span class="t-val">scope attenuation enforced</span></span>
+        <span class="tline" id="tl-23"><span class="t-sub">  </span><span class="t-key">[session]            </span><span class="t-sub">  </span><span class="t-val">trust: 97.3 | risk: 12.1 | ALLOW</span></span>
+        <span class="tline" id="tl-24"><span class="t-blank"> </span><span class="t-cursor" id="t-cursor"></span></span>
       </div>
     </div>
   </div>
@@ -695,19 +703,23 @@ pip install authproof-py</pre>
   <div class="numbers-label">// by the numbers</div>
   <div class="numbers-grid">
     <div class="num-cell">
-      <div class="num-val">1,151</div>
-      <div class="num-label">Tests passing</div>
+      <div class="num-val">1,392</div>
+      <div class="num-label">JS tests passing</div>
     </div>
     <div class="num-cell">
-      <div class="num-val">14</div>
-      <div class="num-label">Test suites</div>
+      <div class="num-val">36</div>
+      <div class="num-label">Python tests passing</div>
+    </div>
+    <div class="num-cell">
+      <div class="num-val">23</div>
+      <div class="num-label">JS test suites</div>
     </div>
     <div class="num-cell">
       <div class="num-val">0</div>
       <div class="num-label">Failures</div>
     </div>
     <div class="num-cell">
-      <div class="num-val">7</div>
+      <div class="num-val">13</div>
       <div class="num-label">Verification checks</div>
     </div>
     <div class="num-cell">
@@ -779,9 +791,9 @@ pip install authproof-py</pre>
   <span class="cn">expiresIn</span><span class="cop">:</span> <span class="cs">'2h'</span>
 <span class="cop">})</span>
 
-<span class="cm">// Agent cannot act outside this receipt</span>
-<span class="cm">// Operator cannot claim broader authorization</span>
-<span class="cm">// Model substitution is detected automatically</span></pre>
+<span class="cm">// Actions routed through the gate cannot exceed this receipt</span>
+<span class="cm">// The signed receipt wins over operator log metadata</span>
+<span class="cm">// Model substitution is detectable with model-state attestation wired in</span></pre>
   </div>
 </section>
 
@@ -795,7 +807,7 @@ pip install authproof-py</pre>
       <h2>Built by one person</h2>
       <p class="founder-body">I am Ryan Nelson. HVAC technician at Arctic Air. Accounting student at Oklahoma State University. Father of a daughter turning three in June.</p>
       <p class="founder-body">I spent the last month building Authproof because the PocketOS incident showed what happens when AI agents act without cryptographic proof of what they were authorized to do. Nobody else was solving this at the protocol layer.</p>
-      <p class="founder-body">IETF Internet-Draft filed April 2026. 1,229 tests. MIT licensed.</p>
+      <p class="founder-body">IETF Internet-Draft filed April 2026. 1,392 JS tests + 36 Python tests, all green. MIT licensed.</p>
       <p class="founder-body">Full time job. Full time school. Built it anyway.</p>
       <div class="founder-links">
         <a href="https://linkedin.com/in/ryan-nelson-582353342" target="_blank" rel="noopener">Connect on LinkedIn â</a>
@@ -838,7 +850,7 @@ pip install authproof-py</pre>
   }
 
   /* ââ Terminal animation ââ */
-  const DELAYS = [0, 300, 480, 640, 800, 960, 1120, 1280, 1440, 1620, 1820, 2020, 2180, 2340, 2500, 2660, 2820, 3000, 3160];
+  const DELAYS = [0, 300, 480, 640, 800, 960, 1120, 1280, 1440, 1580, 1720, 1860, 2000, 2140, 2280, 2420, 2560, 2720, 2880, 3040, 3200, 3360, 3520, 3680, 3840];
 
   function runTerminal() {
     DELAYS.forEach((delay, i) => {
@@ -877,13 +889,13 @@ pip install authproof-py</pre>
       lines: [
         { text: '$ authproof verify',                                    color: null },
         { text: '',                                                       color: null },
-        { text: '[1/7] Receipt signature         PASS',                  color: null },
-        { text: '[2/7] Revocation check          PASS',                  color: null },
-        { text: '[3/7] Time window               PASS',                  color: null },
-        { text: '[4/7] Scope validation          PASS',                  color: null },
-        { text: '[5/7] Operator instruction hash PASS',                  color: null },
-        { text: '[6/7] Model state attestation   PASS',                  color: null },
-        { text: '[7/7] Session risk evaluation   PASS',                  color: null },
+        { text: 'Receipt signature         PASS',                  color: null },
+        { text: 'Revocation check          PASS',                  color: null },
+        { text: 'Time window               PASS',                  color: null },
+        { text: 'Scope validation          PASS',                  color: null },
+        { text: 'Operator instruction hash PASS',                  color: null },
+        { text: 'Model state attestation   PASS',                  color: null },
+        { text: 'Session risk evaluation   PASS',                  color: null },
         { text: '',                                                       color: null },
         { text: 'Session trust:  97.3',                                  color: null },
         { text: 'Risk score:     12.1',                                  color: null },
@@ -900,13 +912,13 @@ pip install authproof-py</pre>
       lines: [
         { text: '$ authproof verify',                                                    color: null },
         { text: '',                                                                       color: null },
-        { text: '[1/7] Receipt signature         PASS',                                  color: null },
-        { text: '[2/7] Revocation check          PASS',                                  color: null },
-        { text: '[3/7] Time window               PASS',                                  color: null },
-        { text: '[4/7] Scope validation          PASS',                                  color: null },
-        { text: '[5/7] Operator instruction hash PASS',                                  color: null },
-        { text: '[6/7] Model state attestation   PASS',                                  color: null },
-        { text: '[7/7] Session risk evaluation   FAIL',                                  color: '#FF4444' },
+        { text: 'Receipt signature         PASS',                                  color: null },
+        { text: 'Revocation check          PASS',                                  color: null },
+        { text: 'Time window               PASS',                                  color: null },
+        { text: 'Scope validation          PASS',                                  color: null },
+        { text: 'Operator instruction hash PASS',                                  color: null },
+        { text: 'Model state attestation   PASS',                                  color: null },
+        { text: 'Session risk evaluation   FAIL',                                  color: '#FF4444' },
         { text: '',                                                                       color: null },
         { text: 'Session trust:  61.2',                                                  color: null },
         { text: 'Risk score:     94.7',                                                  color: null },
@@ -929,13 +941,13 @@ pip install authproof-py</pre>
       lines: [
         { text: '$ authproof verify',                                             color: null },
         { text: '',                                                                color: null },
-        { text: '[1/7] Receipt signature         PASS',                           color: null },
-        { text: '[2/7] Revocation check          PASS',                           color: null },
-        { text: '[3/7] Time window               PASS',                           color: null },
-        { text: '[4/7] Scope validation          PASS',                           color: null },
-        { text: '[5/7] Operator instruction hash PASS',                           color: null },
-        { text: '[6/7] Model state attestation   PASS',                           color: null },
-        { text: '[7/7] Session risk evaluation   FAIL',                           color: '#FF4444' },
+        { text: 'Receipt signature         PASS',                           color: null },
+        { text: 'Revocation check          PASS',                           color: null },
+        { text: 'Time window               PASS',                           color: null },
+        { text: 'Scope validation          PASS',                           color: null },
+        { text: 'Operator instruction hash PASS',                           color: null },
+        { text: 'Model state attestation   PASS',                           color: null },
+        { text: 'Session risk evaluation   FAIL',                           color: '#FF4444' },
         { text: '',                                                                color: null },
         { text: 'Session trust:  78.9',                                           color: null },
         { text: 'Risk score:     88.3',                                           color: null },

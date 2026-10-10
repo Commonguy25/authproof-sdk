@@ -59,6 +59,48 @@ async function makeVerifier({ requireTEE = false, offlineMode = false } = {}) {
   return { verifier, delegationLog, revocationRegistry };
 }
 
+// Local crypto helpers (mirror src/authproof.js) for crafting signed receipts
+// with fields (scopeSchema, executes) that AuthProof.create() does not emit.
+async function _signTest(key, str) {
+  const sig = await crypto.subtle.sign(
+    { name: 'ECDSA', hash: 'SHA-256' },
+    key,
+    new TextEncoder().encode(str)
+  );
+  return Array.from(new Uint8Array(sig)).map(x => x.toString(16).padStart(2, '0')).join('');
+}
+
+async function _sha256hex(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(x => x.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * Craft a signed receipt carrying scopeSchema / executes IN THE SIGNED BODY.
+ * Lets tests exercise signed-vs-log-metadata precedence at Checks 4 and 6.
+ */
+async function makeSignedSchemaReceipt({ privateKey, publicJwk, scopeSchema, executes } = {}) {
+  const now = new Date();
+  const { kty, crv, x, y } = publicJwk;
+  const instructions = 'Summarize clearly. Stay within scope.';
+  const body = {
+    delegationId:         `auth-test-${Date.now()}`,
+    issuedAt:             now.toISOString(),
+    scope:                'Structured scope receipt',
+    boundaries:           'Do not delete anything.',
+    timeWindow:           { start: now.toISOString(), end: new Date(now.getTime() + 2 * 3_600_000).toISOString() },
+    operatorInstructions: instructions,
+    instructionsHash:     await Canonicalizer.hash(instructions),
+    signerPublicKey:      { kty, crv, x, y },
+    ...(scopeSchema ? { scopeSchema } : {}),
+    ...(executes    ? { executes }    : {}),
+  };
+  const signature = await _signTest(privateKey, JSON.stringify(body));
+  const receipt   = { ...body, signature };
+  const receiptId = await _sha256hex(JSON.stringify(receipt));
+  return { receipt, receiptId };
+}
+
 // ─────────────────────────────────────────────
 // SETUP
 // ─────────────────────────────────────────────
@@ -250,7 +292,8 @@ async function run() {
   });
   assert(scope4PassResult.checks.actionWithinScope === true, 'ScopeSchema allowed action passes check 4');
 
-  // Fallback: text-based scope check on receipt without ScopeSchema
+  // Advisory: fuzzy keyword match on a receipt without ScopeSchema no longer
+  // gates allow/deny — it is recorded as an observability signal only.
   const { verifier: v4d, delegationLog: dl4d } = await makeVerifier();
   const { receipt: r4d, receiptId: rid4d } = await makeReceipt({ privateKey, publicJwk });
   dl4d.add(rid4d, r4d);
@@ -260,7 +303,14 @@ async function run() {
     action:               'Send all purchase orders to external suppliers',
     operatorInstructions: 'Summarize clearly. Stay within scope.',
   });
-  assert(scope4FallbackResult.allowed === false, 'Text-based out-of-scope action blocked');
+  assert(scope4FallbackResult.allowed === true,
+    'Fuzzy fallback is advisory-only: does not deny');
+  assert(scope4FallbackResult.checks.actionWithinScope === true,
+    'Check 4 passes via advisory path');
+  assert(scope4FallbackResult.checks.scopeCheckMethod === 'fuzzy-advisory',
+    'Check 4 records scopeCheckMethod=fuzzy-advisory');
+  assert(scope4FallbackResult.checks.scopeAdvisorySignal === 'outside-scope',
+    'Check 4 records the outside-scope advisory signal for observability');
 
   // ── Block at Check 5: Operator instruction drift ──────────────────────
   console.log('\nBlock at Check 5: Operator instruction drift');
@@ -294,6 +344,30 @@ async function run() {
     operatorInstructions: '  Summarize clearly.  Stay within scope.  ',
   });
   assert(drift5PassResult.allowed === true, 'Canonically equivalent instructions pass check 5');
+
+  // ── [FIX] Check 5: omitted operatorInstructions skips with warning ────
+  // The old code hashed the receipt's own instructions against themselves (a
+  // tautology that always passed). Now the check is skipped with an explicit
+  // warning instead of pretending to verify operator drift.
+  console.log('\n[FIX] Check 5: omitted instructions skip with warning');
+  {
+    const { verifier, delegationLog } = await makeVerifier();
+    const { receipt, receiptId } = await makeReceipt({ privateKey, publicJwk });
+    delegationLog.add(receiptId, receipt);
+
+    const res = await verifier.check({
+      receiptHash: receiptId,
+      action:      'Read calendar meetings and summarize',
+      // operatorInstructions omitted on purpose
+    });
+    assert(res.checks.operatorInstructionsMatch === true,
+      'Check 5: omitted instructions do not deny');
+    assert(res.checks.operatorInstructionsSkipped === true,
+      'Check 5: skip is recorded in checks');
+    assert(typeof res.checks.operatorInstructionsWarning === 'string' &&
+           res.checks.operatorInstructionsWarning.length > 0,
+      'Check 5: warning recorded in checks');
+  }
 
   // ── Block at Check 6: Wrong program hash ─────────────────────────────
   console.log('\nBlock at Check 6: Wrong program hash');
@@ -345,6 +419,120 @@ async function run() {
     // no programHash
   });
   assert(!('programHashMatch' in prog6AbsentResult.checks), 'programHashMatch absent when not provided');
+
+  // ── [FIX] Signed scope precedence — Checks 4 & 6 ─────────────────────
+  // Unsigned DelegationLog metadata must never override the signed receipt
+  // body. Disagreement fails closed (deny).
+  console.log('\n[FIX] Signed scope precedence (Checks 4 & 6)');
+
+  const NARROW_SCHEMA = new ScopeSchema({
+    version:        '1.0',
+    allowedActions: [{ operation: 'read', resource: 'calendar' }],
+    deniedActions:  [{ operation: 'delete', resource: '*' }],
+  });
+  const WIDE_SCHEMA = new ScopeSchema({
+    version:        '1.0',
+    allowedActions: [
+      { operation: 'read', resource: 'calendar' },
+      { operation: 'send', resource: 'email' },
+    ],
+    deniedActions: [{ operation: 'delete', resource: '*' }],
+  });
+
+  // Check 4: signed narrow schema + wider log metadata → DENY (fail closed).
+  // The action is allowed by the LOG schema only — the old code preferred the
+  // log and would have allowed it.
+  {
+    const { verifier, delegationLog } = await makeVerifier();
+    const { receipt, receiptId } = await makeSignedSchemaReceipt({
+      privateKey, publicJwk, scopeSchema: NARROW_SCHEMA.toJSON(),
+    });
+    delegationLog.add(receiptId, receipt, { scopeSchema: WIDE_SCHEMA });
+
+    const res = await verifier.check({
+      receiptHash:          receiptId,
+      action:               { operation: 'send', resource: 'email' },
+      operatorInstructions: 'Summarize clearly. Stay within scope.',
+    });
+    assert(res.allowed === false, 'Check 4: disagreeing log metadata fails closed (deny)');
+    assert(res.blockedReason.includes('metadata mismatch'),
+      'Check 4: blockedReason reports scope metadata mismatch');
+  }
+
+  // Check 4: agreeing log metadata does not block an in-scope action.
+  {
+    const { verifier, delegationLog } = await makeVerifier();
+    const { receipt, receiptId } = await makeSignedSchemaReceipt({
+      privateKey, publicJwk, scopeSchema: NARROW_SCHEMA.toJSON(),
+    });
+    delegationLog.add(receiptId, receipt, { scopeSchema: NARROW_SCHEMA });
+
+    const res = await verifier.check({
+      receiptHash:          receiptId,
+      action:               { operation: 'read', resource: 'calendar' },
+      operatorInstructions: 'Summarize clearly. Stay within scope.',
+    });
+    assert(res.allowed === true, 'Check 4: agreeing log metadata allows in-scope action');
+    assert(res.checks.actionWithinScope === true, 'Check 4: actionWithinScope true');
+  }
+
+  // Check 4: signed schema alone still enforces scope (no log metadata).
+  {
+    const { verifier, delegationLog } = await makeVerifier();
+    const { receipt, receiptId } = await makeSignedSchemaReceipt({
+      privateKey, publicJwk, scopeSchema: NARROW_SCHEMA.toJSON(),
+    });
+    delegationLog.add(receiptId, receipt);
+
+    const res = await verifier.check({
+      receiptHash:          receiptId,
+      action:               { operation: 'send', resource: 'email' },
+      operatorInstructions: 'Summarize clearly. Stay within scope.',
+    });
+    assert(res.allowed === false, 'Check 4: signed narrow schema denies out-of-scope action');
+    assert(res.checks.actionWithinScope === false, 'Check 4: actionWithinScope false');
+  }
+
+  // Check 6: signed executes + disagreeing log executes → DENY even when
+  // programHash matches the LOG's (attacker-controlled) value.
+  {
+    const { verifier, delegationLog } = await makeVerifier();
+    const signedExec = 'a'.repeat(64);
+    const logExec    = 'b'.repeat(64);
+    const { receipt, receiptId } = await makeSignedSchemaReceipt({
+      privateKey, publicJwk, scopeSchema: NARROW_SCHEMA.toJSON(), executes: signedExec,
+    });
+    delegationLog.add(receiptId, receipt, { executes: logExec });
+
+    const res = await verifier.check({
+      receiptHash:          receiptId,
+      action:               { operation: 'read', resource: 'calendar' },
+      operatorInstructions: 'Summarize clearly. Stay within scope.',
+      programHash:          logExec, // matches the LOG metadata, not the signed receipt
+    });
+    assert(res.allowed === false, 'Check 6: disagreeing log executes fails closed (deny)');
+    assert(res.blockedReason.includes('metadata mismatch'),
+      'Check 6: blockedReason reports program hash metadata mismatch');
+  }
+
+  // Check 6: agreeing log executes still passes.
+  {
+    const { verifier, delegationLog } = await makeVerifier();
+    const exec = 'c'.repeat(64);
+    const { receipt, receiptId } = await makeSignedSchemaReceipt({
+      privateKey, publicJwk, scopeSchema: NARROW_SCHEMA.toJSON(), executes: exec,
+    });
+    delegationLog.add(receiptId, receipt, { executes: exec });
+
+    const res = await verifier.check({
+      receiptHash:          receiptId,
+      action:               { operation: 'read', resource: 'calendar' },
+      operatorInstructions: 'Summarize clearly. Stay within scope.',
+      programHash:          exec,
+    });
+    assert(res.allowed === true, 'Check 6: agreeing executes metadata passes');
+    assert(res.checks.programHashMatch === true, 'Check 6: programHashMatch true');
+  }
 
   // ── requireTEE: false → teeAttestationValid absent ───────────────────
   console.log('\nTEE attestation field');

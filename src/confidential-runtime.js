@@ -1,13 +1,21 @@
 /**
- * ConfidentialRuntime — TEE enforcement layer for AuthProof delegation receipts.
+ * ConfidentialRuntime — TEE measurement-binding layer for AuthProof delegation receipts.
  *
- * Wraps agent function execution inside a hardware-attested execution environment.
- * Supports Intel TDX and AMD SEV-SNP. Generates deployment configuration for
- * Azure Confidential Computing, AWS Nitro Enclaves, and Kubernetes.
+ * Coordinates agent-function execution with TEE measurement binding.
  *
- * Enforcement model:
+ * HONESTY NOTE: this SDK computes all measurements in software. mrenclave is
+ * SHA-256 over caller-supplied strings (platform id, verifier hash, model hash)
+ * and the "TDX quote" is a deterministic hash — NEITHER is a hardware-signed
+ * attestation. Real hardware attestation requires deployment on actual
+ * TDX / SEV-SNP hosts. The deployment-config helpers in this module generate
+ * configs for Azure Confidential Computing, AWS Nitro Enclaves, and Kubernetes
+ * to help get there, but calling launch() here does NOT execute inside a
+ * hardware TEE.
+ *
+ * Enforcement model (software-computed unless deployed on real TEE hardware):
  *   1. PreExecutionVerifier.check() gates execution — no valid receipt, no run
- *   2. mrenclave binds the TEE measurement to the receipt's teeMeasurement field
+ *   2. mrenclave (SHA-256 of caller-supplied platform/verifierHash/modelHash)
+ *      is compared against the receipt's teeMeasurement field
  *   3. TokenPreparer produces a signed capability token for process injection
  *   4. eBPF LSM (kernel module, open for contribution) enforces the token on syscalls
  *
@@ -88,7 +96,8 @@ class ConfidentialRuntime {
    *   1. Compute mrenclave = SHA-256(effectivePlatform + verifierHash + modelHash)
    *   2. Check teeMeasurement binding if provided — mismatch blocks execution
    *   3. Call verifier.check() — denied result blocks execution
-   *   4. Generate TDX quote bound to mrenclave + receiptHash
+   *   4. Compute deterministic quote-shaped hash bound to mrenclave + receiptHash
+   *      (NOT a hardware-signed TDX quote — see the HONESTY NOTE above)
    *   5. Prepare capability token via TokenPreparer
    *   6. Execute agentFn
    *   7. Record in ActionLog (always — even when agentFn throws)
@@ -105,7 +114,8 @@ class ConfidentialRuntime {
    *
    * @returns {Promise<{
    *   result:          *,       // Return value of agentFn
-   *   tdxQuote:        string,  // TEE attestation quote (SHA-256 bound to mrenclave)
+   *   tdxQuote:        string,  // deterministic quote-shaped hash (SHA-256 bound to
+   *                           // mrenclave) — NOT a hardware-signed attestation
    *   mrenclave:       string,  // SHA-256(platform+verifierHash+modelHash)
    *   receiptBinding:  object,  // { receiptHash, measurement: mrenclave }
    *   tokenInjected:   object,  // TokenPreparer result (status: 'PENDING_KERNEL_MODULE')

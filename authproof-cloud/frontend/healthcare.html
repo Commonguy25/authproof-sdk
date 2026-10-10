@@ -393,7 +393,7 @@
     <div class="hipaa-grid">
       <div class="hipaa-card">
         <div class="hipaa-label">§164.312(b) Audit Controls</div>
-        <p>Authproof satisfies the HIPAA audit controls standard with a tamper-evident log of every PHI access event. RFC 3161 timestamps make every entry legally verifiable and independently auditable.</p>
+        <p>Authproof satisfies the HIPAA audit controls standard with a tamper-evident log of every PHI access event. RFC 3161 timestamps are requested from a timestamping authority and presence-checked (token bytes must contain the entry digest); the SDK does not verify the TSA's signature or certificate chain.</p>
       </div>
       <div class="hipaa-card">
         <div class="hipaa-label">§164.312(a) Access Controls</div>
@@ -401,7 +401,7 @@
       </div>
       <div class="hipaa-card">
         <div class="hipaa-label">Minimum Necessary</div>
-        <p>The scope schema enforces minimum necessary access at the cryptographic layer. Agents cannot access PHI outside their signed scope. Violations are blocked and logged before they execute.</p>
+        <p>The scope schema enforces minimum necessary access at the gate. Actions routed through the gate cannot exceed their signed scope. Violations are blocked and logged before they execute; free-text scope without a structured schema is advisory-only.</p>
       </div>
       <div class="hipaa-card">
         <div class="hipaa-label">Breach Notification</div>
@@ -432,7 +432,7 @@
         <div class="feat-icon">📋</div>
         <div class="feat-content">
           <h3>One-click HIPAA compliance reports</h3>
-          <p>Generate a formatted audit report for any date range. Includes access controls documentation, audit trail completeness verification, RFC 3161 timestamp verification, and BAA status. Ready for your privacy officer or external auditor in seconds.</p>
+          <p>Generate a formatted audit report for any date range. Includes access controls documentation, audit trail completeness verification, RFC 3161 timestamp presence-check, and BAA status. Ready for your privacy officer or external auditor in seconds.</p>
         </div>
       </div>
       <div class="feat-row">
@@ -500,7 +500,7 @@
         <ul class="p-features">
           <li>1,000 receipts per month</li>
           <li>Full verification API</li>
-          <li>7-check pre-execution gate</li>
+          <li>13-check pre-execution gate</li>
           <li>Dashboard and audit export</li>
           <li>Community support</li>
           <li>90-day log retention</li>

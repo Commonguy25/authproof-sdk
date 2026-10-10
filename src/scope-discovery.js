@@ -370,6 +370,18 @@ const _hexEncode = b =>
     .map(x => x.toString(16).padStart(2, '0'))
     .join('');
 
+/**
+ * CSPRNG-backed random ID suffix. Replaces Math.random() for identity material:
+ * a security library must not use a non-cryptographic PRNG for IDs. Output is
+ * `len` lowercase hex chars, preserving existing ID shapes.
+ */
+function _randomSuffix(len) {
+  const bytes = crypto.getRandomValues(new Uint8Array(Math.ceil(len / 2)));
+  let s = '';
+  for (const b of bytes) s += b.toString(16).padStart(2, '0');
+  return s.slice(0, len);
+}
+
 async function _sha256(str) {
   const buf = await crypto.subtle.digest('SHA-256', _enc(str));
   return _hexEncode(buf);
@@ -627,7 +639,7 @@ class ScopeDiscovery {
 
     const now = new Date();
     const end = new Date(now.getTime() + expiresIn);
-    const id  = `auth-${now.getTime()}-${Math.random().toString(36).slice(2, 7)}`;
+    const id  = `auth-${now.getTime()}-${_randomSuffix(5)}`;
 
     const { kty, crv, x, y } = publicJwk;
 
@@ -772,9 +784,13 @@ class ScopeDiscovery {
   /**
    * Guided delegation — one-call end-to-end flow.
    *
-   * Runs `agentFn` in the sandbox, generates scope, auto-approves the full draft
-   * (no user modifications), and returns a signed Delegation Receipt. Intended for
-   * operators who trust the observed scope without manual review.
+   * Runs `agentFn` in the sandbox, generates scope, and returns a signed
+   * Delegation Receipt. "Guided" means guided by observation: WITHOUT a
+   * reviewDraft hook the full observed draft scope is auto-approved with NO
+   * human review — do not present this path as a human-authorization moment.
+   * Pass reviewDraft to insert a genuine review step: it receives the draft
+   * scope, risk flags, and observations, and returns { remove, add }
+   * modifications (applied via approve()), or null/false to abort issuance.
    *
    * @param {object}    opts
    * @param {Function}  opts.agentFn
@@ -783,6 +799,11 @@ class ScopeDiscovery {
    * @param {object}    opts.publicJwk
    * @param {number}    [opts.expiresIn=3600000]
    * @param {number}    [opts.timeout=30000]
+   * @param {Function}  [opts.reviewDraft] — optional human-review hook:
+   *   async ({ draftScope, plainSummary, riskFlags, suggestedDenials,
+   *            observationCount, observations }) =>
+   *     ({ remove: [{operation, resource}], add: [{operation, resource}] })
+   *   or null/false to decline the draft (no receipt is issued).
    * @returns {Promise<{
    *   receipt:       object,
    *   receiptId:     string,
@@ -791,6 +812,7 @@ class ScopeDiscovery {
    *   observations:  object[],
    *   aborted:       boolean,
    *   riskFlags:     string[],
+   *   reviewed:      boolean,   // true when reviewDraft ran and approved
    * }>}
    */
   static async guided({
@@ -800,6 +822,7 @@ class ScopeDiscovery {
     publicJwk,
     expiresIn = 3_600_000,
     timeout   = 30_000,
+    reviewDraft = null,
   } = {}) {
     if (!agentFn)    throw new Error('ScopeDiscovery.guided: agentFn is required');
     if (!privateKey) throw new Error('ScopeDiscovery.guided: privateKey is required');
@@ -808,7 +831,30 @@ class ScopeDiscovery {
     const discovery = new ScopeDiscovery({ operatorInstructions });
     const { observations, aborted } = await discovery.observe(agentFn, { timeout });
     const review = discovery.generateScope();
-    discovery.approve(); // auto-approve full draft — no user modifications
+
+    let reviewed = false;
+    if (reviewDraft) {
+      // Human review step: the hook inspects the draft and either returns
+      // { remove, add } modifications or declines (null/false → no receipt).
+      const decision = await reviewDraft({
+        draftScope:       review.draftScope,
+        plainSummary:     review.plainSummary,
+        riskFlags:        review.riskFlags,
+        suggestedDenials: review.suggestedDenials,
+        observationCount: review.observationCount,
+        observations,
+      });
+      if (!decision) {
+        throw new Error(
+          'ScopeDiscovery.guided: reviewDraft declined the draft scope — no receipt issued'
+        );
+      }
+      discovery.approve(decision);
+      reviewed = true;
+    } else {
+      discovery.approve(); // auto-approve full draft — no user modifications
+    }
+
     const result = await discovery.finalize({ privateKey, publicJwk, expiresIn, operatorInstructions });
 
     return {
@@ -816,6 +862,7 @@ class ScopeDiscovery {
       observations,
       aborted,
       riskFlags: review.riskFlags,
+      reviewed,
     };
   }
 }

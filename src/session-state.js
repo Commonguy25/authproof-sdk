@@ -25,6 +25,18 @@
 import { RiskScorer }             from './risk-scorer.js';
 import { SensitivityClassifier }  from './sensitivity-classifier.js';
 
+/**
+ * CSPRNG-backed random ID suffix. Replaces Math.random() for identity material:
+ * a security library must not use a non-cryptographic PRNG for IDs. Output is
+ * `len` lowercase hex chars, preserving existing ID shapes.
+ */
+function _randomSuffix(len) {
+  const bytes = crypto.getRandomValues(new Uint8Array(Math.ceil(len / 2)));
+  let s = '';
+  for (const b of bytes) s += b.toString(16).padStart(2, '0');
+  return s.slice(0, len);
+}
+
 // ─── Anomaly severity levels ──────────────────────────────────────────────────
 
 const ANOMALY_SEVERITY = {
@@ -77,7 +89,7 @@ class SessionState {
     this._policy = { ...DEFAULT_POLICY, ...policy };
 
     // Session identity
-    this._sessionId    = `sess-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    this._sessionId    = `sess-${Date.now()}-${_randomSuffix(7)}`;
     this._startedAt    = new Date().toISOString();
     this._lastActionAt = null;
 

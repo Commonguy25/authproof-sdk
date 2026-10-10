@@ -422,6 +422,66 @@ async function run() {
     guided.scopeSummary.allowedActions.some(a => a.resource === 'email' && a.operation === 'read'),
     'guided() scopeSummary includes email.read'
   );
+  assert(guided.reviewed === false,
+    'guided() without reviewDraft reports reviewed=false (auto-approve path)');
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Test Group 11b: reviewDraft human-review hook
+  // ─────────────────────────────────────────────────────────────────────
+  console.log('\nTest Group 11b: reviewDraft human-review hook');
+
+  const { privateKey: pk11b, publicJwk: pub11b } = await AuthProof.generateKey();
+
+  // Hook narrows the draft: removes calendar.list
+  let hookArgs = null;
+  const reviewed = await ScopeDiscovery.guided({
+    agentFn: async (ctx) => {
+      await ctx.email.read();
+      await ctx.calendar.list();
+    },
+    operatorInstructions: 'Read emails and list calendar events.',
+    privateKey: pk11b,
+    publicJwk:  pub11b,
+    expiresIn:  3_600_000,
+    timeout:    10_000,
+    reviewDraft: async (args) => {
+      hookArgs = args;
+      return { remove: [{ operation: 'list', resource: 'calendar' }] };
+    },
+  });
+
+  assert(hookArgs !== null, 'reviewDraft hook is invoked');
+  assert(Array.isArray(hookArgs.draftScope.allowedActions),
+    'reviewDraft receives draftScope.allowedActions');
+  assert(Array.isArray(hookArgs.riskFlags), 'reviewDraft receives riskFlags');
+  assert(Array.isArray(hookArgs.observations) && hookArgs.observations.length === 2,
+    'reviewDraft receives observations');
+  assert(reviewed.reviewed === true, 'guided() with reviewDraft reports reviewed=true');
+  assert(
+    !reviewed.scopeSummary.allowedActions.some(a => a.resource === 'calendar' && a.operation === 'list'),
+    'reviewDraft remove[] modification is applied (calendar.list narrowed out)'
+  );
+  assert(
+    reviewed.scopeSummary.allowedActions.some(a => a.resource === 'email' && a.operation === 'read'),
+    'reviewDraft keeps un-removed actions (email.read)'
+  );
+  const ver11b = await AuthProof.verify(reviewed.receipt, reviewed.receiptId);
+  assert(ver11b.authorized === true, 'reviewed guided() receipt passes AuthProof.verify()');
+
+  // Hook declining the draft (null) → no receipt issued
+  let declined = false;
+  try {
+    await ScopeDiscovery.guided({
+      agentFn: async (ctx) => { await ctx.email.read(); },
+      operatorInstructions: 'Read emails.',
+      privateKey: pk11b,
+      publicJwk:  pub11b,
+      reviewDraft: async () => null, // decline
+    });
+  } catch (e) {
+    declined = /declined/.test(e.message);
+  }
+  assert(declined, 'reviewDraft returning null declines issuance (throws, no receipt)');
 
   // ─────────────────────────────────────────────────────────────────────
   // Test Group 12: Timeout Handling

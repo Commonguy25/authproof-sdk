@@ -27,6 +27,18 @@ const _enc = s => new TextEncoder().encode(s);
 const _hex = b => Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2, '0')).join('');
 const _fromHex = h => new Uint8Array(h.match(/.{2}/g).map(b => parseInt(b, 16)));
 
+/**
+ * CSPRNG-backed random ID suffix. Replaces Math.random() for identity material:
+ * a security library must not use a non-cryptographic PRNG for IDs that feed
+ * signatures, revocation lookups, or audit chains. Output is `len` lowercase
+ * hex chars — a strict subset of the old base36 shape, so existing ID formats
+ * (e.g. `auth-<ms>-<5 chars>`) are preserved.
+ */
+function _randomSuffix(len) {
+  const bytes = crypto.getRandomValues(new Uint8Array(Math.ceil(len / 2)));
+  return _hex(bytes).slice(0, len);
+}
+
 async function _sha256(str) {
   const buf = await crypto.subtle.digest('SHA-256', _enc(str));
   return _hex(buf);
@@ -118,13 +130,19 @@ function _buildTsq(hashBytes) {
 }
 
 /**
- * Search for a byte subsequence inside a larger byte array.
- * Used to verify that a TSA token contains the submitted hash.
+ * Byte-substring scan: checks whether a token's bytes contain the submitted
+ * digest (timestamp presence check).
+ *
+ * NOT a TSA signature verification: no TSA certificate parsing, no TSA
+ * signature validation, no trust-anchor check. A forged token embedding the
+ * digest bytes will pass this scan. Full RFC 3161 TSA-signature verification
+ * is out of scope (see phase0-decisions.md).
+ *
  * @param {Uint8Array} haystack
  * @param {Uint8Array} needle
  * @returns {boolean}
  */
-function _tokenContainsHash(haystack, needle) {
+function _checkTimestampPresence(haystack, needle) {
   outer: for (let i = 0; i <= haystack.length - needle.length; i++) {
     for (let j = 0; j < needle.length; j++) {
       if (haystack[i + j] !== needle[j]) continue outer;
@@ -176,8 +194,9 @@ async function _requestRfc3161Timestamp(hashHex, tsaUrl) {
   const tokenBuffer = await response.arrayBuffer();
   const tokenBytes  = new Uint8Array(tokenBuffer);
 
-  // Sanity-check: the response must contain our hash bytes
-  if (!_tokenContainsHash(tokenBytes, hashBytes)) {
+  // Sanity-check: the response must contain our hash bytes.
+  // Presence only — this does NOT verify the TSA's signature (see verifyTimestamp).
+  if (!_checkTimestampPresence(tokenBytes, hashBytes)) {
     throw new Error('TSA response does not contain the submitted hash — response may be malformed');
   }
 
@@ -805,7 +824,7 @@ async function create(options) {
 
   const now  = new Date();
   const end  = new Date(now.getTime() + ttlHours * 3_600_000);
-  const id   = `auth-${now.getTime()}-${Math.random().toString(36).slice(2, 7)}`;
+  const id   = `auth-${now.getTime()}-${_randomSuffix(5)}`;
   const instructionsHash = await Canonicalizer.hash(instructions);
 
   const { kty, crv, x, y } = publicJwk;
@@ -951,7 +970,7 @@ async function createSubReceipt({
   // Build the signed body. parentReceiptId IS included in the signed body.
   // scopeSchema carries the structured scope so Check 4 can use ScopeSchema.validate.
   const body = {
-    delegationId:         `auth-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    delegationId:         `auth-${Date.now()}-${_randomSuffix(5)}`,
     issuedAt:             new Date().toISOString(),
     scopeSchema:          scope,
     boundaries,
@@ -1039,7 +1058,11 @@ async function verify(receipt, receiptId, options = {}) {
   });
 
   // 3. Signature valid
-  const { signature, ...bodyWithoutSig } = receipt;
+  // orchestratorSignature is excluded from the signed body per the draft spec
+  // (same as the pre-execution gate's Check 1): strip it before verifying so
+  // verify() accepts the SDK's own sub-receipts. For a plain receipt that
+  // never had an orchestratorSignature field this is a no-op.
+  const { signature, orchestratorSignature: _orchestratorSignature, ...bodyWithoutSig } = receipt;
   const sigValid = await _verify(
     receipt.signerPublicKey,
     signature,
@@ -1053,8 +1076,10 @@ async function verify(receipt, receiptId, options = {}) {
       : 'Signature verification failed — receipt may be tampered',
   });
 
-  // 4. Receipt ID matches
-  const computedId = await _sha256(JSON.stringify(receipt));
+  // 4. Receipt ID matches — computed over the signed body only.
+  // createSubReceipt() attaches orchestratorSignature AFTER computing the ID,
+  // so it must be excluded here (bodyWithoutSig already strips it above).
+  const computedId = await _sha256(JSON.stringify({ ...bodyWithoutSig, signature }));
   const idMatches  = computedId === receiptId;
   checks.push({
     name:   'Receipt ID matches',
@@ -1198,7 +1223,11 @@ Before taking any significant action, confirm it falls within the authorized sco
  * @returns {string}
  */
 async function receiptId(receipt) {
-  return _sha256(JSON.stringify(receipt));
+  // orchestratorSignature is attached after ID computation at issuance
+  // (see createSubReceipt) and is not part of the signed body — strip it so
+  // receiptId() reproduces the issuance-time ID for sub-receipts too.
+  const { orchestratorSignature: _orchestratorSignature, ...bodyWithoutOrchSig } = receipt;
+  return _sha256(JSON.stringify(bodyWithoutOrchSig));
 }
 
 /**
@@ -1332,7 +1361,7 @@ class ActionLog {
       ? _GENESIS
       : this._entries.get(ids[ids.length - 1]).entryHash;
 
-    const entryId   = `log-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    const entryId   = `log-${Date.now()}-${_randomSuffix(7)}`;
     const timestamp = Date.now();
 
     const baseBody = {
@@ -1399,14 +1428,20 @@ class ActionLog {
   }
 
   /**
-   * Verify the timestamp on a log entry.
+   * Check the timestamp on a log entry (presence check, NOT a TSA signature verification).
    *
-   * For RFC3161 entries: confirms the stored TSA token contains the
-   * entry body hash that was submitted to the TSA.
+   * For RFC3161 entries: confirms the stored TSA token's bytes contain the
+   * entry body hash that was submitted to the TSA. This proves the token was
+   * built around this entry's hash — it does NOT verify the TSA's
+   * cryptographic signature, certificates, or trust anchor. A forged token
+   * embedding the hash bytes will pass. Full RFC 3161 TSA-signature
+   * verification is out of scope (see phase0-decisions.md).
    * For UNVERIFIED_TIMESTAMP entries: reports that no TSA token exists.
    *
    * @param {string} entryId
    * @returns {Promise<{ verified: boolean, type: string|null, reason: string, timestamp?: number, tokenBase64?: string }>}
+   *   `verified: true` means the digest was found in the token bytes
+   *   (presence), not that the TSA signature was cryptographically verified.
    */
   async verifyTimestamp(entryId) {
     const entry = this._entries.get(entryId);
@@ -1429,13 +1464,13 @@ class ActionLog {
       try {
         const tokenBytes = _base64ToUint8(timestampToken);
         const hashBytes  = _fromHex(entryBodyHash);
-        const valid      = _tokenContainsHash(tokenBytes, hashBytes);
+        const present    = _checkTimestampPresence(tokenBytes, hashBytes);
         return {
-          verified:   valid,
+          verified:   present,
           type:       'RFC3161',
-          reason:     valid
-            ? 'RFC 3161 token verified — TSA token contains the entry body hash'
-            : 'RFC 3161 token verification failed — entry hash not found in token',
+          reason:     present
+            ? 'TSA token contains the entry body hash — presence only; TSA signature NOT verified'
+            : 'Entry hash not found in TSA token (presence check failed)',
           timestamp,
           tokenBase64: timestampToken,
         };
@@ -1798,7 +1833,7 @@ class AgentHandshake {
     if (!myPublicJwk)     throw new Error('AgentHandshake: myPublicJwk is required');
     if (!targetPublicJwk) throw new Error('AgentHandshake: targetPublicJwk is required');
 
-    const handshakeId = `hs-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    const handshakeId = `hs-${Date.now()}-${_randomSuffix(7)}`;
     const nonce = _hex(crypto.getRandomValues(new Uint8Array(16)).buffer);
 
     const body = {
@@ -2452,7 +2487,7 @@ class TEERuntime {
     }
 
     // Hardware platforms — delegate to TEEAttestation
-    const entryId = `tee-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const entryId = `tee-${Date.now()}-${_randomSuffix(5)}`;
     return TEEAttestation.create({ entryId, entryHash: dataHash, platform: this._platform });
   }
 
@@ -2879,7 +2914,7 @@ class BatchReceipt {
     if (!privateKey) throw new Error('BatchReceipt.create: privateKey is required');
     if (!publicJwk)  throw new Error('BatchReceipt.create: publicJwk is required');
 
-    const batchId   = `batch-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    const batchId   = `batch-${Date.now()}-${_randomSuffix(7)}`;
     const createdAt = new Date().toISOString();
     const expiresAt = new Date(Date.now() + expiresIn).toISOString();
 
@@ -3259,11 +3294,17 @@ class AuthProofClient {
 
   /**
    * Run an agent function in sandbox observation mode, generate scope from
-   * observed operations, auto-approve the full draft scope, and produce a
-   * signed Delegation Receipt — all in a single call.
+   * observed operations, and produce a signed Delegation Receipt — all in a
+   * single call.
+   *
+   * Honesty note: WITHOUT reviewDraft the full observed draft scope is
+   * auto-approved with NO human review — "guided" means guided by observation,
+   * not by a human. Pass reviewDraft to insert a genuine human review step
+   * (it receives the draft scope / risk flags / observations and returns
+   * { remove, add } modifications, or null/false to decline issuance).
    *
    * Internally this is equivalent to:
-   *   ScopeDiscovery.observe → generateScope → approve (no modifications) → finalize
+   *   ScopeDiscovery.observe → generateScope → [reviewDraft →] approve → finalize
    *
    * @param {object}    opts
    * @param {Function}  opts.agentFn              — async (ctx) => void
@@ -3272,7 +3313,8 @@ class AuthProofClient {
    * @param {object}    opts.publicJwk
    * @param {number}    [opts.expiresIn=3600000]  — ms until receipt expiry
    * @param {number}    [opts.timeout=30000]      — observation timeout in ms
-   * @returns {Promise<{ receipt, receiptId, systemPrompt, scopeSummary, observations, riskFlags }>}
+   * @param {Function}  [opts.reviewDraft]        — optional human-review hook
+   * @returns {Promise<{ receipt, receiptId, systemPrompt, scopeSummary, observations, riskFlags, reviewed }>}
    */
   async delegateGuided({
     agentFn,
@@ -3281,6 +3323,7 @@ class AuthProofClient {
     publicJwk,
     expiresIn = 3_600_000,
     timeout   = 30_000,
+    reviewDraft = null,
   } = {}) {
     // Dynamic import avoids circular dependency — scope-discovery.js does not
     // import from authproof.js, so this is safe.
@@ -3292,6 +3335,7 @@ class AuthProofClient {
       publicJwk,
       expiresIn,
       timeout,
+      reviewDraft,
     });
   }
 }

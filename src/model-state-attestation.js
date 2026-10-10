@@ -17,6 +17,12 @@
  *   4. runtimeConfigHash
  *   5. receiptHash  ← binds measurement to the specific delegation
  *
+ * HONESTY NOTE: the "measurement" is over caller-supplied strings — the
+ * operator self-attests the model id / version / hashes. This detects
+ * accidental drift and creates an audit trail, but it is NOT an independent
+ * hardware-rooted measurement: a malicious operator can supply whatever
+ * values they want. Do not present this as hardware-TEE-grade attestation.
+ *
  * @module model-state-attestation
  */
 
@@ -31,6 +37,18 @@ import { Canonicalizer } from './authproof.js';
 const _enc     = s => new TextEncoder().encode(s);
 const _hex     = b => Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2, '0')).join('');
 const _fromHex = h => new Uint8Array(h.match(/.{2}/g).map(b => parseInt(b, 16)));
+
+/**
+ * CSPRNG-backed random ID suffix. Replaces Math.random() for identity material:
+ * a security library must not use a non-cryptographic PRNG for IDs. Output is
+ * `len` lowercase hex chars, preserving existing ID shapes.
+ */
+function _randomSuffix(len) {
+  const bytes = crypto.getRandomValues(new Uint8Array(Math.ceil(len / 2)));
+  let s = '';
+  for (const b of bytes) s += b.toString(16).padStart(2, '0');
+  return s.slice(0, len);
+}
 
 async function _sha256(str) {
   const buf = await crypto.subtle.digest('SHA-256', _enc(str));
@@ -201,7 +219,7 @@ class ModelStateAttestation {
     if (!privateKey)        throw new Error('ModelStateAttestation.commit: privateKey is required');
     if (!publicJwk)         throw new Error('ModelStateAttestation.commit: publicJwk is required');
 
-    const commitmentId = `msc-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    const commitmentId = `msc-${Date.now()}-${_randomSuffix(7)}`;
 
     // Compute the model measurement
     const modelMeasurement = await ModelStateAttestation.computeMeasurement({
@@ -471,7 +489,7 @@ class ModelStateAttestation {
       );
     }
 
-    const chainProofId = `cp-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    const chainProofId = `cp-${Date.now()}-${_randomSuffix(7)}`;
     const generatedAt  = new Date().toISOString();
 
     // Compute a binding hash that anchors all four layers

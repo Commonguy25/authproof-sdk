@@ -9,7 +9,7 @@
  *   1.  Receipt signature valid (ECDSA P-256)
  *   2.  Receipt not revoked (RevocationRegistry)
  *   3.  Within time window (log timestamp as oracle, not client clock)
- *   4.  Action within scope (ScopeSchema.validate or fuzzy fallback)
+ *   4.  Action within scope (ScopeSchema.validate; fuzzy keyword match is advisory-only)
  *   5.  Operator instructions match receipt (Canonicalizer.hash)
  *   6.  Program hash match (optional — prevents code substitution attacks)
  *   7.  Session risk evaluation (optional — SessionState.evaluate())
@@ -71,6 +71,18 @@ const _enc = s => new TextEncoder().encode(s);
 const _fromHex = h => new Uint8Array(h.match(/.{2}/g).map(b => parseInt(b, 16)));
 const _hex = b => Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2, '0')).join('');
 
+/**
+ * CSPRNG-backed random ID suffix. Replaces Math.random() for identity material:
+ * a security library must not use a non-cryptographic PRNG for IDs. Output is
+ * `len` lowercase hex chars, preserving existing ID shapes.
+ */
+function _randomSuffix(len) {
+  const bytes = crypto.getRandomValues(new Uint8Array(Math.ceil(len / 2)));
+  let s = '';
+  for (const b of bytes) s += b.toString(16).padStart(2, '0');
+  return s.slice(0, len);
+}
+
 async function _sha256(str) {
   const buf = await crypto.subtle.digest('SHA-256', _enc(str));
   return _hex(buf);
@@ -115,6 +127,29 @@ function _canonicalizeJson(obj) {
 
 async function _sha256Schema(schema) {
   return _sha256(_canonicalizeJson(schema));
+}
+
+/**
+ * Normalize a scope schema for equality comparison. ScopeSchema instances and
+ * plain objects are both reduced through the ScopeSchema constructor so that
+ * defaulted fields (e.g. version: '1.0') compare equal whether the schema was
+ * registered as an instance or embedded as a plain object in the receipt body.
+ */
+function _normalizeScopeSchema(s) {
+  if (s instanceof ScopeSchema) return s.toJSON();
+  if (s && typeof s === 'object') {
+    try {
+      return new ScopeSchema(s).toJSON();
+    } catch {
+      return s;
+    }
+  }
+  return s;
+}
+
+/** True when two scope schemas are semantically identical (key-order independent). */
+function _sameScopeSchema(a, b) {
+  return _canonicalizeJson(_normalizeScopeSchema(a)) === _canonicalizeJson(_normalizeScopeSchema(b));
 }
 
 // ─────────────────────────────────────────────
@@ -479,9 +514,26 @@ class PreExecutionVerifier {
     let scopeValid  = false;
     let scopeReason = '';
 
-    // Scope schema: prefer log-registered metadata (not part of signed receipt body)
-    // over receipt.scopeSchema (if present and signed in)
-    const rawSchema = logEntry?.scopeSchema ?? receipt.scopeSchema ?? null;
+    // SIGNED SCOPE WINS. Unsigned DelegationLog metadata (registered via
+    // DelegationLog.add's scopeSchema option) is NEVER allowed to override the
+    // signed receipt body. If both are present and disagree, fail closed
+    // (deny): whoever can write to the log must not be able to widen scope
+    // without invalidating the receipt signature.
+    const signedSchema = receipt.scopeSchema ?? null;
+    const logSchema    = logEntry?.scopeSchema ?? null;
+    if (signedSchema && logSchema && !_sameScopeSchema(signedSchema, logSchema)) {
+      return this._finalize({
+        allowed:       false,
+        checks,
+        blockedReason: 'Scope metadata mismatch — unsigned log metadata disagrees with the signed receipt scope',
+        denialCode:    'SCOPE_METADATA_MISMATCH',
+        receiptHash,
+        action,
+      });
+    }
+    // The signed receipt's scope wins; log metadata is only a fallback for
+    // receipts that carry no structured scope in the signed body.
+    const rawSchema = signedSchema ?? logSchema;
     if (rawSchema) {
       // Use ScopeSchema — structured, wildcard-aware, constraint-checked
       const schema = rawSchema instanceof ScopeSchema
@@ -495,16 +547,23 @@ class PreExecutionVerifier {
       const sv = schema.validate(actionObj);
       scopeValid  = sv.valid;
       scopeReason = sv.reason;
+      checks.scopeCheckMethod = 'scope-schema';
     } else {
-      // Fallback: fuzzy text-based scope matching
+      // No structured scope schema anywhere (signed body or log metadata):
+      // fuzzy keyword-overlap matching is NOT a security boundary — it is
+      // trivially gameable and produces both false allows and false denies.
+      // It runs as an ADVISORY signal only, recorded here for observability,
+      // and never gates allow/deny.
       const actionStr = typeof action === 'string'
         ? action
         : `${action?.operation ?? ''} ${action?.resource ?? ''}`.trim();
-      const { withinScope } = checkScope(actionStr, receipt);
-      scopeValid  = withinScope;
-      scopeReason = withinScope
-        ? 'Action within authorized scope'
-        : 'Action outside authorized scope';
+      const { withinScope, scopeScore, boundaryScore } = checkScope(actionStr, receipt);
+      scopeValid  = true; // advisory only — does not gate
+      scopeReason = 'Advisory only — no signed scope schema present; keyword-overlap ' +
+        `signal is ${withinScope ? 'within' : 'OUTSIDE'} the receipt's text scope ` +
+        `(scope score ${scopeScore}, boundary score ${boundaryScore}); not a security boundary`;
+      checks.scopeCheckMethod    = 'fuzzy-advisory';
+      checks.scopeAdvisorySignal = withinScope ? 'within-scope' : 'outside-scope';
     }
 
     checks.actionWithinScope = scopeValid;
@@ -519,9 +578,22 @@ class PreExecutionVerifier {
     }
 
     // ── Check 5: Operator instructions hash ───────────────────────────
-    const instructions = operatorInstructions ?? receipt.operatorInstructions;
-    const providedHash = await Canonicalizer.hash(instructions);
-    const instructionsMatch = providedHash === receipt.instructionsHash;
+    // When the caller omits operatorInstructions we must NOT hash the
+    // receipt's own instructions against themselves — that tautology always
+    // passes and only pretends to verify operator drift. Instead the check is
+    // skipped with an explicit warning recorded in the result: operator drift
+    // is NOT verified for this call.
+    let instructionsMatch;
+    if (operatorInstructions == null) {
+      instructionsMatch = true; // skipped, not verified
+      checks.operatorInstructionsSkipped = true;
+      checks.operatorInstructionsWarning =
+        'operatorInstructions omitted — Check 5 skipped (no tautological self-match); ' +
+        'operator drift NOT verified for this call';
+    } else {
+      const providedHash = await Canonicalizer.hash(operatorInstructions);
+      instructionsMatch = providedHash === receipt.instructionsHash;
+    }
     checks.operatorInstructionsMatch = instructionsMatch;
     if (!instructionsMatch) {
       return this._finalize({
@@ -535,11 +607,24 @@ class PreExecutionVerifier {
 
     // ── Check 6: Program hash (optional) ──────────────────────────────
     if (programHash !== undefined) {
-      // executes: prefer log-registered metadata over receipt body
-      const committedHash = logEntry?.executes
-        ?? receipt.executes
-        ?? receipt.scopeSchema?.executes
-        ?? null;
+      // SIGNED PROGRAM HASH WINS. Unsigned log metadata (logEntry.executes) is
+      // NEVER allowed to override the receipt body's committed hash. If both
+      // are present and disagree, fail closed (deny): this check exists to
+      // catch code substitution, and a log writer must not be able to swap
+      // the expected program hash without invalidating the receipt signature.
+      const signedExecutes = receipt.executes ?? receipt.scopeSchema?.executes ?? null;
+      const logExecutes    = logEntry?.executes ?? null;
+      if (signedExecutes && logExecutes && signedExecutes !== logExecutes) {
+        return this._finalize({
+          allowed:       false,
+          checks,
+          blockedReason: 'Program hash metadata mismatch — unsigned log metadata disagrees with the signed receipt',
+          denialCode:    'PROGRAM_METADATA_MISMATCH',
+          receiptHash,
+          action,
+        });
+      }
+      const committedHash = signedExecutes ?? logExecutes;
       const programHashMatch = committedHash === programHash;
       checks.programHashMatch = programHashMatch;
       if (!programHashMatch) {
@@ -707,6 +792,7 @@ class PreExecutionVerifier {
     // requires only the parent receipt from the delegation log, not network access.
     if (receipt.parentReceiptId) {
       checks.parentScopeContainment = false;
+      checks.ancestorChainNotRevoked = false;
 
       const parentEntry   = this._log.getEntry(receipt.parentReceiptId);
       const parentReceipt = parentEntry?.receipt ?? null;
@@ -724,13 +810,18 @@ class PreExecutionVerifier {
 
       // Count chain depth by following parentReceiptId links to the root.
       // Each hop reads only the parentReceiptId field of each ancestor.
+      // Ancestor IDs/receipts are collected for cascade revocation below.
       let depth   = 0;
       let current = receipt;
+      const ancestorIds      = [];
+      const ancestorReceipts = [];
       while (current.parentReceiptId) {
         depth++;
         if (depth > this._maxChainDepth) break;
         const ancestorEntry = this._log.getEntry(current.parentReceiptId);
         if (!ancestorEntry) break;
+        ancestorIds.push(current.parentReceiptId);
+        ancestorReceipts.push(ancestorEntry.receipt);
         current = ancestorEntry.receipt;
       }
 
@@ -744,6 +835,45 @@ class PreExecutionVerifier {
           action,
         });
       }
+
+      // Cascade revocation: Check 2 covers the leaf receipt only. A revoked
+      // ancestor must deny the whole subtree — every ancestor in the chain is
+      // consulted, not just the leaf. (DelegationChain.revoke with
+      // cascadeToChildren marks descendants in its own store; the gate
+      // enforces the cascade live here, so a parent revoked through any path
+      // still denies its children.)
+      if (!this._offlineMode) {
+        for (const ancestorId of ancestorIds) {
+          const ancestorStatus = await this._registry.check(ancestorId);
+          if (ancestorStatus.revoked) {
+            return this._finalize({
+              allowed:       false,
+              checks,
+              blockedReason: `Ancestor receipt revoked (${ancestorStatus.reason ?? 'no reason given'}) — delegation chain cascade`,
+              denialCode:    'ANCESTOR_REVOKED',
+              receiptHash,
+              action,
+            });
+          }
+        }
+      } else {
+        // Offline: the registry cannot be consulted. Mirror Check 2's
+        // fail-closed rule — deny when any walked ancestor requires a live
+        // revocation check.
+        for (const ancestor of ancestorReceipts) {
+          if (ancestor.revocationRequired) {
+            return this._finalize({
+              allowed:       false,
+              checks,
+              blockedReason: 'ANCESTOR_REVOCATION_CHECK_REQUIRED',
+              denialCode:    'ANCESTOR_REVOCATION_CHECK_REQUIRED',
+              receiptHash,
+              action,
+            });
+          }
+        }
+      }
+      checks.ancestorChainNotRevoked = true;
 
       // Verify the parent receipt's main signature.
       // orchestratorSignature is excluded from the parent's signed body.
@@ -988,7 +1118,7 @@ class PreExecutionVerifier {
         const resolvedCode = denialCode ?? (blockedReason?.split(' ')[0] ?? 'DENIED');
         const storeKey    = sessionId ?? 'global';
         const prevHash    = this._lastDeniedHash.get(storeKey) ?? '0'.repeat(64);
-        const entryId     = `denied-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+        const entryId     = `denied-${Date.now()}-${_randomSuffix(7)}`;
         const actionObj   = typeof action === 'string'
           ? { operation: action, resource: action, args: {} }
           : { operation: action?.operation ?? '', resource: action?.resource ?? '', args: action?.parameters ?? {} };
