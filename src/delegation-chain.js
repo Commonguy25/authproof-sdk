@@ -20,6 +20,18 @@ const _enc = s => new TextEncoder().encode(s);
 const _hex = b => Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2, '0')).join('');
 const _fromHex = h => new Uint8Array(h.match(/.{2}/g).map(b => parseInt(b, 16)));
 
+/**
+ * CSPRNG-backed random ID suffix. Replaces Math.random() for identity material:
+ * a security library must not use a non-cryptographic PRNG for IDs. Output is
+ * `len` lowercase hex chars, preserving existing ID shapes.
+ */
+function _randomSuffix(len) {
+  const bytes = crypto.getRandomValues(new Uint8Array(Math.ceil(len / 2)));
+  let s = '';
+  for (const b of bytes) s += b.toString(16).padStart(2, '0');
+  return s.slice(0, len);
+}
+
 async function _sha256(str) {
   const buf = await crypto.subtle.digest('SHA-256', _enc(str));
   return _hex(buf);
@@ -319,7 +331,7 @@ class DelegationChain {
     }
 
     const body = {
-      delegationId:    `deleg-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      delegationId:    `deleg-${Date.now()}-${_randomSuffix(5)}`,
       issuedAt:        new Date().toISOString(),
       parentHash:      parentReceiptHash,
       depth:           childDepth,

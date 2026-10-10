@@ -689,6 +689,140 @@ async function run() {
       'Test B: blockedReason is NOT CHAIN_DEPTH_EXCEEDED');
   }
 
+  // ── N. Cascade revocation at the gate: revoked parent denies live child ──
+  console.log('\nCheck 14 — CASCADE revoked parent denies live child');
+  {
+    const { receipt: parent, receiptId: parentId } = await makeParentReceipt(orchKey, orchPub);
+    parent.scopeSchema = PARENT_SCOPE; // only used as input to createSubReceipt below
+
+    const now      = new Date();
+    const childEnd = new Date(now.getTime() + 1 * 3_600_000);
+
+    const { receipt: child, receiptId: childId } = await createSubReceipt({
+      parentReceipt:    parent,
+      parentReceiptId:  parentId,
+      parentPrivateKey: orchKey,
+      scope:            CHILD_SCOPE,
+      timeWindow:       { start: now.toISOString(), end: childEnd.toISOString() },
+      boundaries:       BOUNDARIES,
+      instructions:     INSTRUCTIONS,
+    });
+
+    const parentForLog = { ...parent };
+    delete parentForLog.scopeSchema;
+
+    const { verifier, delegationLog, revocationRegistry } = await makeVerifier();
+    delegationLog.add(parentId, parentForLog, { scopeSchema: PARENT_SCOPE });
+    delegationLog.add(childId,  child);
+
+    // Sanity: the live child passes before any revocation
+    const before = await verifier.check({
+      receiptHash:          childId,
+      action:               { operation: 'read', resource: 'email' },
+      operatorInstructions: INSTRUCTIONS,
+    });
+    assert(before.allowed === true,
+      `cascade: live child allowed before parent revocation (blockedReason: ${before.blockedReason})`);
+
+    // Revoke ONLY the parent — no cascade flag. The gate must enforce the
+    // cascade itself by consulting the registry for every ancestor.
+    await revocationRegistry.revoke(parentId, { reason: 'parent compromised' });
+
+    const after = await verifier.check({
+      receiptHash:          childId,
+      action:               { operation: 'read', resource: 'email' },
+      operatorInstructions: INSTRUCTIONS,
+    });
+    assert(after.allowed === false,
+      'cascade: revoked parent denies live child at the gate');
+    assert(after.blockedReason.includes('Ancestor receipt revoked'),
+      `cascade: blockedReason reports ancestor revocation (got: ${after.blockedReason})`);
+    assert(after.checks.ancestorChainNotRevoked === false,
+      'cascade: checks.ancestorChainNotRevoked is false');
+  }
+
+  // ── O. Cascade revocation across three levels: revoked grandparent denies grandchild ──
+  console.log('\nCheck 14 — CASCADE revoked grandparent denies grandchild');
+  {
+    const ROOT_SCOPE = {
+      allowedActions: [
+        { operation: 'read',  resource: 'email' },
+        { operation: 'read',  resource: 'calendar' },
+        { operation: 'write', resource: 'calendar' },
+      ],
+      deniedActions: [{ operation: 'delete', resource: '*' }],
+    };
+    const MID_SCOPE = {
+      allowedActions: [
+        { operation: 'read', resource: 'email' },
+        { operation: 'read', resource: 'calendar' },
+      ],
+      deniedActions: [{ operation: 'delete', resource: '*' }],
+    };
+    const LEAF_SCOPE = {
+      allowedActions: [{ operation: 'read', resource: 'email' }],
+      deniedActions:  [{ operation: 'delete', resource: '*' }],
+    };
+
+    const { receipt: root, receiptId: rootId } = await makeParentReceipt(orchKey, orchPub);
+    root.scopeSchema = ROOT_SCOPE;
+
+    const now     = new Date();
+    const midEnd  = new Date(now.getTime() + 1 * 3_600_000);
+    const leafEnd = new Date(now.getTime() + 30 * 60_000);
+
+    const { receipt: mid, receiptId: midId } = await createSubReceipt({
+      parentReceipt:    root,
+      parentReceiptId:  rootId,
+      parentPrivateKey: orchKey,
+      scope:            MID_SCOPE,
+      timeWindow:       { start: now.toISOString(), end: midEnd.toISOString() },
+      boundaries:       BOUNDARIES,
+      instructions:     INSTRUCTIONS,
+    });
+
+    const { receipt: leaf, receiptId: leafId } = await createSubReceipt({
+      parentReceipt:    mid,
+      parentReceiptId:  midId,
+      parentPrivateKey: orchKey,
+      scope:            LEAF_SCOPE,
+      timeWindow:       { start: now.toISOString(), end: leafEnd.toISOString() },
+      boundaries:       BOUNDARIES,
+      instructions:     INSTRUCTIONS,
+    });
+
+    const rootForLog = { ...root };
+    delete rootForLog.scopeSchema;
+
+    const { verifier, delegationLog, revocationRegistry } = await makeVerifier();
+    delegationLog.add(rootId, rootForLog, { scopeSchema: ROOT_SCOPE });
+    delegationLog.add(midId,  mid);
+    delegationLog.add(leafId, leaf);
+
+    const before = await verifier.check({
+      receiptHash:          leafId,
+      action:               { operation: 'read', resource: 'email' },
+      operatorInstructions: INSTRUCTIONS,
+    });
+    assert(before.allowed === true,
+      `cascade-3: live grandchild allowed before revocation (blockedReason: ${before.blockedReason})`);
+    assert(before.checks.ancestorChainNotRevoked === true,
+      'cascade-3: checks.ancestorChainNotRevoked is true when chain is clean');
+
+    // Revoke the grandparent (root) only — the gate must walk the full chain
+    await revocationRegistry.revoke(rootId, { reason: 'root compromised' });
+
+    const after = await verifier.check({
+      receiptHash:          leafId,
+      action:               { operation: 'read', resource: 'email' },
+      operatorInstructions: INSTRUCTIONS,
+    });
+    assert(after.allowed === false,
+      'cascade-3: revoked grandparent denies live grandchild at the gate');
+    assert(after.blockedReason.includes('Ancestor receipt revoked'),
+      `cascade-3: blockedReason reports ancestor revocation (got: ${after.blockedReason})`);
+  }
+
   // ─────────────────────────────────────────────
   // SUMMARY
   // ─────────────────────────────────────────────

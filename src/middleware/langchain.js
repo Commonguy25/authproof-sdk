@@ -10,7 +10,9 @@
  * const guardedAgent = authproofMiddleware(agent, {
  *   receiptHash,
  *   verifier,
- *   operatorInstructions,   // optional — defaults to receipt's stored instructions
+ *   operatorInstructions,   // optional — if omitted, Check 5 is SKIPPED with a
+ *                           // warning (operator drift not verified); it no longer
+ *                           // self-matches the receipt's stored instructions
  * })
  * // Every agent.invoke() and tool call goes through PreExecutionVerifier
  */

@@ -112,6 +112,47 @@ async function run() {
   const wrongIdResult = await AuthProof.verify(receipt, 'a'.repeat(64));
   assert(wrongIdResult.authorized === false, 'Wrong receipt ID is denied');
 
+  // ── Verification — SDK's own sub-receipt (orchestratorSignature stripped) ──
+  console.log('\nVerification — Sub-Receipt');
+  // createSubReceipt requires structured scopes for attenuation checks; attach
+  // a structured scopeSchema to a COPY of the parent (mutating the original
+  // would break its signature for the tests below).
+  const parentForSub = {
+    ...receipt,
+    scopeSchema: {
+      allowedActions: [
+        { operation: 'read',  resource: 'web' },
+        { operation: 'write', resource: 'notes' },
+      ],
+      deniedActions: [],
+    },
+  };
+  const { receipt: subReceipt, receiptId: subReceiptId } = await AuthProof.createSubReceipt({
+    parentReceipt:    parentForSub,
+    parentReceiptId:  receiptId,
+    parentPrivateKey: privateKey,
+    scope:            {
+      allowedActions: [{ operation: 'read', resource: 'web' }],
+      deniedActions:  [],
+    },
+    timeWindow:       {
+      start: new Date().toISOString(),
+      end:   new Date(Date.now() + 3_600_000).toISOString(),
+    },
+    boundaries:   'Do not send emails. Do not make purchases.',
+    instructions: 'Cite sources. Keep under 500 words.',
+  });
+  assert(typeof subReceipt.orchestratorSignature === 'string',
+    'Sub-receipt carries orchestratorSignature');
+  const subResult = await AuthProof.verify(subReceipt, subReceiptId);
+  assert(subResult.authorized === true,
+    'verify() accepts the SDK\'s own sub-receipt (orchestratorSignature stripped)');
+  assert(subResult.checks.every(c => c.passed),
+    'All verify() checks pass for sub-receipt');
+  const subComputedId = await AuthProof.receiptId(subReceipt);
+  assert(subComputedId === subReceiptId,
+    'receiptId() reproduces the issuance-time ID for sub-receipts');
+
   // ── Utility Functions ───────────────────────────────────────────────
   console.log('\nUtility Functions');
   assert(AuthProof.isActive(receipt) === true, 'isActive returns true for fresh receipt');
